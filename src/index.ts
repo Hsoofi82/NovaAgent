@@ -19,18 +19,87 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with Nova. If not, see <https://www.gnu.org/licenses/>.
  */
+// ─────────────────────────────────────────────────────────────────────────────
+// ƝØVΛ · NOVA AGENT — single-file Cloudflare Worker
+// ─────────────────────────────────────────────────────────────────────────────
+// This file powers the Telegram bot, the Mini App dashboard, the admin
+// Control Center and every agent tool. It is organized in labeled SECTIONS —
+// search for "SECTION:" to jump to a major subsystem. The table of contents
+// below follows the same top-to-bottom reading order.
+// ─────────────────────────────────────────────────────────────────────────────
+
 const BOT_VERSION = "ƝØVΛ 0.949 Production Candidate";
 
+// ── Static assets (bundled by wrangler) ──────────────────────────────────────
+import DASHBOARD_HTML from "./dashboard.html";            // Telegram Mini App dashboard
+import ADMIN_DASHBOARD_HTML from "./adminDashboard.html"; // Nova Control Center (admin)
+import TG_WEBAPP_JS from "./telegram-web-app.txt";        // Vendored Telegram bridge script
 
-
-//Mini App
-import DASHBOARD_HTML from "./dashboard.html";
-import ADMIN_DASHBOARD_HTML from "./adminDashboard.html";
-import TG_WEBAPP_JS from "./telegram-web-app.txt";
+// ── Nova engines & helpers ────────────────────────────────────────────────────
 import { exportDocument, type ExportFormat, type ThemeName } from "./exportEngine";
-import { wrapGameHtml, buildGameEnginePrompt, detectGameOrientation, isGameRequest, isGameComplete, salvageGame, NOVA_GAME_ENGINE_NAME, NOVA_GAME_ENGINE_VERSION, type GameOrientation } from "./gameEngine";
-import { buildWebBuilderSystemInstruction, buildWebAppPrompt, isWebAppRequest, isWebAppComplete, salvageWebApp, normalizeWebAppOutput, NOVA_WEB_BUILDER_NAME, NOVA_WEB_BUILDER_VERSION } from "./webBuilder";
-import { formatExternalPage, formatSearchResults, htmlToPlainText as normalizeWebPageText, normalizeSearchItems, normalizeSearchQuery, parseSearchJson, rankSearchItems, type WebSearchItem } from "./webSearch";
+import {
+  buildGameEnginePrompt,
+  detectGameOrientation,
+  isGameComplete,
+  isGameRequest,
+  NOVA_GAME_ENGINE_NAME,
+  NOVA_GAME_ENGINE_VERSION,
+  salvageGame,
+  wrapGameHtml,
+  type GameOrientation,
+} from "./gameEngine";
+import {
+  buildWebAppPrompt,
+  buildWebBuilderSystemInstruction,
+  isWebAppComplete,
+  isWebAppRequest,
+  normalizeWebAppOutput,
+  NOVA_WEB_BUILDER_NAME,
+  NOVA_WEB_BUILDER_VERSION,
+  salvageWebApp,
+} from "./webBuilder";
+import {
+  formatExternalPage,
+  formatSearchResults,
+  htmlToPlainText as normalizeWebPageText,
+  normalizeSearchItems,
+  normalizeSearchQuery,
+  parseSearchJson,
+  rankSearchItems,
+  type WebSearchItem,
+} from "./webSearch";
+
+// ═════════════════════════════════════════════════════════════════════════════
+// TABLE OF CONTENTS — follow this order top-to-bottom through the file
+// ═════════════════════════════════════════════════════════════════════════════
+//
+//   FOUNDATION & TYPES
+//     D1-BACKED KV SHIM · UNIFIED TASK PROGRESS MANAGER · KEYBOARD & BINARY
+//     HELPERS · NATIVE REACTIONS · GEMINI FUNCTION DECLARATIONS · CORE TYPES ·
+//     GROUP MEMORY · PERSONAS · TELEGRAM TYPES
+//
+//   RUNTIME STATE & RELIABILITY
+//     GLOBAL STATE · FREE-TIER KV CONSERVATION · RUNTIME METRICS · LOGGER ·
+//     CACHE · TRANSLATIONS · UTILITIES · API KEY MANAGEMENT ·
+//     RATE LIMITING & CONCURRENCY · SESSION MANAGEMENT ·
+//     CROSS-ISOLATE IDENTITY CONSISTENCY · SYSTEM PROMPT BUILDER ·
+//     UNIFIED VISUAL MEDIA ANALYSIS · HISTORY MANAGEMENT · VIP & DAILY LIMITS ·
+//     TELEGRAM API WRAPPERS · INLINE MODE · ERROR HANDLING
+//
+//   ENGINES
+//     HEAVY CODE GENERATION CORE · ENGINE HANDLERS · GEMINI KEY ROTATION ·
+//     MODEL CACHE · CLOUDFLARE AI IMAGE · GROUP INTELLIGENCE · GEMINI TTS ·
+//     MAINTENANCE · BUSINESS AUTOMATION · VOICE TRANSCRIPTION ·
+//     GOOGLE IMAGE SEARCH · RESPONSE SENDING · NOVA AGENT ·
+//     SMART ASSET DOWNLOADER
+//
+//   PRODUCT SURFACE
+//     MATERIALIZED USER SUMMARY · ADMIN HELPERS · BROADCAST ·
+//     SCHEDULED REMINDERS · COMMAND HANDLERS · UTILITY COMMANDS ·
+//     MESSAGE HANDLERS · NOVA CONTROL CENTER (v2) · CALLBACK QUERY HANDLER ·
+//     MEMORY PRUNING · MAIN UPDATE DISPATCHER · INITIALIZATION & HEALTH CHECK ·
+//     HOUSEKEEPING · WORKER EXPORT
+// ═════════════════════════════════════════════════════════════════════════════
 
 // ─────────────────────────────────────────────
 // D1-BACKED KV SHIM

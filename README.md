@@ -8,13 +8,19 @@
 
 **Free forever · Open Source · Self-hosted on Telegram**
 
+> 🟢 **Nova is live RIGHT NOW on Telegram.** The official bot is up and running at
+> **[@MyNovaChatBot](https://t.me/MyNovaChatBot)** — tap it, say *hi*, and watch it
+> plan, build and ship a real result in seconds. Like what you see?
+> **Join the Nova family 🖤** and follow the project.
+
 <p>
   <a href="#english">🇬🇧 English</a> ·
   <a href="#persian">🇮🇷 فارسی</a>
 </p>
 
 <p>
-  <a href="https://t.me/MyNovaChatBot"><img src="https://img.shields.io/badge/Reference_bot-%40MyNovaChatBot-2AABEE?style=for-the-badge&logo=telegram&logoColor=white" alt="Reference bot"></a>
+  <a href="https://t.me/MyNovaChatBot"><img src="https://img.shields.io/badge/Live_bot-%40MyNovaChatBot-2AABEE?style=for-the-badge&logo=telegram&logoColor=white" alt="Live bot — @MyNovaChatBot"></a>
+  <a href="https://t.me/Hacker1382"><img src="https://img.shields.io/badge/Contact-%40Hacker1382-2AABEE?style=for-the-badge&logo=telegram&logoColor=white" alt="Contact the creator — @Hacker1382"></a>
   <a href="#-installation"><img src="https://img.shields.io/badge/Deploy_your_own-~10_min_guide-2ea44f?style=for-the-badge" alt="Deploy your own"></a>
 </p>
 
@@ -30,7 +36,7 @@
   <b>AI Agent · Function Calling · Long-Term Memory · Web Search · Image Studio · Web App Factory · Game Studio · TTS Voice · RTL PDF · Telegram Mini App</b>
 </p>
 
-### ⭐ If Nova blows your mind — star this repo. It really helps!
+### ⭐ Star the repo · test the live bot · join the Nova family 🖤
 
 </div>
 
@@ -825,19 +831,20 @@ Operators are responsible for securing their own deployments and credentials.
 
 ---
 
-# ❤️ Credits
+# ❤️ Credits & Contact
 
-Built and maintained by:
+Nova is built and maintained by **Hsoofi82**.
 
-**Hsoofi82**
+| | |
+| --- | --- |
+| 🚀 **Creator & maintainer** | **Hsoofi82** — [@Hacker1382](https://t.me/Hacker1382) |
+| 🤖 **Live bot** (test it now) | [@MyNovaChatBot](https://t.me/MyNovaChatBot) |
 
-Telegram:
+### 💬 Want to reach out?
 
-[@Hacker1382](https://t.me/Hacker1382)
-
-Bot:
-
-[@MyNovaChatBot](https://t.me/MyNovaChatBot)
+Message the creator directly on Telegram — **[@Hacker1382](https://t.me/Hacker1382)** — for
+questions, ideas, collaboration or just to say hi. Nova is a community project,
+and you're welcome in the family. 🖤
 
 ---
 
@@ -866,6 +873,16 @@ Made with 🖤 by Hsoofi82
 یه پیام بده → وب‌اپ بساز، میزبانی کن، لینکش رو بفرست 🎯
 
 **قبض ماهانه: ۰ تومان — تا همیشه 😎**
+
+> 🟢 **نوا همین الان آنلاین و فعاله!** ربات رسمی روی تلگرام با آیدی
+> **[@MyNovaChatBot](https://t.me/MyNovaChatBot)** در حال سرویس‌دهیه — یه سر بهش بزن،
+> سلام کن و ببین چطور نقشه می‌کشه، می‌سازه و تحویل می‌ده. خوشت اومد؟
+> **به خانوادهٔ نوا بپیوند** و این پروژه رو دنبال کن. 🖤
+
+<p>
+  <a href="https://t.me/MyNovaChatBot"><img src="https://img.shields.io/badge/Live_bot-%40MyNovaChatBot-2AABEE?style=for-the-badge&logo=telegram&logoColor=white" alt="ربات فعال — @MyNovaChatBot"></a>
+  <a href="https://t.me/Hacker1382"><img src="https://img.shields.io/badge/Contact-%40Hacker1382-2AABEE?style=for-the-badge&logo=telegram&logoColor=white" alt="ارتباط با سازنده — @Hacker1382"></a>
+</p>
 
 </div>
 
@@ -1109,12 +1126,29 @@ Pull Request و Contribution استقبال می‌شود.
 
 ---
 
+## ❤️ سازنده و راه ارتباط
+
+نوا توسط **Hsoofi82** ساخته و نگهداری می‌شه.
+
+| | |
+| --- | --- |
+| 🚀 **سازنده و توسعه‌دهنده** | **Hsoofi82** — [@Hacker1382](https://t.me/Hacker1382) |
+| 🤖 **ربات فعال** (همین الان تستش کن) | [@MyNovaChatBot](https://t.me/MyNovaChatBot) |
+
+### 💬 می‌خوای در تماس باشی؟
+
+برای سؤال، ایده، همکاری یا یه سلام ساده، مستقیم به سازنده پیام بده —
+**[@Hacker1382](https://t.me/Hacker1382)**. نوا یه پروژهٔ جمعیه و تو هم عضوی از
+خانوادهٔ نوایی. 🖤
+
+---
+
 <div align="center">
 
 # ƝØVΛ
 
 ### پلتفرم متن‌باز ایجنت هوش مصنوعی برای Telegram
 
-ساخته شده توسط **Hsoofi82**
+ساخته شده با 🖤 توسط **Hsoofi82**
 
 </div>
