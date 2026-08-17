@@ -1,0 +1,37 @@
+# ── Dependencies ──────────────────────────────────────────────
+node_modules/
+
+# ── Wrangler / Cloudflare ─────────────────────────────────────
+.wrangler/
+worker-configuration.d.ts
+
+# ── Secrets & local environment — never commit these! ─────────
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+.env.*
+!.env.example
+
+# ── Logs ──────────────────────────────────────────────────────
+*.log
+logs/
+wrangler-debug-*
+
+# ── OS / editor noise ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*~
+
+# ── Build output / coverage ───────────────────────────────────
+dist/
+build/
+out/
+coverage/
+
+# ── Local git bundle backups ──────────────────────────────────
+*.bundle

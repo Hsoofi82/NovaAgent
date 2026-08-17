@@ -1,0 +1,42 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Nova — local development secrets
+#
+# Copy this file to `.dev.vars` (git-ignored) and fill in your own values:
+#   cp .dev.vars.example .dev.vars
+#
+# For production, use Worker Secrets instead:
+#   npx wrangler secret put <NAME>
+#
+# ⚠️  NEVER commit real credentials to Git.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Telegram ─────────────────────────────────────────────────────────────────
+# Bot token from @BotFather
+TOKEN=""
+# Your numeric Telegram user ID (the admin/owner)
+BOT_OWNER_ID=""
+# Random secret used to validate Telegram webhook deliveries (any long string)
+WEBHOOK_SECRET=""
+
+# ── Google Gemini (function-calling model keys; up to 5, rotated) ────────────
+GEMINI_KEY_1=""
+GEMINI_KEY_2=""
+GEMINI_KEY_3=""
+GEMINI_KEY_4=""
+GEMINI_KEY_5=""
+
+# ── Google Custom Search (optional: web/image search) ────────────────────────
+GOOGLE_SEARCH_API_KEY=""
+GOOGLE_SEARCH_ENGINE_ID=""
+
+# ── Cloudflare AI accounts (optional: image generation; up to 3, rotated) ────
+CF_ID_1=""
+CF_TOKEN_1=""
+CF_ID_2=""
+CF_TOKEN_2=""
+CF_ID_3=""
+CF_TOKEN_3=""
+
+# ── Misc (non-secret runtime flags) ──────────────────────────────────────────
+ENVIRONMENT="development"
+MAINTENANCE_MODE="false"

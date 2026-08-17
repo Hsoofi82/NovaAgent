@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Maintainer on Telegram
+    url: https://t.me/Hacker1382
+    about: Questions about running your own instance — please use issues for bugs and features only.
+  - name: 🛡️ Security vulnerability
+    url: https://github.com/Hsoofi82/NovaAgent/security
+    about: Please report security issues privately — never in public issues.

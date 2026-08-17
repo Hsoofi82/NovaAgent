@@ -1,0 +1,42 @@
+{
+  "name": "nova-agent",
+  "version": "0.9.49",
+  "description": "ƝØVΛ — Advanced AI Agent Platform for Telegram, built on Cloudflare Workers (Gemini agent, function calling, memory, media, web apps, Mini App).",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "type": "module",
+  "keywords": [
+    "telegram-bot",
+    "ai-agent",
+    "gemini",
+    "cloudflare-workers",
+    "typescript",
+    "function-calling",
+    "telegram-mini-app"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hsoofi82/NovaAgent.git"
+  },
+  "homepage": "https://github.com/Hsoofi82/NovaAgent#readme",
+  "bugs": {
+    "url": "https://github.com/Hsoofi82/NovaAgent/issues"
+  },
+  "author": "Hsoofi82 (https://t.me/Hacker1382)",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "test": "node tests/source-regression.mjs",
+    "type-check": "tsc --noEmit",
+    "cf-types": "wrangler types"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260730.1",
+    "wrangler": "^4.112.0",
+    "typescript": "^5.7.2"
+  }
+}

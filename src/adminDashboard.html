@@ -1,0 +1,86 @@
+<!doctype html>
+<!--
+  ƝØVΛ — Advanced AI Agent Platform for Telegram
+  Copyright (C) 2026 Hsoofi82
+
+  SPDX-License-Identifier: AGPL-3.0-or-later
+
+  This file is part of Nova (https://github.com/Hsoofi82/NovaAgent) and is made
+  available under the terms of the GNU Affero General Public License v3.0
+  or later (https://www.gnu.org/licenses/agpl-3.0.html). It is distributed
+  WITHOUT ANY WARRANTY, without even the implied warranty of MERCHANTABILITY
+  or FITNESS FOR A PARTICULAR PURPOSE.
+-->
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Nova — Admin</title>
+<script src="/tg-webapp.js"></script>
+<style>
+:root{--bg:#070a11;--surface:#111725;--surface2:#151d2d;--border:#263148;--text:#edf2ff;--muted:#8893ad;--accent:#7c6ff7;--good:#35d7ac;--bad:#ff6675;--warn:#ffbb58;--shadow:0 12px 34px rgba(0,0,0,.32);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#11172a 0,#070a11 40%,#05070c 100%);color:var(--text);min-height:100vh}
+button,input,select,textarea{font:inherit}button{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:12px;min-height:44px;padding:0 14px;cursor:pointer}button:hover{border-color:#45557a}button:disabled{opacity:.5;cursor:wait}.primary{background:linear-gradient(135deg,#7c6ff7,#9b6dff);border:0}.danger{color:#fff;background:#63212c;border-color:#7a3340}.ghost{background:transparent}.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-size:12px;color:var(--muted)}
+.app{max-width:1500px;margin:auto;padding:18px 18px 30px}.topbar{display:flex;gap:14px;align-items:center;justify-content:space-between;margin-bottom:16px}.brand{display:flex;align-items:center;gap:12px}.logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,#7c6ff7,#35d7ac);font-weight:900}.title{font-size:20px;font-weight:800}.subtitle{font-size:12px;color:var(--muted)}
+.metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}.metric{background:rgba(17,23,37,.8);border:1px solid var(--border);border-radius:15px;padding:13px;box-shadow:var(--shadow)}.metric b{display:block;font-size:20px;margin-top:6px}.metric span{font-size:11px;color:var(--muted)}
+.layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(320px,.8fr);gap:14px}.card{background:rgba(17,23,37,.86);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}.toolbar{padding:12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap}.toolbar input{flex:1;min-width:220px;background:#0b101a;color:var(--text);border:1px solid var(--border);border-radius:12px;min-height:44px;padding:0 12px}.toolbar select{background:#0b101a;color:var(--text);border:1px solid var(--border);border-radius:12px;min-height:44px;padding:0 12px}
+.tablewrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:760px}.table th,.table td{padding:11px 10px;border-bottom:1px solid #1f283a;text-align:right;font-size:13px}.table th{font-size:11px;color:var(--muted);position:sticky;top:0;background:#101625;z-index:1}.userbtn{background:transparent;border:0;padding:0;min-height:0;text-align:right;width:100%;border-radius:8px}.userbtn:hover{color:#b8b0ff}.tag{font-size:11px;padding:4px 7px;border-radius:999px;border:1px solid var(--border);display:inline-block}.vip{border-color:#705fdf;color:#c7c1ff}.blocked{border-color:#71313b;color:#ff9ca6}.risk-high{color:#ff7b88}.risk-med{color:#ffca72}.risk-low{color:#5de6c0}
+.pager{display:flex;justify-content:space-between;gap:8px;padding:12px;border-top:1px solid var(--border)}.pager .left,.pager .right{display:flex;gap:8px}.status{padding:12px;font-size:12px;color:var(--muted)}
+.detail{padding:16px;min-height:520px}.detail h2{margin:0 0 8px}.detail .id{color:var(--muted);font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px}.kv{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}.kv div{background:#0b101a;border:1px solid var(--border);border-radius:12px;padding:10px}.kv span{display:block;color:var(--muted);font-size:11px}.kv b{display:block;margin-top:4px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.actions button{width:100%}.section{border-top:1px solid var(--border);padding-top:14px;margin-top:14px}.section h3{font-size:13px;margin:0 0 8px}.section textarea{width:100%;min-height:120px;resize:vertical;background:#0b101a;border:1px solid var(--border);border-radius:12px;padding:10px;color:var(--text)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}.modal.open{display:flex}.modalbox{width:min(520px,100%);background:#101625;border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:var(--shadow)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#101625;border:1px solid var(--border);padding:10px 14px;border-radius:12px;display:none;z-index:30}.toast.show{display:block}
+@media(max-width:1100px){.metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.layout{grid-template-columns:1fr}.detail{min-height:0}}@media(max-width:640px){.app{padding:10px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar{align-items:flex-start}.toolbar{padding:10px}.toolbar input{min-width:100%}.actions{grid-template-columns:1fr}.detail{padding:12px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand"><div class="logo">N</div><div><div class="title">Nova Control Center</div><div class="subtitle">Production User Management</div></div></div>
+    <div style="display:flex;gap:8px"><button id="refreshBtn">↻ بروزرسانی</button><button class="ghost" id="closeBtn">بستن</button></div>
+  </div>
+  <div class="metrics" id="metrics"><div class="metric"><span>کاربران</span><b>—</b></div><div class="metric"><span>VIP</span><b>—</b></div><div class="metric"><span>فعال امروز</span><b>—</b></div><div class="metric"><span>پیام امروز</span><b>—</b></div><div class="metric"><span>خطا</span><b>—</b></div><div class="metric"><span>میانگین پاسخ</span><b>—</b></div></div>
+  <div class="layout">
+    <section class="card">
+      <div class="toolbar"><input id="search" autocomplete="off" placeholder="جستجو با User ID، username یا نام"><select id="sort"><option value="new">جدیدترین</option><option value="active">فعال‌ترین</option><option value="messages">بیشترین پیام</option></select><button class="primary" id="searchBtn">جستجو</button><button id="clearBtn">پاک کردن</button></div>
+      <div class="tablewrap"><table class="table"><thead><tr><th>کاربر</th><th>وضعیت</th><th>Persona</th><th>پیام</th><th>مصرف امروز</th><th>ریسک</th><th>آخرین فعالیت</th></tr></thead><tbody id="userRows"><tr><td colspan="7" class="status">در حال بارگذاری...</td></tr></tbody></table></div>
+      <div class="pager"><div class="left"><button id="firstBtn">⏮ اول</button><button id="prevBtn">‹ قبلی</button></div><div class="pill" id="pageState">صفحه فعلی</div><div class="right"><button id="nextBtn">بعدی ›</button><button id="lastBtn">آخرین ⏭</button></div></div>
+      <div class="status" id="listStatus"></div>
+    </section>
+    <aside class="card detail" id="detail"><div style="color:var(--muted)">یک کاربر را انتخاب کنید.</div></aside>
+  </div>
+</div>
+<div class="modal" id="modal"><div class="modalbox"><h3 id="modalTitle"></h3><p id="modalText" style="color:var(--muted)"></p><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button id="modalCancel">لغو</button><button class="primary" id="modalOk">تأیید</button></div></div></div>
+<div class="toast" id="toast"></div>
+<script>
+(() => {
+  const tg = window.Telegram?.WebApp;
+  tg?.ready?.(); tg?.expand?.();
+  const initData = tg?.initData || '';
+  const $ = id => document.getElementById(id);
+  const state = { sort:'new', q:'', cursor:null, nextCursor:null, hasNext:false, history:[], page:1, last:false, selected:null };
+  const toast = t => { $('toast').textContent=t; $('toast').classList.add('show'); clearTimeout(window.__toast); window.__toast=setTimeout(()=>$('toast').classList.remove('show'),2200); };
+  async function api(path, opts={}) {
+    const ctrl = new AbortController(); const timeout=setTimeout(()=>ctrl.abort(),12000);
+    try { const r=await fetch(path,{...opts,signal:ctrl.signal,headers:{'Content-Type':'application/json','X-Telegram-Init-Data':initData,...(opts.headers||{})}}); const d=await r.json().catch(()=>({ok:false,error:'bad_json'})); return {status:r.status,data:d}; }
+    finally { clearTimeout(timeout); }
+  }
+  const esc = s => String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const fmt = ts => ts ? new Date(Number(ts)).toLocaleString('fa-IR',{dateStyle:'short',timeStyle:'short'}) : '—';
+  function metrics(d){ const u=d.users||{}, r=d.runtime||{}; $('metrics').innerHTML=`<div class="metric"><span>کاربران</span><b>${u.total??0}</b></div><div class="metric"><span>VIP</span><b>${u.vip??0}</b></div><div class="metric"><span>فعال امروز</span><b>${u.activeToday??0}</b></div><div class="metric"><span>پیام امروز</span><b>${u.msgsToday??0}</b></div><div class="metric"><span>خطا</span><b>${r.errors??0}</b></div><div class="metric"><span>میانگین پاسخ</span><b>${r.avgLatencyMs??0}ms</b></div>`; }
+  async function loadOverview(){ const r=await api('/api/admin/overview'); if(r.status!==200||!r.data.ok) throw new Error(r.data.error||'overview'); metrics(r.data); }
+  function rowHtml(u){ const risk=Number(u.riskScore??0); const riskClass=risk>=60?'risk-high':risk>=30?'risk-med':'risk-low'; return `<tr><td><button class="userbtn" data-user="${u.userId}"><b>${esc(u.firstName||'Unknown')}</b><div style="font-size:11px;color:var(--muted)">${u.userName?'@'+esc(u.userName):''} · <span dir="ltr">${u.userId}</span></div></button></td><td>${u.vipStatus?'<span class="tag vip">VIP</span>':'<span class="tag">Free</span>'} ${u.blocked?'<span class="tag blocked">Blocked</span>':''}</td><td>${esc(u.personaId||'nova')}</td><td>${u.statistics?.totalMessages??0}</td><td>${(u.statistics?.dailyMessages??0)} / ${(u.statistics?.dailyImages??0)} / ${(u.statistics?.dailyEdits??0)}</td><td><span class="${riskClass}">${risk}/100</span></td><td>${esc(fmt(u.lastSeen||u.statistics?.firstUsed))}</td></tr>`; }
+  async function loadUsers({reset=false,last=false}={}){ if(reset){state.cursor=null;state.history=[];state.page=1;state.last=!!last;} $('userRows').innerHTML='<tr><td colspan="7" class="status">در حال بارگذاری...</td></tr>'; let url='/api/admin/users?limit=20&sort='+encodeURIComponent(state.sort); if(state.q) url+='&q='+encodeURIComponent(state.q); if(last) url+='&last=1'; else if(state.cursor) url+='&cursor='+encodeURIComponent(state.cursor); const r=await api(url); if(!r.data?.ok) throw new Error(r.data?.error||'users'); const users=r.data.users||[]; $('userRows').innerHTML=users.length?users.map(rowHtml).join(''):'<tr><td colspan="7" class="status">کاربری پیدا نشد.</td></tr>'; state.nextCursor=r.data.nextCursor; state.hasNext=!!r.data.hasNext; $('nextBtn').disabled=state.last||!state.hasNext; $('prevBtn').disabled=state.last||state.history.length===0; $('firstBtn').disabled=state.page===1; $('lastBtn').disabled=state.last||!state.hasNext; $('pageState').textContent=`صفحه ${state.page}`; $('listStatus').textContent=`${users.length} نتیجه در این صفحه · بدون COUNT و OFFSET`; document.querySelectorAll('[data-user]').forEach(b=>b.addEventListener('click',()=>selectUser(Number(b.dataset.user)))); }
+  async function selectUser(id){ $('detail').innerHTML='<div style="color:var(--muted)">در حال بارگذاری...</div>'; const r=await api('/api/admin/users/'+id); if(!r.data?.ok) return toast('کاربر پیدا نشد'); state.selected={id,user:r.data.user,details:r.data.details}; renderDetail(); }
+  function renderDetail(){ const u=state.selected.user,d=state.selected.details||{}; const risk=Number(u.riskScore??0); $('detail').innerHTML=`<h2>${esc(u.firstName||'Unknown')}</h2><div class="id" dir="ltr">${u.userId} ${u.userName?' · @'+esc(u.userName):''}</div><div class="kv"><div><span>زبان</span><b>${esc(u.language)}</b></div><div><span>Persona</span><b>${esc(u.personaId||'nova')}</b></div><div><span>VIP</span><b>${u.vipStatus?'فعال':'غیرفعال'}</b></div><div><span>Block</span><b>${u.blocked?'فعال':'غیرفعال'}</b></div><div><span>پیام</span><b>${u.statistics?.totalMessages??0}</b></div><div><span>آخرین فعالیت</span><b>${esc(fmt(u.lastSeen))}</b></div><div><span>History</span><b>${d.historyTurns??0}</b></div><div><span>Memory facts</span><b>${d.memoryFacts??0}</b></div></div><div class="pill">Risk <b class="${risk>=60?'risk-high':risk>=30?'risk-med':'risk-low'}">${risk}/100</b></div><div class="actions"><button data-act="vip">${u.vipStatus?'❌ حذف VIP':'💎 VIP'}</button><button data-act="block" class="${u.blocked?'danger':''}">${u.blocked?'✅ رفع Block':'🚫 Block'}</button><button data-act="persona">🎭 Persona</button><button data-act="language">🌐 زبان</button><button data-act="reset_usage">♻️ Reset Usage</button><button data-act="reset_memory" class="danger">🧠 Reset Memory</button><button data-act="reset_session" class="danger">🗑 Reset Session</button><button data-act="prompt_clear">🧹 Clear Prompt</button></div><div class="section"><h3>Custom Prompt</h3><textarea id="promptBox" maxlength="8000" placeholder="${d.customPrompt?'پرامپت فعلی را ویرایش کنید...':'پرامپت سفارشی'}">${esc(d.customPrompt||'')}</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="primary" data-act="prompt_set">ذخیره Prompt</button><button data-act="notes">ذخیره Notes</button></div><textarea id="notesBox" maxlength="2000" style="margin-top:8px;min-height:80px" placeholder="Notes">${esc(u.notes||'')}</textarea></div>`;
+    document.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click',()=>action(b.dataset.act)));
+  }
+  function confirmAction(title,text){ return new Promise(resolve=>{ $('modalTitle').textContent=title;$('modalText').textContent=text;$('modal').classList.add('open'); const ok=()=>{cleanup();resolve(true)},cancel=()=>{cleanup();resolve(false)}; const cleanup=()=>{$('modal').classList.remove('open');$('modalOk').removeEventListener('click',ok);$('modalCancel').removeEventListener('click',cancel)};$('modalOk').addEventListener('click',ok);$('modalCancel').addEventListener('click',cancel);}); }
+  async function action(act){ if(!state.selected)return; let value; if(act==='vip') value=!state.selected.user.vipStatus; if(act==='block') value=!state.selected.user.blocked; if(act==='persona') value=prompt('Persona ID (nova/lilith/cypher/victoria/aria/jax):',state.selected.user.personaId||'nova'); if(act==='language') value=prompt('fa / en / ar:',state.selected.user.language||'fa'); if(act==='prompt_set') value=$('promptBox').value; if(act==='notes') value=$('notesBox').value; if(act==='reset_memory'||act==='reset_session'){ if(!await confirmAction('تأیید عملیات','این عملیات وضعیت ذخیره‌شده کاربر را تغییر می‌دهد. ادامه؟')) return; }
+    const buttons=[...document.querySelectorAll('[data-act]')]; buttons.forEach(b=>b.disabled=true); try{ const r=await api('/api/admin/users/'+state.selected.id+'/action',{method:'POST',body:JSON.stringify({action:act,value})}); if(!r.data?.ok) throw new Error(r.data?.error||'action_failed'); toast('عملیات انجام شد'); await loadOverview(); await selectUser(state.selected.id); }catch(e){toast('خطا: '+e.message)}finally{buttons.forEach(b=>b.disabled=false)} }
+  $('searchBtn').onclick=()=>{state.q=$('search').value.trim();loadUsers({reset:true}).catch(e=>toast(e.message))}; $('clearBtn').onclick=()=>{$('search').value='';state.q='';loadUsers({reset:true}).catch(e=>toast(e.message))}; $('sort').onchange=e=>{state.sort=e.target.value;loadUsers({reset:true}).catch(e=>toast(e.message))}; $('refreshBtn').onclick=()=>Promise.all([loadOverview(),loadUsers()]).catch(e=>toast(e.message)); $('firstBtn').onclick=()=>{loadUsers({reset:true}).catch(e=>toast(e.message))}; $('prevBtn').onclick=()=>{const prev=state.history.pop();state.cursor=prev??null;state.page=Math.max(1,state.page-1);loadUsers().catch(e=>toast(e.message))}; $('nextBtn').onclick=()=>{if(state.last||!state.nextCursor)return;state.history.push(state.cursor);state.cursor=state.nextCursor;state.page++;loadUsers().catch(e=>toast(e.message))}; $('lastBtn').onclick=()=>loadUsers({reset:true,last:true}).catch(e=>toast(e.message)); $('closeBtn').onclick=()=>tg?.close?.(); $('search').addEventListener('keydown',e=>{if(e.key==='Enter')$('searchBtn').click()});
+  Promise.all([loadOverview(),loadUsers({reset:true})]).catch(e=>{ $('userRows').innerHTML='<tr><td colspan="7" class="status">دسترسی رد شد یا پنل در دسترس نیست.</td></tr>'; toast(e.message); });
+})();
+</script>
+</body>
+</html>

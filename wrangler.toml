@@ -1,0 +1,59 @@
+name = "nova"
+main = "src/index.ts"
+compatibility_date = "2026-06-16"
+compatibility_flags = ["nodejs_compat"]
+
+# Smaller upload + faster cold starts for a large worker.
+minify = true
+upload_source_maps = true
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+invocation_logs = true
+
+[triggers]
+crons = ["* * * * *"]
+
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
+[[rules]]
+type = "Text"
+globs = ["**/*.txt"]
+fallthrough = true
+
+# ── Database ──────────────────────────────────────────────────────────────────
+# Create your own database first:
+#   npx wrangler d1 create nova-db
+# then paste the generated ID below.
+[[d1_databases]]
+binding = "DB"
+database_name = "nova-db"
+database_id = "<YOUR_D1_DATABASE_ID>"
+
+# ── Runtime configuration (non-secret values only!) ───────────────────────────
+#
+# ⚠️  NEVER put real credentials in this file — it is committed to Git.
+#     Nova reads all credentials from Worker Secrets at runtime:
+#
+#       npx wrangler secret put TOKEN                # Telegram bot token
+#       npx wrangler secret put WEBHOOK_SECRET       # Telegram webhook secret
+#       npx wrangler secret put BOT_OWNER_ID         # Your Telegram user ID
+#       npx wrangler secret put GEMINI_KEY_1         # ... up to GEMINI_KEY_5
+#       npx wrangler secret put CF_ID_1              # Cloudflare AI (optional)
+#       npx wrangler secret put CF_TOKEN_1           # ... up to _3
+#       npx wrangler secret put GOOGLE_SEARCH_API_KEY   # optional
+#       npx wrangler secret put GOOGLE_SEARCH_ENGINE_ID # optional
+#
+#     For local development, copy `.dev.vars.example` to `.dev.vars`
+#     (already git-ignored) and fill in your values there.
+#
+#     `npm test` fails if any secret-looking value ever appears in this file.
+[vars]
+ENVIRONMENT = "production"
+MAINTENANCE_MODE = "false"
