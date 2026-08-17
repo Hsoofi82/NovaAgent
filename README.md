@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/nova-banner.jpg" alt="ƝØVΛ — The AI Agent that ships" width="100%">
+
 # ƝØVΛ
 
 ### The AI Agent that doesn't just talk — it **ships**. 🚀
