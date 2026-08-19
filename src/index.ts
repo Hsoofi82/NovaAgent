@@ -28,7 +28,16 @@
 // below follows the same top-to-bottom reading order.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const BOT_VERSION = "ƝØVΛ 0.949 Production Candidate";
+// ─────────────────────────────────────────────────────────────────────────────
+// ƝØVΛ · NOVA AGENT — single-file Cloudflare Worker
+// ─────────────────────────────────────────────────────────────────────────────
+// This file powers the Telegram bot, the Mini App dashboard, the admin
+// Control Center and every agent tool. It is organized in labeled SECTIONS —
+// search for "SECTION:" to jump to a major subsystem. The table of contents
+// below follows the same top-to-bottom reading order.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BOT_VERSION = "ƝØVΛ 0.951 Beta";
 
 // ── Static assets (bundled by wrangler) ──────────────────────────────────────
 import DASHBOARD_HTML from "./dashboard.html";            // Telegram Mini App dashboard
@@ -274,6 +283,21 @@ interface TaskStatus {
   weight?: number; // وزن اختصاصی تسک برای محاسبه دقیق درصد
 }
 
+/** جداکننده‌ی بصری کارت پیشرفت. */
+const PROGRESS_DIVIDER = `┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n`;
+
+/** نوار پیشرفت ریزدونه (گرانولاریتی یک‌هشتم بلوک) — حرکت نرم به‌جای پرش پله‌ای */
+function fineProgressBar(pct: number, size = 12): string {
+  const eighths = ["", "▏", "▎", "▍", "▌", "▋", "▊", "▉"];
+  const clamped = Math.min(100, Math.max(0, pct));
+  const totalEighths = Math.round((clamped / 100) * size * 8);
+  const fullBlocks = Math.min(size, Math.floor(totalEighths / 8));
+  const remainderIdx = fullBlocks < size ? totalEighths % 8 : 0;
+  const partial = fullBlocks < size ? eighths[remainderIdx] : "";
+  const emptyCount = Math.max(0, size - fullBlocks - (partial ? 1 : 0));
+  return "█".repeat(fullBlocks) + partial + "░".repeat(emptyCount);
+}
+
 class TaskProgressManager {
   private tasks: Map<string, TaskStatus> = new Map();
   private chatId: number;
@@ -292,6 +316,8 @@ class TaskProgressManager {
   private isAnimating = false;
   private isRendering = false;
   private pendingRender = false;
+  private isDead = false;
+  private lastCancelCheck = 0;
 
   private isAnimatedMode = false;
   private animationSetupDone = false;
@@ -318,7 +344,7 @@ class TaskProgressManager {
     if (!gifUrl) return; // fallback متنی — رفتار قبلی حفظ می‌شود
 
     try {
-      await deleteMessage(this.chatId, this.msgId).catch(() => {});
+      const oldMsgId = this.msgId;
       const kb: InlineKeyboard = {
         inline_keyboard: [
           [btn(this.lang === "fa" ? "🛑 لغو عملیات" : this.lang === "ar" ? "🛑 إلغاء العملية" : "🛑 Cancel Task", `cancel_task_${this._cancelId}`)]
@@ -334,6 +360,7 @@ class TaskProgressManager {
       if (sent?.message_id) {
         this.msgId = sent.message_id;
         this.isAnimatedMode = true;
+        if (oldMsgId && oldMsgId !== this.msgId) await deleteMessage(this.chatId, oldMsgId).catch(() => {});
       }
     } catch (e) {
       logger.warn(`TaskProgressManager: animated setup failed, falling back to text mode: ${e instanceof Error ? e.message : e}`);
@@ -457,15 +484,20 @@ class TaskProgressManager {
   }
 
   async render(force = false): Promise<void> {
+    if (this.isDead) return;
     if (Date.now() - this.startTime > TaskProgressManager.MAX_LIFETIME_MS) {
       this.isAnimating = false;
       return;
     }
-    if (env_ref && await isTaskCancelled(this._cancelId, env_ref)) {
-      this.isAnimating = false;
-      return;
-    }
     const now = Date.now();
+    if (env_ref && (now - this.lastCancelCheck >= 8000 || !this.lastCancelCheck)) {
+      this.lastCancelCheck = now;
+      if (await isTaskCancelled(this._cancelId, env_ref)) {
+        this.isAnimating = false;
+        this.isDead = true;
+        return;
+      }
+    }
     if (!force && now - this.lastRender < 2500) return;
     if (this.isRendering) {
       this.pendingRender = true;
@@ -497,7 +529,8 @@ class TaskProgressManager {
         } catch (err) {
           const errMsg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
           // اگر پیام در تلگرام یافت نشد یا حذف شده بود، انیمیشن را متوقف کن
-          if (errMsg.includes("not found") || errMsg.includes("message to edit not found") || errMsg.includes("message_id_invalid")) {
+          if (errMsg.includes("not found") || errMsg.includes("message to edit not found") || errMsg.includes("message_id_invalid") || errMsg.includes("message can't be edited")) {
+            this.isDead = true;
             this.isAnimating = false;
             this.pendingRender = false;
             break;
@@ -511,6 +544,9 @@ class TaskProgressManager {
 
   async finalize(summaryText: string): Promise<void> {
     this.stopAnimation();
+    const waitUntilQuiet = Date.now() + 2000;
+    while (this.isRendering && Date.now() < waitUntilQuiet) await sleep(10);
+    if (this.isDead) return;
     if (this.isAnimatedMode) {
       await editMessageCaption(this.chatId, this.msgId, summaryText, { parse_mode: "HTML" }).catch(() => {});
     } else {
@@ -556,7 +592,7 @@ class TaskProgressManager {
                `<code>${bar}</code>  <b>${realPct}%</b> ${spinner}\n` +
                `⏱ ${l10n.time}: <code>${elapsed}s</code>${eta ? `` : ""}\n` +
                `<i>${statusLabel}</i>\n` +
-               ccDivider() +
+               PROGRESS_DIVIDER +
                `<b>${l10n.pipeline}</b> · ${doneCount}/${totalCount}\n`;
 
     let idx = 1;
@@ -626,7 +662,44 @@ function validateKeyboard(kb: InlineKeyboard): InlineKeyboard {
   return { inline_keyboard: validRows };
 }
 
-// ۴. تابع کیبورد اشتراک VIP (صدا زده شده در بدنه کنترل محدودیت پیام‌ها)
+// ۵. تابع ساخت کیبورد ورود به داشبورد وب ادمین
+// پنل ادمین تلگرامی حذف شده و تنها نقطه‌ی ورود، Mini App روی /admin است.
+// نکته‌ی تلگرام: دکمه‌ی web_app فقط در چت خصوصی مجاز است؛ در گروه‌ها
+// sendMessage با BUTTON_TYPE_INVALID رد می‌شود. از سوی دیگر لینک ساده‌ی url
+// فاقد initData است و احراز هویت پنل را رد می‌کند — پس در گروه دکمه نمی‌دهیم.
+function getAdminPanelKeyboard(chatType: string): InlineKeyboard | null {
+  if (chatType !== "private") return null;
+  const origin = requestOrigin || "";
+  if (!origin) return null;
+  return { inline_keyboard: [[{ text: "🚀 باز کردن پنل مدیریت", web_app: { url: `${origin}/admin` } }]] };
+}
+
+// ۶. ارسال نقطه‌ی ورود پنل ادمین برای مالک
+async function sendAdminPanelEntry(
+  chatId: number,
+  chatType: string,
+  opts: { replyTo?: number; editMessageId?: number } = {},
+): Promise<void> {
+  const kb = getAdminPanelKeyboard(chatType);
+  const text = kb
+    ? "👑 **پنل مدیریت نوا**\n\n" +
+      "تمام قابلیت‌ها — کاربران، حافظه، گروه‌ها، رسانه، کلیدها، لاگ‌ها، برادکست و تنظیمات — " +
+      "در داشبورد وب زیر در دسترس است.\n\n" +
+      "_دکمه‌ی زیر را بزن تا پنل باز شود._"
+    : "👑 **پنل مدیریت نوا**\n\n" +
+      "پنل مدیریت فقط در **چت خصوصی** با ربات باز می‌شود (تلگرام اجازه‌ی Mini App در گروه را نمی‌دهد).\n\n" +
+      "به پیوی ربات برو و دستور /admin را بزن.";
+  const options: Record<string, unknown> = {};
+  if (kb) options.reply_markup = JSON.stringify(validateKeyboard(kb));
+  if (opts.editMessageId) {
+    await editMessageText(chatId, opts.editMessageId, text, options);
+    return;
+  }
+  if (opts.replyTo) options.reply_to_message_id = opts.replyTo;
+  await sendMessage(chatId, text, options);
+}
+
+// ۷. تابع کیبورد اشتراک VIP (صدا زده شده در بدنه کنترل محدودیت پیام‌ها)
 function getVIPKeyboard(): InlineKeyboard {
   const contact = cfg?.VIP_CONTACT ?? "@Hacker1382";
   const url = contact.startsWith("http") ? contact : `https://t.me/${contact.replace(/^@/, "")}`;
@@ -637,7 +710,7 @@ function getVIPKeyboard(): InlineKeyboard {
   };
 }
 
-// ۵. تابع تبدیل آرایه بایت به ArrayBuffer (مورد نیاز متدهای sendPhoto و pcmToWav)
+// ۸. تابع تبدیل آرایه بایت به ArrayBuffer (مورد نیاز متدهای sendPhoto و pcmToWav)
 function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
@@ -859,6 +932,7 @@ interface Env {
   SEED_STICKER_SETS?: string;
   SESSIONS: KVNamespace;
   BOT_OWNER_ID?: string;
+  ADMIN_KEY?: string;
   GEMINI_KEY_1?: string;
   GEMINI_KEY_2?: string;
   GEMINI_KEY_3?: string;
@@ -915,26 +989,28 @@ const lastTypingSent = new Map<number, number>();
 const NOVA_TOOL_DECLARATIONS = [
   {
     name: "host_web_app",
-    description: "Build & deploy HTML5 web apps, calculators, dashboards and tools, including 3D-styled utilities. Always use this for calculators; 3D styling does not make a utility a game.",
+    description: "Build & deploy substantial HTML5 web apps, calculators, dashboards and tools. For explicit source/ZIP/multi-file project requests set deliver_source_zip=true. Do not treat a serious multi-file project as a tiny one-file snippet.",
     parameters: {
       type: "OBJECT",
       properties: {
         filename: { type: "STRING", description: "lowercase filename without extension" },
         html_code: { type: "STRING", description: "HTML/JS structure" },
-        device_target: { type: "STRING", enum: ["desktop", "mobile", "auto"] }
+        device_target: { type: "STRING", enum: ["desktop", "mobile", "auto"] },
+        deliver_source_zip: { type: "BOOLEAN", description: "Set true when the user asks for the full source, ZIP, project files, multi-file source, JS/CSS/assets, or a serious downloadable project." }
       },
       required: ["filename", "html_code"],
     },
   },
   {
     name: "create_game",
-    description: "Build & deploy actual playable HTML5 games with rules, score and win/lose states. Never use for calculators, dashboards or utility apps even if they request 3D styling.",
+    description: "Build & deploy complete playable HTML5 games with rules, score, win/lose states and substantial code. For explicit source/ZIP/multi-file project requests set deliver_source_zip=true. Never use for calculators, dashboards or utility apps even if they request 3D styling.",
     parameters: {
       type: "OBJECT",
       properties: {
         filename: { type: "STRING", description: "lowercase filename" },
         concept: { type: "STRING", description: "Game concept & rules" },
-        device_target: { type: "STRING", enum: ["desktop", "mobile", "auto"] }
+        device_target: { type: "STRING", enum: ["desktop", "mobile", "auto"] },
+        deliver_source_zip: { type: "BOOLEAN", description: "Set true when the user asks for the full source, ZIP, project files, multi-file source, JS/CSS/assets, or a serious downloadable project." }
       },
       required: ["filename", "concept"],
     },
@@ -1178,12 +1254,12 @@ const ADMIN_TOOL_DECLARATIONS = [
   },
   {
     name: "show_logs",
-    description: "لاگ‌های سیستم را نشان می‌دهد.",
+    description: "لینک ورود به داشبورد وب مدیریت (تب لاگ‌ها) را برای مالک می‌فرستد.",
     parameters: { type: "OBJECT", properties: {}, required: [] },
   },
   {
     name: "show_admin_panel",
-    description: "پنل مدیریت را باز می‌کند.",
+    description: "داشبورد وب مدیریت را برای مالک باز می‌کند.",
     parameters: { type: "OBJECT", properties: {}, required: [] },
   },
   {
@@ -1327,6 +1403,7 @@ function createConfig(env: Env, botConfig: BotConfig) {
   return {
     TOKEN: env.TOKEN,
     BOT_OWNER_ID: parseInt(ownerRaw, 10),
+    ADMIN_KEY: env.ADMIN_KEY?.trim() || undefined,
     GEMINI_KEYS: [
       env.GEMINI_KEY_1, env.GEMINI_KEY_2, env.GEMINI_KEY_3,
       env.GEMINI_KEY_4, env.GEMINI_KEY_5,
@@ -2248,17 +2325,17 @@ const _webAppViewBuffer = new Map<string, number>();
 // Stored at KV key `groupcfg:{chatId}`. `enabled` gates the whole bot in a group
 // (owner must /start to enable). `allowHeavy` permits web-app / long-code building
 // in the group. Reads are cached in-isolate so a group costs ~0 extra KV reads.
-interface GroupConfig { enabled: boolean; allowHeavy: boolean; }
+interface GroupConfig { allowHeavy: boolean; }
 const _groupCfgCache = new Map<number, { cfg: GroupConfig; ts: number }>();
 const GROUP_CFG_TTL_MS = 5 * 60 * 1000;
 async function getGroupConfig(chatId: number, env: Env): Promise<GroupConfig> {
   const now = Date.now();
   const hit = _groupCfgCache.get(chatId);
   if (hit && now - hit.ts < GROUP_CFG_TTL_MS) return hit.cfg;
-  let cfgv: GroupConfig = { enabled: false, allowHeavy: false };
+  let cfgv: GroupConfig = { allowHeavy: false };
   try {
     const raw = await env.SESSIONS.get(`groupcfg:${chatId}`, "json") as Partial<GroupConfig> | null;
-    if (raw) cfgv = { enabled: raw.enabled === true, allowHeavy: raw.allowHeavy === true };
+    if (raw) cfgv = { allowHeavy: raw.allowHeavy === true };
   } catch { /* ignore */ }
   _groupCfgCache.set(chatId, { cfg: cfgv, ts: now });
   return cfgv;
@@ -2266,7 +2343,6 @@ async function getGroupConfig(chatId: number, env: Env): Promise<GroupConfig> {
 async function setGroupConfig(chatId: number, patch: Partial<GroupConfig>, env: Env): Promise<GroupConfig> {
   const current = await getGroupConfig(chatId, env);
   const merged: GroupConfig = {
-    enabled: patch.enabled ?? current.enabled,
     allowHeavy: patch.allowHeavy ?? current.allowHeavy,
   };
   _groupCfgCache.set(chatId, { cfg: merged, ts: Date.now() });
@@ -2346,16 +2422,6 @@ const sessionLoadLocks = new Map<number, Promise<ChatSession>>();
 const groupContextCache = new Map<number, { messages: GroupMessage[]; lastCleanup: number }>();
 const modelListStates = new Map<string, { page: number; perPage: number; totalPages: number }>();
 type UserSortKey = "new" | "active" | "messages";
-interface AdminPanelState {
-  page: number;
-  perPage: number;
-  sortBy: UserSortKey;
-  search?: string | null;
-}
-const adminPanelStates = new Map<number, AdminPanelState>();
-const broadcastStates = new Map<number, { mode: "all" | "vip" | "free" | "specific"; userId?: number }>();
-// ورودی متنی در انتظارِ مالک (پنل ادمین) — الگوی مشابه broadcastStates.
-const adminInputStates = new Map<number, { kind: "prompt" | "limit" | "reqid" | "search"; userId?: number }>();
 
 // ─────────────────────────────────────────────
 // SECTION: RUNTIME METRICS (dashboard & diagnostics — in-memory, near-zero cost)
@@ -2455,7 +2521,18 @@ function notifyOwnerOfError(message: string, context?: unknown): void {
     // ── فیلتر خطاهای روتین و بی‌اهمیت (لو رفته از هر جای دیگر کد) ──
     // حتی اگر جایی این خطاها به‌اشتباه با logger.error ثبت بشن، اینجا به‌عنوان
     // خط دفاع دوم دوباره فیلتر می‌شن تا هیچ‌وقت به پیوی مالک اسپم نفرستن.
-    const lowerMessage = message.toLowerCase();
+    let ctxStr = "";
+    if (context !== undefined) {
+      if (context instanceof Error) {
+        // Error instances don't serialize via JSON.stringify (message/stack are
+        // non-enumerable), which previously produced an empty "{}" context.
+        ctxStr = `${context.message}\n${context.stack ?? ""}`.slice(0, 500);
+      } else {
+        try { ctxStr = JSON.stringify(context).slice(0, 500); } catch { ctxStr = String(context).slice(0, 500); }
+      }
+    }
+
+    const lowerMessage = (message + " " + ctxStr).toLowerCase();
     const suppressedPatterns = [
       "forbidden", "chat not found", "bot was blocked", "bot was kicked",
       "user is deactivated", "message is not modified", "have no rights",
@@ -2478,17 +2555,6 @@ function notifyOwnerOfError(message: string, context?: unknown): void {
     }
 
     _lastOwnerErrorNotifyTs = now;
-
-    let ctxStr = "";
-    if (context !== undefined) {
-      if (context instanceof Error) {
-        // Error instances don't serialize via JSON.stringify (message/stack are
-        // non-enumerable), which previously produced an empty "{}" context.
-        ctxStr = `${context.message}\n${context.stack ?? ""}`.slice(0, 500);
-      } else {
-        try { ctxStr = JSON.stringify(context).slice(0, 500); } catch { ctxStr = String(context).slice(0, 500); }
-      }
-    }
     const text = `🔴 *خطای سیستمی (گزارش خودکار)*\n\n\`\`\`\n${message.slice(0, 700)}\n\`\`\`` +
       (ctxStr ? `\n\n🔎 Context:\n\`\`\`\n${ctxStr}\n\`\`\`` : "");
 
@@ -3086,16 +3152,55 @@ async function validateTelegramInitData(initData: string, botToken: string, maxA
 async function handleAdminAPI(request: Request, env: Env, url: URL): Promise<Response> {
   const origin = request.headers.get("Origin");
   const corsOrigin = origin === url.origin ? origin : url.origin;
-  const headers = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "Access-Control-Allow-Origin": corsOrigin, "Access-Control-Allow-Credentials": "true", "Access-Control-Allow-Headers": "Content-Type, X-Telegram-Init-Data", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Vary": "Origin" };
+  const headers = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "Access-Control-Allow-Origin": corsOrigin, "Access-Control-Allow-Credentials": "true", "Access-Control-Allow-Headers": "Content-Type, X-Telegram-Init-Data", "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS", "Vary": "Origin" };
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers });
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
+  // احراز هویت: فقط از داخل تلگرام (initData با امضای HMAC، حداکثر عمر ۱ ساعت).
+  // مسیر هدر X-Admin-Key عمداً حذف شده: رمز ثابت روی یک اندپوینت بدون rate-limit
+  // یک سطح حمله‌ی دائمی است و در حالت پیش‌فرض، توکن ربات نقش رمز را بازی می‌کرد.
+  // برای بازگرداندن دسترسی مرورگر دسکتاپ، اینجا یک بررسی cfg.ADMIN_KEY اضافه کن.
   const user = await validateTelegramInitData(request.headers.get("X-Telegram-Init-Data") ?? "", cfg.TOKEN, 3600);
   if (!user || user.id !== cfg.BOT_OWNER_ID) return json({ ok: false, error: "forbidden" }, 403);
   await ensureUserSchemaOnce(env);
   const path = url.pathname.replace("/api/admin/", "").replace(/^\/+|\/+$/g, "");
   if (request.method === "GET" && path === "overview") {
+    const now = Date.now();
+    const cached = (globalThis as any).__novaAdminOverviewCache as { ts: number; data: unknown } | undefined;
+    if (cached && now - cached.ts < 5000) return json(cached.data);
     const dash = await getUserDashboardStats(env); const m = rollDailyMetrics();
-    return json({ ok: true, version: BOT_VERSION, users: dash, runtime: { errors: m.errors, rateLimits: m.rateLimits, heavyTasks: m.heavyTasks, telegramCalls: m.tgCalls, d1Queries: m.d1Queries, d1Writes: m.d1Writes, avgLatencyMs: m.latencyCount ? Math.round(m.latencyTotal / m.latencyCount) : 0 } });
+    const body = { ok: true, version: BOT_VERSION, users: dash, runtime: { errors: m.errors, rateLimits: m.rateLimits, heavyTasks: m.heavyTasks, telegramCalls: m.tgCalls, d1Queries: m.d1Queries, d1Writes: m.d1Writes, avgLatencyMs: m.latencyCount ? Math.round(m.latencyTotal / m.latencyCount) : 0, activeAiLocks: aiChatMutex.activeLockCount, activeUpdateLocks: updateMutex.activeLockCount } };
+    (globalThis as any).__novaAdminOverviewCache = { ts: now, data: body };
+    return json(body);
+  }
+  if (request.method === "GET" && path === "groups") {
+    const groups = await listGroups(env);
+    return json({ ok: true, groups: groups.map(g => ({ ...g })) });
+  }
+  if (request.method === "GET" && path === "webapps") {
+    const apps = await listWebApps(env);
+    return json({ ok: true, webapps: apps });
+  }
+  if (request.method === "GET" && path === "media") {
+    let registry: MediaMeta[] = [];
+    try {
+      const raw = await env.SESSIONS.get("media_registry", "json") as MediaMeta[] | null;
+      if (Array.isArray(raw)) registry = raw;
+    } catch {}
+    return json({ ok: true, media: registry.slice(0, 200), total: registry.length, totalBytes: registry.reduce((n, m) => n + Number(m.size || 0), 0) });
+  }
+  if (request.method === "GET" && path === "logs") {
+    const limit = Math.min(200, Math.max(10, Number(url.searchParams.get("limit") ?? 100) || 100));
+    return json({ ok: true, logs: recentLogs.slice(-limit).reverse() });
+  }
+  if (request.method === "GET" && path === "system") {
+    return json({ ok: true, version: BOT_VERSION, maintenance: await isInMaintenance(env), metrics: rollDailyMetrics(), locks: { ai: aiChatMutex.activeLockCount, updates: updateMutex.activeLockCount } });
+  }
+  if (request.method === "POST" && path === "maintenance") {
+    let body: Record<string, unknown> = {}; try { body = await request.json() as Record<string, unknown>; } catch {}
+    const enabled = Boolean(body.enabled);
+    await env.SESSIONS.put("maintenance_mode", String(enabled));
+    maintenanceCache = { value: enabled, ts: Date.now() };
+    return json({ ok: true, maintenance: enabled });
   }
   if (request.method === "GET" && path === "users") {
     const q = url.searchParams.get("q")?.trim() || null; const rawSort = url.searchParams.get("sort") ?? "new";
@@ -3103,18 +3208,45 @@ async function handleAdminAPI(request: Request, env: Env, url: URL): Promise<Res
     const limit = Math.min(50, Math.max(5, Number(url.searchParams.get("limit") ?? 20) || 20));
     return json({ ok: true, ...(await queryUsersCursor(env, { search: q, sortBy: sort, limit, cursor: url.searchParams.get("cursor"), last: url.searchParams.get("last") === "1" })) });
   }
+  const memMatch = path.match(/^users\/(\-?\d+)\/memory$/);
+  if (request.method === "GET" && memMatch) {
+    const userId = Number(memMatch[1]);
+    const raw = await env.SESSIONS.get(`session:${userId}`, "json") as Record<string, unknown> | null;
+    if (!raw) return json({ ok: false, error: "not_found" }, 404);
+    const mems = raw.userMemories as Record<string, unknown> | undefined;
+    const mem = (mems?.[String(userId)] ?? Object.values(mems ?? {})[0] ?? null);
+    const reminders = await listUserReminders(userId, env);
+    return json({ ok: true, memory: mem, reminders: reminders.map(r => ({ id: r.id, message: r.message, dueAt: r.dueAt })) });
+  }
+  if (request.method === "GET" && path === "keys") {
+    await refreshDisabledKeysFromKV(env, true);
+    const nowTs = Date.now();
+    const keys = cfg.GEMINI_KEYS.map((k, i) => {
+      const until = globalDisabledKeys[k];
+      return { index: i + 1, masked: `${k.slice(0, 5)}…${k.slice(-4)}`, disabled: Boolean(until && until > nowTs), disabledUntil: until ?? null };
+    });
+    return json({ ok: true, keys, model: cfg.GEMINI_MODEL, codeModel: cfg.GEMINI_CODE_MODEL });
+  }
+  if (request.method === "GET" && path === "business") {
+    return json({ ok: true, enabled: await getBusinessModeEnabled(env) });
+  }
+  if (request.method === "POST" && path === "business") {
+    let body: Record<string, unknown> = {}; try { body = await request.json() as Record<string, unknown>; } catch {}
+    await setBusinessModeEnabled(Boolean(body.enabled), env);
+    return json({ ok: true, enabled: Boolean(body.enabled) });
+  }
   const userMatch = path.match(/^users\/(\-?\d+)$/);
   if (request.method === "GET" && userMatch) {
     const userId = Number(userMatch[1]); const row = await getUserSummary(env, userId); if (!row) return json({ ok: false, error: "not_found" }, 404);
     let session: Record<string, unknown> | null = null; try { session = await env.SESSIONS.get(`session:${userId}`, "json") as Record<string, unknown> | null; } catch {}
     const engs = session?.engines as Record<string, any> | undefined; const engine = engs?.[String(session?.activeEngine ?? "gemini")] ?? engs?.gemini;
     const history = Array.isArray(engine?.history) ? engine.history : []; const memoryMap = session?.userMemories as Record<string, any> | undefined; const memory = memoryMap?.[String(userId)] ?? Object.values(memoryMap ?? {})[0] ?? null;
-    return json({ ok: true, user: rowToUserStats(row), details: { historyTurns: history.length, memoryFacts: Array.isArray(memory?.keyFacts) ? memory.keyFacts.length : 0, relationshipEdges: Array.isArray(memory?.relationshipGraph) ? memory.relationshipGraph.length : 0, customPrompt: typeof session?.customPrompts === "object" ? ((session?.customPrompts as Record<string, unknown>)?.gemini ?? null) : null, limitOverrides: session?.limitOverrides ?? null } });
+    return json({ ok: true, user: rowToUserStats(row), details: { notes: row.notes ?? "", historyTurns: history.length, memoryFacts: Array.isArray(memory?.keyFacts) ? memory.keyFacts.length : 0, relationshipEdges: Array.isArray(memory?.relationshipGraph) ? memory.relationshipGraph.length : 0, customPrompt: typeof session?.customPrompts === "object" ? ((session?.customPrompts as Record<string, unknown>)?.gemini ?? null) : null, limitOverrides: session?.limitOverrides ?? null } });
   }
   const actionMatch = path.match(/^users\/(\-?\d+)\/action$/);
   if (request.method === "POST" && actionMatch) {
     const userId = Number(actionMatch[1]); let body: Record<string, unknown>; try { body = await request.json() as Record<string, unknown>; } catch { return json({ ok: false, error: "invalid_json" }, 400); }
-    const action = String(body.action ?? ""); const allowed = new Set(["vip","block","language","persona","reset_usage","reset_memory","reset_session","prompt_clear","prompt_set","notes"]);
+    const action = String(body.action ?? ""); const allowed = new Set(["vip","block","language","persona","reset_usage","reset_memory","reset_session","prompt_clear","prompt_set","notes","limit_set","reminder_cancel"]);
     if (!allowed.has(action)) return json({ ok: false, error: "unsupported_action" }, 400);
     let ok = false;
     if (action === "vip" || action === "block") {
@@ -3136,14 +3268,182 @@ async function handleAdminAPI(request: Request, env: Env, url: URL): Promise<Res
       const session = await getOrCreateSession({ id: userId, type: "private" }, { id: userId, is_bot: false, first_name: "User" }, env); const prompt = String(body.value ?? "").trim().slice(0, 8000); if (action === "prompt_set" && !prompt) return json({ ok: false, error: "empty_prompt" }, 400); session.customPrompts.gemini = action === "prompt_set" ? prompt : null; session.customPromptSource = action === "prompt_set" ? "manual" : undefined; await saveSession(session, env, { force: true }); await saveIdentitySnapshot(session, userId, false, env); ok = true;
     } else if (action === "notes") {
       await patchUserSummary(env, userId, { notes: String(body.value ?? "").slice(0, 2000) }); ok = true;
+    } else if (action === "limit_set") {
+      const limitType = String(body.limitType ?? "") as LimitType;
+      const valid: LimitType[] = ["message", "image", "edit", "voice_sent", "webapp", "search"];
+      if (!valid.includes(limitType)) return json({ ok: false, error: "invalid_limit_type" }, 400);
+      const value = Number(body.value);
+      const targetSession = await getOrCreateSession({ id: userId, type: "private" }, { id: userId, is_bot: false, first_name: "User" }, env);
+      targetSession.limitOverrides ??= {};
+      if (!Number.isFinite(value) || value < 0) delete targetSession.limitOverrides[limitType];
+      else targetSession.limitOverrides[limitType] = value;
+      ok = await saveSession(targetSession, env, { force: true }).then(() => true).catch(() => false);
+    } else if (action === "reminder_cancel") {
+      ok = await cancelReminder(String(body.value ?? ""), userId, env);
     }
-    if (!ok) return json({ ok: false, error: "operation_failed" }, 500); const row = await getUserSummary(env, userId); return json({ ok: true, user: row ? rowToUserStats(row) : null });
+    if (!ok) return json({ ok: false, error: "operation_failed" }, 500);
+    (globalThis as any).__novaAdminOverviewCache = undefined;
+    const row = await getUserSummary(env, userId); return json({ ok: true, user: row ? rowToUserStats(row) : null });
+  }
+  if (request.method === "POST" && path === "broadcast") {
+    let body: Record<string, unknown> = {}; try { body = await request.json() as Record<string, unknown>; } catch { return json({ ok: false, error: "invalid_json" }, 400); }
+    const message = String(body.message ?? "").trim().slice(0, 4000);
+    const audience = (["all", "vip", "free"].includes(String(body.audience)) ? String(body.audience) : "all") as "all" | "vip" | "free";
+    if (!message) return json({ ok: false, error: "empty_message" }, 400);
+    const result = await createBroadcastJob(env, { message, audience, adminChatId: cfg.BOT_OWNER_ID });
+    if (!result.ok && "error" in result) return json({ ok: false, error: result.error }, 409);
+    await processBroadcastBatch(env);
+    return json({ ok: true, total: result.job.totalUsers, audience, status: "in_progress" });
   }
   if (request.method === "GET" && path === "requests") {
     const q = (url.searchParams.get("q") ?? "").trim().toLowerCase(); const memory = requestLog.slice().reverse().filter(e => !q || e.reqId.toLowerCase().includes(q) || String(e.userId).includes(q) || e.kind.toLowerCase().includes(q) || (e.error ?? "").toLowerCase().includes(q));
     let durable: RequestLogEntry[] = []; try { const rows = await env.DB.prepare(`SELECT request_id as reqId, ts, chat_id as chatId, user_id as userId, kind, ok, error, duration_ms as durationMs FROM request_diagnostics WHERE request_id LIKE ? OR CAST(user_id AS TEXT) = ? ORDER BY ts DESC LIMIT 100`).bind(`%${q}%`, q || "-1").all<RequestLogEntry>(); durable = (rows.results ?? []).map(r => ({ ...r, ok: Boolean(r.ok), durationMs: Number(r.durationMs) })); } catch {}
     const out = [...memory, ...durable]; const seen = new Set<string>(); return json({ ok: true, requests: out.filter(r => !seen.has(r.reqId) && seen.add(r.reqId)).slice(0, 100) });
   }
+  // ── Broadcast: وضعیت زنده و لغو ────────────────────────────────────────────
+  if (request.method === "GET" && path === "broadcast") {
+    const job = await env.SESSIONS.get("broadcast_job:current", "json") as BroadcastJob | null;
+    if (!job) return json({ ok: true, job: null });
+    return json({ ok: true, job: {
+      id: job.id, mode: job.mode, status: job.status, message: job.message.slice(0, 400),
+      totalUsers: job.totalUsers, processedIndex: job.processedIndex, sent: job.sent, failed: job.failed,
+      createdAt: job.createdAt,
+      percent: job.totalUsers ? Math.round((job.processedIndex / job.totalUsers) * 100) : 0,
+    } });
+  }
+  if (request.method === "POST" && path === "broadcast/cancel") {
+    const job = await env.SESSIONS.get("broadcast_job:current", "json") as BroadcastJob | null;
+    if (!job) return json({ ok: false, error: "no_active_job" }, 404);
+    job.status = "done";
+    await safeKvPut(env, "broadcast_job:current", JSON.stringify(job));
+    return json({ ok: true, cancelled: true, sent: job.sent, failed: job.failed });
+  }
+
+  // ── ارسال پیام مستقیم به یک کاربر ─────────────────────────────────────────
+  if (request.method === "POST" && path === "message") {
+    let body: Record<string, unknown> = {}; try { body = await request.json() as Record<string, unknown>; } catch { return json({ ok: false, error: "invalid_json" }, 400); }
+    const targetId = Number(body.userId);
+    const text = String(body.message ?? "").trim().slice(0, 4000);
+    if (!Number.isFinite(targetId) || !text) return json({ ok: false, error: "invalid_params" }, 400);
+    const sent = await sendMessage(targetId, `📨 **پیام از مدیریت:**\n\n${text}`).catch(() => null);
+    if (!sent) return json({ ok: false, error: "send_failed" }, 502);
+    return json({ ok: true, messageId: sent.message_id });
+  }
+
+  // ── تاریخچه گفتگوی کاربر ───────────────────────────────────────────────────
+  const histMatch = path.match(/^users\/(\-?\d+)\/history$/);
+  if (request.method === "GET" && histMatch) {
+    const userId = Number(histMatch[1]);
+    const limit = Math.min(100, Math.max(5, Number(url.searchParams.get("limit") ?? 40) || 40));
+    let raw: Record<string, unknown> | null = null;
+    try { raw = await env.SESSIONS.get(`session:${userId}`, "json") as Record<string, unknown> | null; } catch {}
+    if (!raw) return json({ ok: false, error: "not_found" }, 404);
+    const engines = raw.engines as Record<string, { history?: Array<{ role?: string; parts?: Array<{ text?: string }>; timestamp?: number }> }> | undefined;
+    const activeEngine = String(raw.activeEngine ?? "gemini");
+    const hist = engines?.[activeEngine]?.history ?? engines?.gemini?.history ?? [];
+    // اولین تِرن، سیستم‌پرامپت است و نباید در مرور تاریخچه نشان داده شود.
+    const turns = hist.slice(1).slice(-limit).map(h => ({
+      role: h.role ?? "user",
+      text: (h.parts ?? []).map(p => p.text ?? "").join("").slice(0, 2000),
+      timestamp: h.timestamp ?? null,
+    }));
+    return json({ ok: true, engine: activeEngine, totalTurns: Math.max(0, hist.length - 1), turns });
+  }
+
+  // ── گروه‌ها: VIP و اجازه‌ی تسک سنگین ──────────────────────────────────────
+  const groupActionMatch = path.match(/^groups\/(\-?\d+)\/action$/);
+  if (request.method === "POST" && groupActionMatch) {
+    const chatId = Number(groupActionMatch[1]);
+    let body: Record<string, unknown> = {}; try { body = await request.json() as Record<string, unknown>; } catch { return json({ ok: false, error: "invalid_json" }, 400); }
+    const action = String(body.action ?? "");
+    if (action === "vip") {
+      await setGroupVIP(chatId, Boolean(body.value), env);
+      await listGroups(env, true); // کش لیست گروه‌ها را تازه کن
+      return json({ ok: true, vipStatus: Boolean(body.value) });
+    }
+    if (action === "allow_heavy") {
+      const merged = await setGroupConfig(chatId, { allowHeavy: Boolean(body.value) }, env);
+      return json({ ok: true, config: merged });
+    }
+    return json({ ok: false, error: "unsupported_action" }, 400);
+  }
+  const groupCfgMatch = path.match(/^groups\/(\-?\d+)$/);
+  if (request.method === "GET" && groupCfgMatch) {
+    const chatId = Number(groupCfgMatch[1]);
+    const [config, groups] = await Promise.all([getGroupConfig(chatId, env), listGroups(env)]);
+    const info = groups.find(g => g.chatId === chatId) ?? null;
+    return json({ ok: true, group: info, config });
+  }
+
+  // ── وب‌اپ‌ها: حذف ──────────────────────────────────────────────────────────
+  const appDelMatch = path.match(/^webapps\/([A-Za-z0-9_\-.]+)$/);
+  if (request.method === "DELETE" && appDelMatch) {
+    const filename = appDelMatch[1];
+    const meta = await env.SESSIONS.get(`app_meta:${filename}`, "json") as WebAppMeta | null;
+    if (!meta) return json({ ok: false, error: "not_found" }, 404);
+    // deleteWebApp مالکیت را چک می‌کند؛ مالک ربات باید بتواند هر وب‌اپی را حذف کند،
+    // پس createdBy خودِ رکورد را پاس می‌دهیم (override آگاهانه‌ی ادمین).
+    try { await deleteWebApp(filename, meta.createdBy, env); } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "delete_failed" }, 500);
+    }
+    return json({ ok: true, deleted: filename });
+  }
+
+  // ── رسانه: حذف از هر دو رجیستری ───────────────────────────────────────────
+  const mediaDelMatch = path.match(/^media\/([A-Za-z0-9_\-.]+)$/);
+  if (request.method === "DELETE" && mediaDelMatch) {
+    const id = mediaDelMatch[1];
+    let removed = false;
+    for (const registryKey of ["media_registry", "asset_registry"]) {
+      try {
+        const raw = await env.SESSIONS.get(registryKey, "json") as MediaMeta[] | null;
+        if (!Array.isArray(raw)) continue;
+        const next = raw.filter(r => r.id !== id);
+        if (next.length !== raw.length) { await safeKvPut(env, registryKey, JSON.stringify(next)); removed = true; }
+      } catch {}
+    }
+    await env.SESSIONS.delete(`media:${id}`).catch(() => {});
+    if (!removed) return json({ ok: false, error: "not_found" }, 404);
+    return json({ ok: true, deleted: id });
+  }
+  if (request.method === "GET" && path === "assets") {
+    // آپلودهای کاربران (asset_registry) — جدا از رسانه‌های تولیدشده‌ی media_registry.
+    let registry: MediaMeta[] = [];
+    try {
+      const raw = await env.SESSIONS.get("asset_registry", "json") as MediaMeta[] | null;
+      if (Array.isArray(raw)) registry = raw;
+    } catch {}
+    return json({ ok: true, assets: registry.slice(0, 200), total: registry.length, totalBytes: registry.reduce((n, m) => n + Number(m.size || 0), 0) });
+  }
+
+  // ── تنظیمات ربات ───────────────────────────────────────────────────────────
+  if (request.method === "GET" && path === "config") {
+    const botConfig = await getBotConfig(env);
+    return json({ ok: true, config: botConfig, runtime: {
+      model: cfg.GEMINI_MODEL, codeModel: cfg.GEMINI_CODE_MODEL,
+      geminiKeys: cfg.GEMINI_KEYS.length, cfAccounts: cfg.CF_ACCOUNTS.length,
+      ownerId: cfg.BOT_OWNER_ID, version: BOT_VERSION,
+    } });
+  }
+  if (request.method === "POST" && path === "config") {
+    let body: Record<string, unknown> = {}; try { body = await request.json() as Record<string, unknown>; } catch { return json({ ok: false, error: "invalid_json" }, 400); }
+    const raw = Array.isArray(body.changes) ? body.changes : [];
+    const changes = raw
+      .filter((c): c is { key: string; value: unknown } => Boolean(c) && typeof c === "object")
+      .map(c => ({ key: c.key as keyof BotConfig, value: c.value as string | number | boolean }));
+    if (!changes.length) return json({ ok: false, error: "no_changes" }, 400);
+    const applied = await applyBotConfigChanges(changes, env);
+    if (!applied.length) return json({ ok: false, error: "no_valid_changes" }, 400);
+    return json({ ok: true, applied, config: await getBotConfig(env) });
+  }
+
+  // ── پرسوناهای موجود (برای دراپ‌داون پنل) ──────────────────────────────────
+  if (request.method === "GET" && path === "personas") {
+    return json({ ok: true, personas: Object.values(PERSONAS).map(p => ({
+      id: p.id, emoji: p.emoji, nameFA: p.nameFA, nameEN: p.nameEN,
+    })) });
+  }
+
   return json({ ok: false, error: "not_found" }, 404);
 }
 
@@ -4690,7 +4990,8 @@ const toolContext = `\n\n🚨 **TOOL EXECUTION RULES:**
 1. You can chain multiple tools autonomously across turns to fully complete a request.
 2. Never ask "Should I search / generate / build that?" — if intent is clear, call the tool immediately.
 3. All files, images, apps, PDFs and voice notes are delivered directly via tools — never invent or output a fake download link.
-4. You have full, unrestricted access to every tool listed above regardless of which persona is currently active; persona only changes tone, never capability.\n\n📅 Date: ${date}\n🔒 Current speaker (final, overrides any prior name): ${name}\n😊 ${callNameNote}`;
+4. You have full, unrestricted access to every tool listed above regardless of which persona is currently active; persona only changes tone, never capability.
+5. NEVER claim in words that you sent a voice note, sticker, GIF, reaction, image, or file unless you actually called the matching tool in this same turn. If you cannot call a tool right now, say so plainly instead of pretending an action happened — a false claim is strictly worse than admitting you can't do it right now.\n\n📅 Date: ${date}\n🔒 Current speaker (final, overrides any prior name): ${name}\n😊 ${callNameNote}`;
 
     const memProfile = formatMemoryProfile(userMemory, name, lang);
     const rosterSuffix = roster ? `\n\n${roster}` : "";
@@ -5056,7 +5357,9 @@ async function tg(method: string, params: Record<string, unknown>): Promise<unkn
     lowerErrMsg.includes("response timeout expired") ||
     lowerErrMsg.includes("can't use specified scope") ||
     lowerErrMsg.includes("no text in the message to edit") ||
-    lowerErrMsg.includes("message is not modified");
+    lowerErrMsg.includes("message is not modified") ||
+    lowerErrMsg.includes("not found") ||
+    lowerErrMsg.includes("not_found");
 
   if (lowerErrMsg.includes("parse entities")) {
     logger.warn(`TG ${method} markdown parse issue — retrying plain`);
@@ -5239,7 +5542,7 @@ async function editMessageText(chatId: number, messageId: number, text: string, 
       return;
     }
     
-    if (throwOnInvalid && (low.includes("message_id_invalid") || low.includes("message to edit not found") || low.includes("message can't be edited"))) {
+    if (throwOnInvalid && (low.includes("message_id_invalid") || low.includes("message to edit not found") || low.includes("message can't be edited") || low.includes("not found"))) {
       throw e instanceof Error ? e : new Error(msg);
     }
     // سایر خطاها بی‌ضرر تلقی و بلعیده می‌شوند (رفتار قبلی حفظ شد).
@@ -7805,6 +8108,98 @@ async function sendTelegramDocument(chatId: number, fileData: Uint8Array, fileNa
   }
 }
 
+function crc32(bytes: Uint8Array): number {
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) {
+    crc ^= bytes[i];
+    for (let j = 0; j < 8; j++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function u16(n: number): number[] { return [n & 255, (n >>> 8) & 255]; }
+function u32(n: number): number[] { return [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255]; }
+
+/**
+ * Builds a standards-compatible ZIP using the Store method (no compression library,
+ * so it is safe on the Cloudflare Worker free plan). Files are UTF-8 source assets.
+ */
+function buildStoredZip(files: Array<{ path: string; content: string }>): Uint8Array {
+  const enc = new TextEncoder();
+  const chunks: Uint8Array[] = [];
+  const central: Uint8Array[] = [];
+  let offset = 0;
+  for (const file of files) {
+    const name = enc.encode(file.path.replace(/\\/g, "/").replace(/^\/+/, ""));
+    const data = typeof file.content === "string" ? enc.encode(file.content) : file.content;
+    const crc = crc32(data);
+    const local = new Uint8Array([
+      ...[0x50,0x4b,0x03,0x04], ...u16(20), ...u16(0), ...u16(0), ...u16(0), ...u16(0),
+      ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(name.length), ...u16(0),
+      ...name, ...data,
+    ]);
+    chunks.push(local);
+    const c = new Uint8Array([
+      ...[0x50,0x4b,0x01,0x02], ...u16(20), ...u16(20), ...u16(0), ...u16(0), ...u16(0), ...u16(0),
+      ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(name.length), ...u16(0), ...u16(0),
+      ...u16(0), ...u16(0), ...u32(0), ...u32(offset), ...name,
+    ]);
+    central.push(c);
+    offset += local.length;
+  }
+  const centralSize = central.reduce((n, c) => n + c.length, 0);
+  const end = new Uint8Array([
+    ...[0x50,0x4b,0x05,0x06], ...u16(0), ...u16(0), ...u16(files.length), ...u16(files.length),
+    ...u32(centralSize), ...u32(offset), ...u16(0),
+  ]);
+  const total = offset + centralSize + end.length;
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const c of chunks) { out.set(c, at); at += c.length; }
+  for (const c of central) { out.set(c, at); at += c.length; }
+  out.set(end, at);
+  return out;
+}
+
+function splitHtmlIntoProjectFiles(html: string, name: string, isGame: boolean): Array<{ path: string; content: string }> {
+  const clean = String(html ?? "").trim();
+  const styles: string[] = [];
+  const scripts: string[] = [];
+  const stripped = clean
+    .replace(/<style(?:\s[^>]*)?>([\s\S]*?)<\/style>/gi, (_m, body) => { styles.push(String(body).trim()); return ""; })
+    .replace(/<script(?![^>]*\bsrc\s*=)(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi, (_m, body) => { scripts.push(String(body).trim()); return ""; });
+  let index = stripped;
+  if (!/<html\b/i.test(index)) index = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="src/styles.css"></head><body>${index}<script src="src/main.js"></script></body></html>`;
+  else {
+    index = index.replace(/<\/head>/i, `${styles.length ? '<link rel="stylesheet" href="src/styles.css">' : ''}</head>`);
+    index = index.replace(/<\/body>/i, `${scripts.length ? '<script src="src/main.js"></script>' : ''}</body>`);
+  }
+  const joinedStyle = styles.join("\n\n/* next style block */\n\n").trim();
+  const joinedScript = scripts.join("\n\n// next script block\n\n").trim();
+  const readme = "# " + name + "\n\nGenerated by Nova.\n\n## Project structure\n- index.html — entry page\n- src/styles.css — extracted styles\n- src/main.js — extracted JavaScript\n\nThis ZIP is the complete source package captured from the generated build. External CDN dependencies referenced by the HTML remain external.\n";
+  const pkg = JSON.stringify({ name: name.replace(/[^a-z0-9-]+/gi, "-").replace(/^-+|-+$/g, "") || "nova-project", version: "1.0.0", private: true, scripts: { start: "npx serve ." } }, null, 2);
+  return [
+    { path: "index.html", content: index },
+    { path: "src/styles.css", content: joinedStyle || "/* No inline CSS was generated. */\\n" },
+    { path: "src/main.js", content: joinedScript || "// No inline JavaScript was generated.\\n" },
+    { path: "README.md", content: readme },
+    { path: "package.json", content: pkg + "\\n" },
+    { path: "NOVA_PROJECT.txt", content: `${isGame ? "Game" : "Web App"} project source package generated by Nova.\n` },
+  ];
+}
+
+async function sendProjectSourceZip(chatId: number, html: string, name: string, isGame: boolean, lang: Language, replyTo: number): Promise<boolean> {
+  try {
+    const files = splitHtmlIntoProjectFiles(html, name, isGame);
+    const zip = buildStoredZip(files);
+    const suffix = isGame ? "game" : "webapp";
+    return await sendTelegramDocument(chatId, zip, `${name}_${suffix}_source.zip`, lang === "fa" ? `📦 سورس کامل پروژه آماده است — ${files.length} فایل` : `📦 Complete project source — ${files.length} files`, replyTo, "application/zip");
+  } catch (e) {
+    logger.error("sendProjectSourceZip failed", e);
+    return false;
+  }
+}
+
 async function sendTelegramTextDocument(chatId: number, content: string, fileName: string, caption?: string, replyTo?: number): Promise<boolean> {
   const bytes = new TextEncoder().encode(content);
   const form = new FormData();
@@ -9542,6 +9937,7 @@ case "host_web_app": {
   heavyBuildClaimed = true;
   const rawFilename = String(call.args.filename ?? `app_${Date.now()}`);
   const filename = rawFilename.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const deliverSourceZip = Boolean(call.args.deliver_source_zip) || /\b(zip|source|project|multi[- ]file|full source)\b|سورس|پروژه|فایل[ -]?های کامل|زیپ|کد کامل|چند[ -]?فایل/i.test(String(originalMsg.text ?? originalMsg.caption ?? ""));
   let htmlCode = String(call.args.html_code ?? "").trim();
   const deviceTarget = String(call.args.device_target ?? "auto");
   let originalRequest = (originalMsg.text ?? originalMsg.caption ?? "").replace(/^\/\w+\s*/, "").trim() || rawFilename;
@@ -9564,6 +9960,9 @@ case "host_web_app": {
   }
 
   const intentText = `${originalRequest}\n${String(call.args.concept ?? "")}`;
+  if (deliverSourceZip) {
+    originalRequest += "\n[PROJECT SOURCE MODE: Build a substantial, non-toy project. Use modular JavaScript, structured CSS, clear separation of concerns, robust state/error handling, reusable components/functions, responsive UI/game systems, and enough implementation depth for a real student/portfolio project. Avoid fake buttons, placeholder-only sections, one-paragraph demos, or needless filler. The final build must be coherent and actually runnable. The source ZIP will be derived from the final build.]";
+  }
   const explicitWebApp = isWebAppRequest(intentText) && !isGameRequest(intentText);
   const isGameBuild = !explicitWebApp && (call.name === "create_game" || isGameRequest(intentText));
   // ✅ هویت درست: بازی → Nova Game Engine v0.31 Beta · وب‌اپ → Nova Web Builder v1.4.2
@@ -9631,6 +10030,13 @@ case "host_web_app": {
 
   await saveWebApp(filename, htmlCode, originalMsg.from?.id ?? 0, originalMsg.from?.first_name ?? "Unknown", env, isVip);
   if (!isVip) await incrementUsageWithUser(limitSession, sender, "webapp", env);
+
+  if (deliverSourceZip) {
+    await taskMgr?.startTask(taskKey, lang === "fa" ? "در حال بسته‌بندی سورس کامل پروژه..." : "Packaging complete project source...");
+    const zipSent = await sendProjectSourceZip(chatId, htmlCode, filename || "nova-project", isGameBuild, lang, replyTo);
+    if (zipSent) await taskMgr?.completeTask(taskKey, lang === "fa" ? "سورس ZIP ارسال شد ✓" : "Source ZIP sent ✓");
+    else await taskMgr?.failTask(taskKey, lang === "fa" ? "ارسال ZIP ناموفق" : "ZIP delivery failed");
+  }
 
   const liveUrl = `${origin}/app/${filename}`;
   const engineTag = isGameBuild
@@ -9752,7 +10158,7 @@ case "host_web_app": {
                 const ok = await setMessageReaction(chatId, originalMsg.message_id, safeEmoji);
                 if (ok) await taskMgr?.completeTask(taskKey, lang === "fa" ? "ری‌اکشن زده شد ✓" : "Reacted ✓");
                 else await taskMgr?.failTask(taskKey, lang === "fa" ? "ری‌اکشن ناموفق" : "Reaction failed");
-                return { name: call.name, response: { success: ok, note: "Reaction sent directly on the message. Do NOT also send a text message for this turn unless something else genuinely needs to be said." } };
+                return { name: call.name, response: { success: ok, abort_chain: ok, note: "Reaction sent directly on the message. Do NOT generate a text response for this turn." } };
               }
 
               case "send_reaction_media": {
@@ -9761,7 +10167,7 @@ case "host_web_app": {
                   const fallbackEmoji = "👍";
                   await setMessageReaction(chatId, originalMsg.message_id, fallbackEmoji).catch(() => {});
                   await taskMgr?.completeTask(taskKey, lang === "fa" ? "ایموجی فرستاده شد" : "Emoji sent");
-                  return { name: call.name, response: { success: true, note: "A quick emoji reaction was sent instead of a sticker (sticker was sent too recently). Keep your reply short." } };
+                  return { name: call.name, response: { success: true, abort_chain: true, note: "A quick emoji reaction was sent directly. Do NOT generate a text response for this turn." } };
                 }
                 const category = chooseReactionCategory(
                   String(call.args.category ?? "").trim(),
@@ -9771,7 +10177,7 @@ case "host_web_app": {
                 const item = await pickReactionMedia(category, env);
                 if (!item) {
                   await taskMgr?.completeTask(taskKey, lang === "fa" ? "رد شد (کتابخانه خالی)" : "Skipped (empty library)");
-                  return { name: call.name, response: { success: false, note: "No learned media for this category yet — just reply normally with text instead." } };
+                  return { name: call.name, response: { success: false, abort_chain: false, note: "No learned media for this category yet. Continue with a normal text response." } };
                 }
                 try {
                   if (item.type === "sticker") {
@@ -9782,7 +10188,7 @@ case "host_web_app": {
                   recordRecentMedia(chatId, { fileId: item.id, type: item.type, ts: Date.now() });
                   markReactionSent(chatId);
                   await taskMgr?.completeTask(taskKey, lang === "fa" ? "ارسال شد ✓" : "Sent ✓");
-                  return { name: call.name, response: { success: true, note: "Media already sent directly to the user via Telegram. Do not describe it in text." } };
+                  return { name: call.name, response: { success: true, abort_chain: true, note: "Media already sent directly to the user via Telegram. Do not generate any text for this turn." } };
                 } catch (e) {
                   await taskMgr?.failTask(taskKey, lang === "fa" ? "ارسال ناموفق" : "Send failed");
                   return { name: call.name, response: { success: false, error: e instanceof Error ? e.message : String(e) } };
@@ -9801,7 +10207,7 @@ case "host_web_app": {
                 if (ok) {
                   recordRecentMedia(chatId, item);
                   await taskMgr?.completeTask(taskKey, lang === "fa" ? "دوباره ارسال شد ✓" : "Resent ✓");
-                  return { name: call.name, response: { success: true, note: "The exact same media was already resent directly via Telegram. Do not describe it in text." } };
+                  return { name: call.name, response: { success: true, abort_chain: true, note: "The exact same media was already resent directly via Telegram. Do not generate any text for this turn." } };
                 }
                 await taskMgr?.failTask(taskKey, lang === "fa" ? "ارسال ناموفق" : "Resend failed");
                 return { name: call.name, response: { success: false, error: "Resend failed." } };
@@ -9961,19 +10367,12 @@ case "host_web_app": {
                 return { name: call.name, response: { success: true } };
               }
 
-              case "show_logs": {
-                await taskMgr?.startTask(taskKey, "Loading logs...");
-                await handleLog(originalMsg);
-                await taskMgr?.completeTask(taskKey, "Logs displayed ✓");
-                return { name: call.name, response: { success: true } };
-              }
-
+              case "show_logs":
               case "show_admin_panel": {
-                await taskMgr?.startTask(taskKey, "Loading admin panel...");
-                adminPanelStates.set(chatId, { page: 0, perPage: 5, sortBy: "new" });
-                const proc = await sendMessage(chatId, "⏳ Loading admin panel...", { reply_to_message_id: replyTo });
-                await ccOverview(chatId, proc.message_id, env);
-                await taskMgr?.completeTask(taskKey, "Panel ready ✓");
+                // هر دو ابزار به تنها نقطه‌ی ورود باقی‌مانده هدایت می‌شوند: داشبورد وب.
+                await taskMgr?.startTask(taskKey, "Opening admin dashboard...");
+                await sendAdminPanelEntry(chatId, originalMsg.chat.type, { replyTo });
+                await taskMgr?.completeTask(taskKey, "Dashboard link sent ✓");
                 return { name: call.name, response: { success: true } };
               }
 
@@ -10807,7 +11206,7 @@ async function processAIRequestUnlocked(
       }
       const { text: rawText, functionCalls, modelParts } = geminiResponse;
 
-      if (functionCalls.length === 0 && /^\s*\[?TOOL:[A-Z_]{2,}:/.test(rawText.slice(0, 200))) {
+      if (functionCalls.length === 0 && /^\s*\[?(TOOL|TOOL_CALL|CONFIG|silent[-_ ]?action):/i.test(rawText.slice(0, 200))) {
         logger.warn("Model generated fake tool call text, discarding and breaking loop");
         if (loadingState.id) {
           await deleteMessage(originalMsg.chat.id, loadingState.id).catch(() => {});
@@ -12338,8 +12737,8 @@ async function processBroadcastBatch(env: Env): Promise<void> {
         reply_markup: JSON.stringify({
           inline_keyboard: [[
             ...(job.status !== "done"
-              ? [btn("📊 وضعیت", ccData("cc", "bc", "status")), btn("🛑 لغو", ccData("cc", "bc", "cancel"))]
-              : [btn("🗑️ بستن", ccData("cc", "bc", "close"))])
+              ? [btn("📊 وضعیت", "bcjob:status"), btn("🛑 لغو", "bcjob:cancel")]
+              : [btn("🗑️ بستن", "bcjob:close")])
           ]]
         })
       }
@@ -12505,20 +12904,6 @@ async function handleStart(msg: TgMessage, env: Env): Promise<void> {
   // /start. Owner /start enables it; everything is then configurable from the
   // in-group advanced settings panel (no code edits needed afterwards).
   if (isGroup) {
-    const gcfg = await getGroupConfig(chat.id, env);
-    if (from.id === cfg.BOT_OWNER_ID && !gcfg.enabled) {
-      await setGroupConfig(chat.id, { enabled: true }, env);
-      await saveSession(session, env);
-      await sendMessage(chat.id,
-        session.language === "fa"
-          ? "✅ <b>نوا در این گروه فعال شد.</b>\n\nاز «تنظیمات گروه» می‌توانید گزینه‌های پیشرفته (روشن/خاموش کردن ربات، اجازهٔ کارهای سنگین، حالت پاسخ‌دهی و …) را تغییر دهید."
-          : "✅ <b>Nova is now active in this group.</b>\n\nUse Group Settings to change advanced options (enable/disable, allow heavy tasks, response mode, etc.).",
-        { reply_to_message_id: msg.message_id, parse_mode: "HTML",
-          reply_markup: JSON.stringify({ inline_keyboard: [[btn(session.language === "fa" ? "👥 تنظیمات گروه" : "👥 Group Settings", "group_settings")]] }) });
-      return;
-    }
-    if (!gcfg.enabled) return;
-
     const isGroupAdmin = await isBotOwnerOrGroupCreator(from.id, chat.id);
     const glang = session.language;
     const currentPersonaId = getEffectivePersonaId(session, from.id, true);
@@ -13626,99 +14011,6 @@ async function handlePdfCommand(msg: TgMessage, args: string[], env: Env): Promi
   );
 }
 
-
-async function handleAdmin(msg: TgMessage, env: Env): Promise<void> {
-  const { chat, from } = msg;
-  if (!from || from.id !== cfg.BOT_OWNER_ID) return;
-  if (chat.type !== "private") { await sendMessage(chat.id, "⚠️ Admin panel: private chat only", { reply_to_message_id: msg.message_id }); return; }
-  adminPanelStates.set(chat.id, { page: 0, perPage: USER_PAGE_SIZE, sortBy: "new", search: null });
-  const proc = await sendMessage(chat.id, ccHeader("⚡️", "NOVA CONTROL CENTER", "Gathering statistics…"), { reply_to_message_id: msg.message_id, parse_mode: "HTML" });
-  await ccOverview(chat.id, proc.message_id, env);
-}
-
-async function handleLog(msg: TgMessage, editMessageId?: number): Promise<void> {
-  const { chat } = msg;
-  if (editMessageId) {
-    await ccLogs(chat.id, editMessageId, "all", 0);
-    return;
-  }
-  const proc = await sendMessage(chat.id, "⏳ Loading logs...", { reply_to_message_id: msg.message_id });
-  await ccLogs(chat.id, proc.message_id, "all", 0);
-}
-
-async function handleKeys(msg: TgMessage, env: Env, editId?: number): Promise<void> {
-  const chatId = msg.chat.id;
-  await refreshDisabledKeysFromKV(env, true); // وضعیت واقعی قفل‌ها را قبل از تست تازه کن
-
-  const safeFetch = async (url: string, opts?: RequestInit) => {
-    for (let i = 0; i < 2; i++) {
-      try { return await fetchWithTimeout(url, opts ?? {}, 8_000); } catch { if (i === 1) throw new Error("network timeout"); }
-    }
-    throw new Error("network timeout");
-  };
-
-  let msgId: number;
-  const loading = ccHeader("🔑", "API DIAGNOSTICS", "Testing keys sequentially…");
-  if (editId) { await editMessageText(chatId, editId, loading, { parse_mode: "HTML" }); msgId = editId; }
-  else { const m = await sendMessage(chatId, loading, { reply_to_message_id: msg.message_id, parse_mode: "HTML" }); msgId = m.message_id; }
-
-  const now = Date.now();
-
-  async function testKeyModel(key: string, model: string): Promise<string> {
-    const unlock = globalDisabledKeys[key];
-    if (unlock && now < unlock) return `🔴 Locked ${((unlock-now)/3600000).toFixed(1)}h`;
-    try {
-      const r = await safeFetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: "hi" }] }], generationConfig: { maxOutputTokens: 1 } }),
-      });
-      const d = await r.json() as { error?: { message?: string } };
-      if (r.ok && !d.error) return "🟢 OK";
-      if (d.error?.message?.includes("quota") || r.status === 429) return "🔴 Quota";
-      if (d.error?.message?.includes("API_KEY_INVALID")) return "❌ Invalid";
-      return `⚠️ Error ${r.status}`;
-    } catch {
-      return "⚠️ Network error";
-    }
-  }
-
-const geminiResults: string[] = [];
-
-for (let i = 0; i < cfg.GEMINI_KEYS.length; i++) {
-  const key = cfg.GEMINI_KEYS[i];
-
-  const masked = escapeHTML(
-    `${key.slice(0, 5)}…${key.slice(-4)}`
-  );
-
-  const liteStatus =
-    await testKeyModel(
-      key,
-      cfg.GEMINI_MODEL
-    );
-  await sleep(250);
-  const codeStatus =
-    await testKeyModel(
-      key,
-      cfg.GEMINI_CODE_MODEL
-    );
-
-  geminiResults.push(
-    `  <b>${i + 1}.</b> <code>${masked}</code>\n` +
-    `      ╰┈➤ Chat: ${liteStatus} · Code: ${codeStatus}\n`
-  );
-}
-
-  let status = ccHeader("🔑", "API DIAGNOSTICS", `Tested at ${new Date().toLocaleTimeString("en-US")}`);
-  status += `🤖 <b>Gemini (Nova)</b> — ${cfg.GEMINI_KEYS.length} keys\n<i>Lite = ${escapeHTML(cfg.GEMINI_MODEL)} · Code = ${escapeHTML(cfg.GEMINI_CODE_MODEL)}</i>\n${ccDivider()}`;
-  status += geminiResults.join("") || "  <i>No keys configured.</i>\n";
-  const kb: InlineKeyboard = { inline_keyboard: [
-    [btn("🔄 Re-test", ccData("cc", "keys", "view"))],
-    ccNavRow(ccData("cc", "ov", "refresh"), { home: false }),
-  ] };
-  await editMessageText(chatId, msgId, status, { parse_mode: "HTML", reply_markup: JSON.stringify(kb) });
-}
-
 async function handleRebuild(msg: TgMessage, env: Env): Promise<void> {
   const { chat } = msg;
   const proc = await sendMessage(chat.id, "🔧 **در حال بازسازی و پاکسازی کامل پایگاه داده...**\n\n⏳ این فرآیند ممکن است چند دقیقه طول بکشد، لطفا صبور باشید.", { reply_to_message_id: msg.message_id });
@@ -14092,14 +14384,6 @@ async function handleTextMessage(msg: TgMessage, env: Env): Promise<void> {
     ]);
     if (mc.blocked) { await sendMessage(chat.id, mc.message!, { reply_to_message_id: msg.message_id }); return; }
 
-    // ── ورودی متنیِ در انتظار مالک برای پنل ادمین ──
-    const pendingInput = adminInputStates.get(chat.id);
-    if (pendingInput && from.id === cfg.BOT_OWNER_ID && !text.startsWith("/")) {
-      adminInputStates.delete(chat.id);
-      await handleAdminTextInput(msg, pendingInput, env);
-      return;
-    }
-
     const isGroup = chat.type !== "private";
     const lang = session.language;
     
@@ -14154,13 +14438,6 @@ async function handleTextMessage(msg: TgMessage, env: Env): Promise<void> {
       }
     }
 
-    // Handle pending broadcast input from owner
-    const broadcastState = broadcastStates.get(chat.id);
-    if (broadcastState && from.id === cfg.BOT_OWNER_ID && !text.startsWith("/")) {
-      await handleBroadcastMessage(msg, broadcastState, env);
-      return;
-    }
-
     if (from.id === cfg.BOT_OWNER_ID && !text.startsWith("/")) {
       const naturalConfigChanges = parseNaturalConfigChanges(text);
       if (naturalConfigChanges.length > 0) {
@@ -14188,12 +14465,6 @@ async function handleTextMessage(msg: TgMessage, env: Env): Promise<void> {
         return false;
       };
 
-      if (text === "/cancel" && broadcastStates.has(chat.id)) {
-        broadcastStates.delete(chat.id);
-        await sendMessage(chat.id, "✅ عملیات لغو شد.", { reply_to_message_id: msg.message_id });
-        return;
-      }
-
       switch (command) {
         case "/start": await handleStart(msg, env); break;
         case "/new":
@@ -14219,11 +14490,8 @@ async function handleTextMessage(msg: TgMessage, env: Env): Promise<void> {
           break;
         case "/webapps":
         case "/apps":
-          if (from.id === cfg.BOT_OWNER_ID) {
-            const proc = await sendMessage(chat.id, "⏳ Loading web apps...",
-              { reply_to_message_id: msg.message_id });
-            await ccWebAppsList(chat.id, proc.message_id, 0, env, requestOrigin);
-          }
+          // مدیریت وب‌اپ‌ها به تب «وب‌اپ‌ها» در داشبورد وب منتقل شده است.
+          if (from.id === cfg.BOT_OWNER_ID) await sendAdminPanelEntry(chat.id, chat.type, { replyTo: msg.message_id });
           break;
         case "/myapps":
           await handleMyApps(msg, env);
@@ -14259,14 +14527,10 @@ async function handleTextMessage(msg: TgMessage, env: Env): Promise<void> {
           }
           break;
         case "/admin":
-          if (from.id === cfg.BOT_OWNER_ID) await handleAdmin(msg, env);
-          break;
-
         case "/log":
-          if (from.id === cfg.BOT_OWNER_ID) await handleLog(msg);
-          break;
         case "/keys":
-          if (from.id === cfg.BOT_OWNER_ID) await handleKeys(msg, env);
+          // پنل تلگرامی حذف شده — همه‌ی این دستورات به داشبورد وب هدایت می‌شوند.
+          if (from.id === cfg.BOT_OWNER_ID) await sendAdminPanelEntry(chat.id, chat.type, { replyTo: msg.message_id });
           break;
         case "/unlockkeys":
           if (from.id === cfg.BOT_OWNER_ID) {
@@ -14556,99 +14820,6 @@ async function sendProgress(
   };
 }
 
-/** مصرف‌کننده‌ی ورودی متنیِ مالک برای پنل ادمین (جستجو/پرامپت/سقف/requestId). */
-async function handleAdminTextInput(
-  msg: TgMessage,
-  state: { kind: "prompt" | "limit" | "reqid" | "search"; userId?: number },
-  env: Env,
-): Promise<void> {
-  const { chat } = msg;
-  const input = (msg.text ?? "").trim();
-  if (!input) return;
-
-  if (state.kind === "search") {
-    const st = adminPanelStates.get(chat.id) ?? { page: 0, perPage: USER_PAGE_SIZE, sortBy: "new" as UserSortKey, search: null };
-    st.search = input.slice(0, 64);
-    st.page = 0;
-    adminPanelStates.set(chat.id, st);
-    const proc = await sendMessage(chat.id, "🔍 Searching…", { reply_to_message_id: msg.message_id });
-    await ccOverview(chat.id, proc.message_id, env);
-    return;
-  }
-  if (state.kind === "reqid") {
-    const proc = await sendMessage(chat.id, "🔎 Tracing…", { reply_to_message_id: msg.message_id });
-    await ccRequests(chat.id, proc.message_id, input.slice(0, 64), 0);
-    return;
-  }
-  if (state.kind === "prompt" && state.userId) {
-    const target = { id: state.userId, is_bot: false, first_name: "User" };
-    const session = await getOrCreateSession({ id: state.userId, type: "private" }, target, env).catch(() => null);
-    if (!session) { await sendMessage(chat.id, "❌ Session not found."); return; }
-    session.customPrompts.gemini = input.slice(0, 4000);
-    session.customPromptSource = "manual";
-    await Promise.all([
-      saveSession(session, env, { force: true }),
-      saveIdentitySnapshot(session, state.userId, false, env),
-    ]);
-    await sendMessage(chat.id, `✅ Custom prompt saved for <code>${state.userId}</code>.`);
-    return;
-  }
-  if (state.kind === "limit" && state.userId) {
-    const m = input.match(/^([a-z_]+)\s+(-?\d+)$/i);
-    if (!m) {
-      await sendMessage(chat.id, "❌ Format: `<type> <number>` e.g. `message 200` · types: message, image, edit, voice, webapp, search");
-      return;
-    }
-    const rawType = m[1].toLowerCase();
-    const value = parseInt(m[2], 10);
-    const key: LimitType = rawType === "voice" ? "voice_sent" : rawType as LimitType;
-    if (!["message", "image", "edit", "voice_sent", "webapp", "search"].includes(key)) {
-      await sendMessage(chat.id, "❌ Unknown type. Use: message, image, edit, voice, webapp, search");
-      return;
-    }
-    const target = { id: state.userId, is_bot: false, first_name: "User" };
-    const session = await getOrCreateSession({ id: state.userId, type: "private" }, target, env).catch(() => null);
-    if (!session) { await sendMessage(chat.id, "❌ Session not found."); return; }
-    session.limitOverrides ??= {};
-    if (value < 0) delete session.limitOverrides[key];
-    else session.limitOverrides[key] = value;
-    await saveSession(session, env, { force: true });
-    await sendMessage(chat.id, `✅ Limit <code>${key}</code> set to <code>${value < 0 ? "global default" : value}</code> for <code>${state.userId}</code>.`);
-    return;
-  }
-}
-
-async function handleBroadcastMessage(
-  msg: TgMessage,
-  state: { mode: "all" | "vip" | "free" | "specific"; userId?: number },
-  env: Env,
-): Promise<void> {
-  const { chat } = msg;
-  const proc = await sendMessage(chat.id, "⏳ **Preparing list...**", { reply_to_message_id: msg.message_id });
-  
-  if (state.mode === "specific" && state.userId) {
-    const sent = await sendMessage(state.userId, `📢 **پیام از مدیریت:**\n\n${msg.text}`).catch(() => null);
-    if (sent) {
-      await editMessageText(chat.id, proc.message_id, `✅ پیام با موفقیت به شناسه \`${state.userId}\` ارسال شد.`);
-    } else {
-      await editMessageText(chat.id, proc.message_id, `❌ ارسال پیام ناموفق بود (احتمالاً ربات از گروه خارج شده یا دسترسی ندارد).`);
-    }
-    broadcastStates.delete(chat.id);
-    return;
-  }
-  
-  const result = await createBroadcastJob(env, { message: msg.text!, audience: state.mode, adminChatId: chat.id, adminMessageId: proc.message_id });
-  broadcastStates.delete(chat.id);
-  if (!result.ok && "error" in result) {
-    const errText = result.error === "ALREADY_RUNNING" ? "❌ برادکست دیگری در حال اجراست، صبر کن تمام بشه." : "❌ No users found";
-    await editMessageText(chat.id, proc.message_id, errText);
-    return;
-  }
-await editMessageText(chat.id, proc.message_id,
-    `📋 **Job queued!**\n\n👥 Recipients: **${result.job.totalUsers}**\n⏳ Starting first batch...`,
-    { reply_markup: JSON.stringify({ inline_keyboard: [[btn("📊 Status", ccData("cc","bc","status")), btn("🛑 Cancel", ccData("cc","bc","cancel"))]] }) });
-  await processBroadcastBatch(env);
-}
 
 async function handleVoiceMessage(msg: TgMessage, env: Env): Promise<void> {
   const { chat, from, voice } = msg;
@@ -14889,989 +15060,6 @@ if (photo?.length) { fileId = photo[photo.length - 1].file_id; mimeType = "image
 }
 
 // ─────────────────────────────────────────────
-// SECTION: NOVA CONTROL CENTER (v2) — UNIFIED ADMIN SYSTEM
-// ─────────────────────────────────────────────
-function ccData(...segments: Array<string | number>): string {
-  return segments.map(String).join(":");
-}
-function ccParse(data: string): string[] {
-  return data.split(":");
-}
-function ccHeader(icon: string, title: string, subtitle: string): string {
-  return `<b>${icon} ${escapeHTML(title)}</b>\n` +
-         `<i>${escapeHTML(subtitle)}</i>\n` +
-         `▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔\n\n`;
-}
-function ccDivider(): string {
-  return `┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n`;
-}
-/** کارت بخش با آیکون و عنوان کوچک — برای گروه‌بندی بصری داخل یک پنل */
-function ccSection(icon: string, title: string): string {
-  return `\n${icon} <b>${escapeHTML(title)}</b>\n${ccDivider()}`;
-}
-/** نوار پیشرفت ریزدونه (گرانولاریتی یک‌هشتم بلوک) — حرکت نرم به‌جای پرش پله‌ای */
-function fineProgressBar(pct: number, size = 12): string {
-  const eighths = ["", "▏", "▎", "▍", "▌", "▋", "▊", "▉"];
-  const clamped = Math.min(100, Math.max(0, pct));
-  const totalEighths = Math.round((clamped / 100) * size * 8);
-  const fullBlocks = Math.min(size, Math.floor(totalEighths / 8));
-  const remainderIdx = fullBlocks < size ? totalEighths % 8 : 0;
-  const partial = fullBlocks < size ? eighths[remainderIdx] : "";
-  const emptyCount = Math.max(0, size - fullBlocks - (partial ? 1 : 0));
-  return "█".repeat(fullBlocks) + partial + "░".repeat(emptyCount);
-}
-function ccPagerRow(current: number, total: number, prevData: string, nextData: string): InlineBtn[] {
-  const row: InlineBtn[] = [];
-  if (current > 0) row.push(btn("◀️ Prev", prevData));
-  row.push(btn(`📄 ${current + 1}/${Math.max(1, total)}`, "cc:noop"));
-  if (current < total - 1) row.push(btn("Next ▶️", nextData));
-  return row;
-}
-// یک ردیف ناوبری یکدست برای تمام صفحات: بازگشت به صفحهٔ والد + میان‌بر خانه (مرکز فرمان).
-// این جای ده‌ها ردیف دستیِ «🔙 Back» را می‌گیرد تا هر صفحه همیشه راه بازگشت و خانه داشته باشد.
-function ccNavRow(backData: string, opts?: { home?: boolean; refresh?: string }): InlineBtn[] {
-  const row: InlineBtn[] = [btn("🔙 Back", backData)];
-  if (opts?.refresh) row.push(btn("🔄 Refresh", opts.refresh));
-  if (opts?.home !== false) row.push(btn("🏠 Home", ccData("cc", "ov", "home")));
-  return row;
-}
-// دیالوگ تأیید یکپارچه — پیش‌تر ۶ نسخهٔ کپی‌شده با متن/دکمهٔ متفاوت پخش بود.
-// خروجی: {text, keyboard} آماده برای editMessageText. دکمهٔ تأیید و لغو هر دو داده‌محور.
-function ccConfirmDialog(opts: {
-  icon?: string;
-  title: string;
-  body?: string;
-  confirmLabel: string;
-  confirmData: string;
-  cancelData: string;
-  danger?: boolean;
-}): { text: string; keyboard: InlineKeyboard } {
-  const icon = opts.icon ?? (opts.danger ? "🛑" : "⚠️");
-  let text = ccHeader(icon, "PLEASE CONFIRM", opts.title);
-  if (opts.body) text += `${opts.body}\n${ccDivider()}`;
-  if (opts.danger) text += `\n<i>⚠️ This action cannot be undone.</i>`;
-  const keyboard: InlineKeyboard = { inline_keyboard: [[
-    btn(opts.confirmLabel, opts.confirmData),
-    btn("✖️ Cancel", opts.cancelData),
-  ]] };
-  return { text, keyboard };
-}
-// ارسال دیالوگ تأیید ساخته‌شده توسط ccConfirmDialog (کاهش تکرار در dispatcher).
-async function ccShowConfirm(chatId: number, msgId: number, opts: Parameters<typeof ccConfirmDialog>[0]): Promise<void> {
-  const { text, keyboard } = ccConfirmDialog(opts);
-  await editMessageText(chatId, msgId, text, { parse_mode: "HTML", reply_markup: JSON.stringify(validateKeyboard(keyboard)) });
-}
-
-// ── OVERVIEW ──
-async function ccOverview(chatId: number, msgId: number, env: Env, forceRefresh = false): Promise<void> {
-  await ensureUserSchemaOnce(env);
-  const state = adminPanelStates.get(chatId) ?? { page: 0, perPage: USER_PAGE_SIZE, sortBy: "new" as UserSortKey, search: null };
-  const totalPages = Math.max(1, Math.ceil((await countUsers(env, state.search)) / state.perPage));
-  if (state.page > totalPages - 1) state.page = Math.max(0, totalPages - 1);
-  adminPanelStates.set(chatId, state);
-
-  // قبلاً: getAllUserStats کلیدهای session را اسکن و بلاب کامل هر سشن را می‌خواند.
-  // حالا: یک کوئری تجمیعی + یک کوئری صفحه‌ای روی جدول ایندکس‌شده‌ی users؛
-  // کش‌ها (groups/apps) هم موازی گرفته می‌شوند تا زمان = بیشینه نه مجموع.
-  const [dash, inMaintenance, groups, apps, list] = await Promise.all([
-    getUserDashboardStats(env),
-    isInMaintenance(env),
-    listGroups(env, forceRefresh),
-    listWebApps(env, forceRefresh),
-    queryUsers(env, { sortBy: state.sortBy, page: state.page, search: state.search, limit: state.perPage }),
-  ]);
-
-  const start = state.page * state.perPage;
-  const page = list.users;
-  const m = rollDailyMetrics();
-  const avgLatency = m.latencyCount > 0 ? Math.round(m.latencyTotal / m.latencyCount) : 0;
-
-  let text = ccHeader("⚡", "NOVA CONTROL CENTER", `System Dashboard · v${BOT_VERSION}`);
-  text += `📊 <b>Overview</b>\n${ccDivider()}`;
-  text += `👥 <b>Users:</b> <code>${dash.total}</code> · 💎 <b>VIP:</b> <code>${dash.vip}</code> · 🚫 <b>Blocked:</b> <code>${dash.blocked}</code>\n`;
-  text += `🟢 <b>Active today:</b> <code>${dash.activeToday}</code> · 💬 <b>Msgs today:</b> <code>${dash.msgsToday}</code>\n`;
-  text += `🎨 <b>Images today:</b> <code>${dash.imgsToday}</code> · ✏️ <b>Edits:</b> <code>${dash.editsToday}</code> · 🔍 <b>Searches:</b> <code>${dash.searchesToday}</code>\n`;
-  text += `👥 <b>Groups:</b> <code>${groups.length}</code> · 🌐 <b>Web apps:</b> <code>${apps.length}</code>\n`;
-  text += `🛠 <b>Status:</b> ${inMaintenance ? "🔴 <b>Maintenance (ON)</b>" : "🟢 <b>Normal</b>"}\n`;
-  text += `<i>Runtime: ⚠️ ${m.errors} err · 🚦 ${m.rateLimits} rl · 🔥 ${m.heavyTasks} heavy · ⏱ ${avgLatency}ms avg · 📡 ${m.tgCalls} tg · 💾 ${m.d1Writes} w</i>\n`;
-  text += ccDivider() + "\n";
-  text += state.search
-    ? `🔍 <b>Search:</b> <code>${escapeHTML(state.search)}</code> · <b>${list.total} result(s)</b>\n\n`
-    : `📒 <b>User list</b> (page <code>${state.page + 1}/${totalPages}</code>, ${list.total} users):\n\n`;
-
-  if (!page.length) text += `🗒 <i>No users found.</i>\n`;
-  page.forEach((u, i) => {
-    const n = start + i + 1;
-    const last = formatDate(u.lastSeen ?? u.statistics.firstUsed, "en", "short");
-    const act = u.lastActivityType ? ` · <i>${escapeHTML(u.lastActivityType)}</i>` : "";
-    const risk = (u.riskScore ?? 0) > 40 ? ` · 🚨<code>${u.riskScore}</code>` : "";
-    text += `<b>${n}.</b> <b>${escapeHTML(u.firstName)}</b> ${u.vipStatus ? "💎" : ""}${u.blocked ? " 🚫" : ""}${risk}\n`;
-    text += `   ╰┈➤ 🆔 <code>${u.userId}</code> · 💬 <b>${u.statistics.totalMessages}</b> · 📅 <i>${last}</i>${act}\n`;
-  });
-
-  const userBtns: InlineBtn[] = page.map((u, i) => btn(`${start + i + 1}`, ccData("cc", "user", "view", u.userId)));
-  const rows: InlineBtn[][] = [];
-  for (let i = 0; i < userBtns.length; i += 5) rows.push(userBtns.slice(i, i + 5));
-
-  const nav: InlineBtn[] = [];
-  nav.push(btn("⏮", ccData("cc", "ov", "nav", "first")));
-  if (state.page > 0) nav.push(btn("◀️", ccData("cc", "ov", "nav", "prev")));
-  nav.push(btn(`📄 ${state.page + 1}/${totalPages}`, "cc:noop"));
-  if (state.page < totalPages - 1) nav.push(btn("▶️", ccData("cc", "ov", "nav", "next")));
-  nav.push(btn("⏭", ccData("cc", "ov", "nav", "last")));
-  rows.push(nav);
-  rows.push([
-    btn(state.sortBy === "new" ? "🆕 Newest ✓" : "🆕 Newest", ccData("cc", "ov", "sort", "new")),
-    btn(state.sortBy === "active" ? "⚡ Most Active ✓" : "⚡ Most Active", ccData("cc", "ov", "sort", "active")),
-    btn(state.sortBy === "messages" ? "💬 Most Messages ✓" : "💬 Most Messages", ccData("cc", "ov", "sort", "messages")),
-  ]);
-  rows.push([
-    ...(state.search
-      ? [btn("✖️ Clear Search", ccData("cc", "ov", "search_clear"))]
-      : [btn("🔍 Search Users", ccData("cc", "ov", "search"))]),
-    btn("🔎 Find RequestId", ccData("cc", "req", "search")),
-  ]);
-  rows.push([
-    btn(inMaintenance ? "🟢 Turn Off Maintenance" : "🔴 Turn On Maintenance", ccData("cc", "ov", "maint")),
-    btn("📊 Export CSV", ccData("cc", "ov", "csv")),
-  ]);
-  rows.push([
-    btn("🌐 Web Apps", ccData("cc", "webapp", "list", 0)),
-    btn("🖼️ Media", ccData("cc", "media", "list", 0)),
-    btn("👥 Groups", ccData("cc", "group", "list")),
-  ]);
-  rows.push([
-    btn("📋 System Logs", ccData("cc", "logs", "view", "all", 0)),
-    btn("🔑 API Keys", ccData("cc", "keys", "view")),
-  ]);
-  rows.push([btn("📢 Broadcast Message", ccData("cc", "bc", "menu"))]);
-  rows.push([
-    { text: "⚡ Web Admin", web_app: { url: `${requestOrigin}/admin` } },
-    btn("🔄 Refresh", ccData("cc", "ov", "refresh")),
-    btn("✖️ Close Panel", ccData("cc", "ov", "close")),
-  ]);
-
-  await editMessageText(chatId, msgId, text, { parse_mode: "HTML", reply_markup: JSON.stringify(validateKeyboard({ inline_keyboard: rows })) });
-}
-
-// ── USER DETAIL (fast: one indexed row read, full admin actions) ──
-async function ccUserDetail(chatId: number, msgId: number, userId: number, env: Env): Promise<void> {
-  // قبلاً: getAllUserStats() کل جدول/سشن‌ها را اسکن می‌کرد تا یک کاربر را پیدا کند.
-  // حالا: یک کوئری ایندکس‌شده‌ی واحد (PK). اکشن‌ها هم فقط همین ردیف را به‌روز می‌کنند.
-  const row = await getUserSummary(env, userId);
-  if (!row) {
-    await editMessageText(chatId, msgId, "❌ User not found.", { reply_markup: JSON.stringify({ inline_keyboard: [[btn("🔙 Back", ccData("cc", "ov", "home"))]] }) });
-    return;
-  }
-  const joined = formatDate(row.created_at, "en", "full");
-  const lastSeen = formatDate(row.last_seen, "en", "full");
-  const langLabel = row.language === "fa" ? "🇮🇷 فارسی" : row.language === "ar" ? "🇸🇦 العربية" : "🇺🇸 English";
-  const persona = PERSONAS[row.persona_id];
-  const personaLabel = persona ? `${persona.emoji} ${row.language === "fa" ? persona.nameFA : persona.nameEN}` : row.persona_id;
-  const risk = row.risk_score;
-  const riskLabel = risk >= 60 ? "🔴 High" : risk >= 30 ? "🟠 Medium" : "🟢 Low";
-
-  let text = ccHeader("👤", "USER PROFILE", `ID ${row.user_id}`);
-  text += `📝 <b>Identity</b>\n${ccDivider()}`;
-  text += `Name: <code>${escapeHTML(row.first_name || "Unknown")}</code>\n`;
-  text += `Username: <code>@${escapeHTML(row.username || "none")}</code>\n`;
-  text += `Language: <code>${langLabel}</code> · Persona: <code>${escapeHTML(personaLabel)}</code>\n`;
-  text += `Status: ${row.vip === 1 ? "💎 VIP" : "🆓 Free"}${row.blocked === 1 ? " · 🚫 Blocked" : ""}\n`;
-  text += `Risk score: ${riskLabel} <code>${risk}/100</code>\n\n`;
-  text += `📊 <b>Activity</b>\n${ccDivider()}`;
-  text += `Total messages: <b>${row.message_count}</b> · Nova replies: <b>${row.gemini_messages}</b>\n`;
-  text += `Voices received: <b>${row.voices_received}</b>\n`;
-  text += `Last activity: <code>${escapeHTML(row.last_activity_type || "—")}</code> · <i>${lastSeen}</i>\n\n`;
-  text += `📅 <b>Daily usage (today)</b>\n${ccDivider()}`;
-  text += `💬 <b>${row.daily_messages}</b> msgs · 🎨 <b>${row.daily_images}</b> img · ✏️ <b>${row.daily_edits}</b> edit · 🔍 <b>${row.daily_searches}</b> search · 🎙️ <b>${row.daily_voice}</b> voice\n`;
-  text += `Joined: <i>${joined}</i>\n`;
-  if (row.notes) text += `📝 Notes: <i>${escapeHTML(row.notes.slice(0, 120))}</i>\n`;
-  text += ccDivider();
-
-  const rows: InlineBtn[][] = [
-    [
-      btn(row.vip === 1 ? "❌ Remove VIP" : "💎 Grant VIP", ccData("cc", "user", "vip", userId)),
-      btn(row.blocked === 1 ? "✅ Unblock" : "🚫 Block", ccData("cc", "user", "block", userId)),
-    ],
-    [
-      btn("🌐 Lang", ccData("cc", "user", "lang", userId)),
-      btn("🎭 Persona", ccData("cc", "user", "persona_pick", userId)),
-    ],
-    [
-      btn("✏️ Set Prompt", ccData("cc", "user", "prompt_set", userId)),
-      btn("🧹 Clear Prompt", ccData("cc", "user", "prompt_clear", userId)),
-    ],
-    [
-      btn("♻️ Reset Daily Usage", ccData("cc", "user", "usage_reset", userId)),
-      btn("🔢 Set Limit", ccData("cc", "user", "limit_set", userId)),
-    ],
-    [
-      btn("🧠 View Memory", ccData("cc", "mem", "view", userId)),
-      btn("🗑️ Reset Session", ccData("cc", "user", "session_reset_confirm", userId)),
-    ],
-    [btn("📨 Send Message", ccData("cc", "user", "msg", userId))],
-    [btn("🔙 Back to Overview", ccData("cc", "ov", "home"))],
-  ];
-  await editMessageText(chatId, msgId, text, { parse_mode: "HTML", reply_markup: JSON.stringify(validateKeyboard({ inline_keyboard: rows })) });
-}
-
-// ── USER PERSONA PICKER ──
-async function ccUserPersonaPick(chatId: number, msgId: number, userId: number, lang: Language): Promise<void> {
-  let text = ccHeader("🎭", "SET PERSONA", `User ${userId}`);
-  text += `Pick the persona to assign. Applied immediately to this user's private chats.\n${ccDivider()}`;
-  const rows: InlineBtn[][] = [];
-  for (const p of Object.values(PERSONAS)) {
-    rows.push([btn(`${p.emoji} ${lang === "fa" ? p.nameFA : p.nameEN}`, ccData("cc", "user", "persona", userId, p.id))]);
-  }
-  rows.push([btn("🔙 Back", ccData("cc", "user", "view", userId))]);
-  await editMessageText(chatId, msgId, text, { parse_mode: "HTML", reply_markup: JSON.stringify(validateKeyboard({ inline_keyboard: rows })) });
-}
-
-// ── MEMORY ──
-async function ccUserMemory(chatId: number, msgId: number, userId: number, env: Env): Promise<void> {
-  const raw = await env.SESSIONS.get(`session:${userId}`, "json") as Record<string, unknown> | null;
-  if (!raw) {
-    await editMessageText(chatId, msgId, "❌ Session not found.", { reply_markup: JSON.stringify({ inline_keyboard: [[btn("🔙 Back", ccData("cc", "ov", "home"))]] }) });
-    return;
-  }
-  const session = raw as unknown as ChatSession;
-  const engines = session.engines as Record<string, { history?: unknown[] }>;
-  const activeEng = session.activeEngine ?? "gemini";
-  const hist = (engines[activeEng]?.history ?? []) as HistoryItem[];
-
-  let text = ccHeader("🧠", "MEMORY MODULE", `User ${userId}`);
-  text += `Active model: <code>${engineDisplayName(activeEng as AIEngine, "en")}</code>\n`;
-  text += `Stored turns: <code>${hist.length}</code>\n`;
-  text += `Total messages: <code>${session.statistics?.totalMessages ?? 0}</code>\n${ccDivider()}\n`;
-
-  if (!hist.length) {
-    text += "📭 <i>Memory is empty.</i>";
-  } else {
-    text += `<b>Recent turns (last 5):</b>\n\n`;
-    hist.slice(-5).forEach(h => {
-      const role = h.role === "user" ? "👤 User" : "🤖 Nova";
-      const ts = h.timestamp ? new Date(h.timestamp).toLocaleTimeString("en-US") : "?";
-      const content = (h.parts[0]?.text ?? "[media]").slice(0, 90);
-      text += `<b>${role}</b> <code>[${ts}]</code>\n↳ <i>${escapeHTML(content)}...</i>\n\n`;
-    });
-  }
-
-  const rows: InlineBtn[][] = [
-    [btn("📥 Download Full Log (.txt)", ccData("cc", "mem", "dl", userId))],
-    [btn("🗑️ Wipe Memory", ccData("cc", "mem", "reset_confirm", userId))],
-    ccNavRow(ccData("cc", "user", "view", userId)),
-  ];
-  await editMessageText(chatId, msgId, text, { parse_mode: "HTML", reply_markup: JSON.stringify(validateKeyboard({ inline_keyboard: rows })) });
-}
-
-// ── GROUPS ──
-async function ccGroupsList(chatId: number, msgId: number, env: Env): Promise<void> {
-  const groups = await listGroups(env);
-  let text = ccHeader("👥", "GROUPS MANAGER", `${groups.length} joined`);
-  if (!groups.length) {
-    text += "📭 <i>Nova has not been added to any groups yet.</i>";
-  } else {
-    groups.slice(0, 10).forEach((g, i) => {
-      const link = g.username ? `@${g.username}` : "Private";
-      const date = formatDate(g.lastActivity, "en", "short");
-      text += `<b>${i + 1}.</b> ${escapeHTML(g.title)}${g.vipStatus ? " 💎" : ""}\n`;
-      text += `   ╰┈➤ <code>${link}</code> · Active <i>${date}</i>\n`;
-    });
-  }
-  const rows: InlineBtn[][] = groups.slice(0, 10).map(g => [btn(`${g.title.slice(0, 25)}${g.vipStatus ? " 💎" : ""}`, ccData("cc", "group", "view", g.chatId))]);
-  rows.push([btn("🔄 Refresh", ccData("cc", "group", "list")), btn("🏠 Home", ccData("cc", "ov", "home"))]);
-  await editMessageText(chatId, msgId, text, { parse_mode: "HTML", reply_markup: JSON.stringify(validateKeyboard({ inline_keyboard: rows })) });
-}
-
-async function ccGroupDetail(chatId: number, msgId: number, groupId: number, env: Env): Promise<void> {
-  const groups = await listGroups(env);
-  const g = groups.find(gr => gr.chatId === groupId);
-  if (!g) {
-    await editMessageText(chatId, msgId, "❌ Group not found.", { reply_markup: JSON.stringify({ inline_keyboard: [[btn("🔙 Back", ccData("cc", "group", "list"))]] }) });
-    return;
-  }
-  let text = ccHeader("👥", "GROUP PROFILE", g.title);
-  text += `Chat ID: <code>${g.chatId}</code>\n`;
-  text += `Visibility: <code>${g.username ? "Public 🌍" : "Private 🔒"}</code>\n`;
-  text += `VIP: <code>${g.vipStatus ? "Yes 💎" : "No"}</code>\n`;
-  text += `Last activity: <i>${formatDate(g.lastActivity, "en", "full")}</i>\n${ccDivider()}`;
-
-  const rows: InlineBtn[][] = [
-    [btn(g.vipStatus ? "❌ Remove VIP" : "💎 Grant VIP", ccData("cc", "group", "vip", groupId))],
-    [btn("📢 Message Group", ccData("cc", "group", "msg", groupId))],
-    [btn("🧠 Wipe Group Memory", ccData("cc", "group", "mem_confirm", groupId))],
-    [btn("🚪 Leave Group", ccData("cc", "group", "leave_confirm", groupId))],
-    ccNavRow(ccData("cc", "group", "list")),
-  ];
-  await editMessageText(chatId, msgId, text, { parse_mode: "HTML", reply_markup: JSON.stringify(validateKeyboard({ inline_keyboard: rows })) });
-}
-
-// ── MEDIA ── (fixes the imgId parsing bug via ":" delimiter — imgId never contains ":")
-async function ccMediaList(chatId: number, msgId: number, page: number, env: Env): Promise<void> {
-  let registry: MediaMeta[] = [];
-  try {
-    const raw = await env.SESSIONS.get("media_registry", "json") as MediaMeta[] | null;
-    if (raw && Array.isArray(raw)) registry = raw;
-  } catch { /* ignore */ }
-
-  const perPage = 5;
-  const total = registry.length;
-  const totalPages = Math.max(1, Math.ceil(total / perPage));
-  const safePage = Math.max(0, Math.min(page, totalPages - 1));
-  const slice = registry.slice(safePage * perPage, (safePage + 1) * perPage);
-  const totalMB = (registry.reduce((s, i) => s + i.size, 0) / 1024 / 1024).toFixed(2);
-
-  let text = ccHeader("🖼️", "MEDIA MANAGER", `KV-hosted images · Cap ${MAX_MEDIA_COUNT}`);
-  text += `Stored: <code>${total}</code>   ·   Disk: <code>${totalMB} MB</code>\n${ccDivider()}\n`;
-
-  if (!registry.length) text += "📭 <i>No hosted images.</i>";
-  slice.forEach((item, i) => {
-    const idx = safePage * perPage + i + 1;
-    const time = new Date(item.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-    const label = item.prompt ? item.prompt.slice(0, 40) : "Direct upload";
-    text += `<b>${idx}.</b> <code>${item.id}</code>\n`;
-    text += `   ╰┈➤ ${(item.size / 1024).toFixed(1)} KB · <code>${item.createdByName}</code> · ${time}\n`;
-    text += `   ╰┈➤ <i>${escapeHTML(label)}</i>\n\n`;
-  });
-
-  const rows: InlineBtn[][] = [];
-  slice.forEach(item => {
-    rows.push([urlBtn("👁️ Preview", item.url), btn("🗑️ Delete", ccData("cc", "media", "del", item.id, safePage))]);
-  });
-  rows.push(ccPagerRow(safePage, totalPages, ccData("cc", "media", "list", safePage - 1), ccData("cc", "media", "list", safePage + 1)));
-  rows.push([btn("🔄 Refresh", ccData("cc", "media", "list", safePage)), btn("🧹 Purge All", ccData("cc", "media", "purge_confirm"))]);
-  rows.push([btn("🏠 Home", ccData("cc", "ov", "home"))]);
-  await editMessageText(chatId, msgId, text, { parse_mode: "HTML", reply_markup: JSON.stringify(validateKeyboard({ inline_keyboard: rows })) });
-}
-
-// ── WEB APPS ──
-async function ccWebAppsList(chatId: number, msgId: number, page: number, env: Env, origin: string): Promise<void> {
-  const allApps = await listWebApps(env);
-  const perPage = 5;
-  const totalPages = Math.max(1, Math.ceil(allApps.length / perPage));
-  const safePage = Math.max(0, Math.min(page, totalPages - 1));
-  const slice = allApps.slice(safePage * perPage, (safePage + 1) * perPage);
-
-  let text = ccHeader("🌐", "HOSTED WEB APPS", `${allApps.length} live`);
-  if (!allApps.length) text += "📭 <i>No deployed apps.</i>";
-  slice.forEach((app, i) => {
-    const idx = safePage * perPage + i + 1;
-    text += `🟢 <b>${idx}.</b> <code>${escapeHTML(app.name)}</code>\n`;
-    text += `   ╰┈➤ 👤 ${escapeHTML(app.createdByName)} · 📅 ${formatDate(app.createdAt, "en", "short")}\n`;
-    text += `   ╰┈➤ 📦 ${(app.size / 1024).toFixed(1)} KB · 👁 ${app.viewCount}\n`;
-    text += `   ╰┈➤ 🔗 <code>${origin}/app/${app.name}</code>\n\n`;
-  });
-
-  const rows: InlineBtn[][] = [];
-  slice.forEach(app => {
-    rows.push([{ text: `🎮 Launch · ${app.name}`, web_app: { url: `${origin}/app/${app.name}` } }]);
-    rows.push([
-      btn("💾 Code", ccData("cc", "webapp", "code", app.name)),
-      btn("🗑️ Delete", ccData("cc", "webapp", "del_confirm", app.name)),
-    ]);
-  });
-  rows.push(ccPagerRow(safePage, totalPages, ccData("cc", "webapp", "list", safePage - 1), ccData("cc", "webapp", "list", safePage + 1)));
-  rows.push([btn("🔄 Refresh", ccData("cc", "webapp", "list", safePage)), btn("🧹 Purge All", ccData("cc", "webapp", "purge_confirm"))]);
-  rows.push([btn("🔙 Back", ccData("cc", "ov", "home"))]);
-  await editMessageText(chatId, msgId, text, { parse_mode: "HTML", reply_markup: JSON.stringify(validateKeyboard({ inline_keyboard: rows })) });
-}
-
-// ── LOGS (enhanced: level filter + pagination) ──
-async function ccLogs(chatId: number, msgId: number, filter: "all" | "error" | "warn" | "info", page: number): Promise<void> {
-  const filtered = filter === "all" ? recentLogs : recentLogs.filter(l => l.level === filter);
-  const perPage = 8;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
-  const safePage = Math.max(0, Math.min(page, totalPages - 1));
-  const slice = filtered.slice().reverse().slice(safePage * perPage, (safePage + 1) * perPage);
-
-  let text = ccHeader("📋", "SYSTEM LOGS", `Cache: ${recentLogs.length}/${MAX_LOGS} · Filter: ${filter.toUpperCase()}`);
-  if (!slice.length) text += "📭 <i>No logs match this filter.</i>";
-  slice.forEach(l => {
-    const time = new Date(l.timestamp).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    const icon = l.level === "error" ? "🔴" : l.level === "warn" ? "🟡" : "🔵";
-    const clean = escapeHTML(l.message.slice(0, 90));
-    text += `${icon} <code>[${time}]</code> <b>${l.level.toUpperCase()}</b>\n<code>${clean}</code>\n\n`;
-  });
-
-  const rows: InlineBtn[][] = [
-    [
-      btn(filter === "all" ? "🔵 All ✓" : "🔵 All", ccData("cc", "logs", "view", "all", 0)),
-      btn(filter === "error" ? "🔴 Errors ✓" : "🔴 Errors", ccData("cc", "logs", "view", "error", 0)),
-      btn(filter === "warn" ? "🟡 Warnings ✓" : "🟡 Warnings", ccData("cc", "logs", "view", "warn", 0)),
-    ],
-    ccPagerRow(safePage, totalPages, ccData("cc", "logs", "view", filter, safePage - 1), ccData("cc", "logs", "view", filter, safePage + 1)),
-    [btn("🗑️ Clear All", ccData("cc", "logs", "clear")), btn("🔄 Refresh", ccData("cc", "logs", "view", filter, safePage))],
-    [btn("📥 Download Full Log", ccData("cc", "logs", "download"))],
-    [btn("🏠 Home", ccData("cc", "ov", "home"))],
-  ];
-  await editMessageText(chatId, msgId, text, { parse_mode: "HTML", reply_markup: JSON.stringify(validateKeyboard({ inline_keyboard: rows })) });
-}
-
-// ── REQUEST DIAGNOSTICS (requestId trace) ──
-async function ccRequests(chatId: number, msgId: number, filter: string, page: number): Promise<void> {
-  const perPage = 8;
-  const q = filter.trim().toLowerCase();
-  const filtered = !q || q === "all"
-    ? requestLog
-    : requestLog.filter(e =>
-        e.reqId.toLowerCase().includes(q) ||
-        String(e.userId).includes(q) ||
-        (e.error ?? "").toLowerCase().includes(q) ||
-        e.kind.toLowerCase().includes(q));
-  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
-  const safePage = Math.max(0, Math.min(page, totalPages - 1));
-  const slice = filtered.slice().reverse().slice(safePage * perPage, (safePage + 1) * perPage);
-
-  let text = ccHeader("🧬", "REQUEST DIAGNOSTICS", `Ring buffer ${requestLog.length}/${MAX_REQUEST_LOG} · ${q === "all" || !q ? "ALL" : `filter: ${escapeHTML(filter)}`}`);
-  if (!slice.length) text += "📭 <i>No requests match.</i>";
-  slice.forEach(e => {
-    const time = new Date(e.ts).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    const icon = e.ok ? "🟢" : "🔴";
-    text += `${icon} <code>${time}</code> <b>${escapeHTML(e.kind)}</b> · u<code>${e.userId}</code> · <b>${e.durationMs}ms</b>\n`;
-    text += `   <code>${escapeHTML(e.reqId)}</code>\n`;
-    if (!e.ok && e.error) text += `   ↳ <i>${escapeHTML(e.error.slice(0, 80))}</i>\n`;
-    text += "\n";
-  });
-
-  const rows: InlineBtn[][] = [
-    ccPagerRow(safePage, totalPages, ccData("cc", "req", "view", q, safePage - 1), ccData("cc", "req", "view", q, safePage + 1)),
-    [btn("🔎 Find RequestId", ccData("cc", "req", "search")), btn("🔄 Refresh", ccData("cc", "req", "view", q, safePage))],
-    [btn("🏠 Home", ccData("cc", "ov", "home"))],
-  ];
-  await editMessageText(chatId, msgId, text, { parse_mode: "HTML", reply_markup: JSON.stringify(validateKeyboard({ inline_keyboard: rows })) });
-}
-
-// ── KEYS (wraps existing handleKeys, kept functionally identical) ──
-async function ccKeys(msg: TgMessage, env: Env, editId?: number): Promise<void> {
-  await handleKeys(msg, env, editId);
-}
-
-// ── MAIN DISPATCHER ──
-async function handleControlCenterCallback(cb: TgCallbackQuery, env: Env): Promise<void> {
-  const { from, message, data } = cb;
-  if (!message || !data) { await answerCb(cb.id); return; }
-  const chat = message.chat;
-  const msgId = message.message_id;
-
-  if (from.id !== cfg.BOT_OWNER_ID) { await answerCb(cb.id, "🚫 Owner only", true); return; }
-
-  const p = ccParse(data); // ["cc", domain, action, ...args]
-  const domain = p[1];
-  const action = p[2];
-  const args = p.slice(3);
-
-  try {
-    switch (domain) {
-      case "noop": await answerCb(cb.id); return;
-
-      case "ov": {
-        if (action === "refresh") { await answerCb(cb.id, "🔄"); await ccOverview(chat.id, msgId, env, true); return; }
-        // بازگشت به خانه از زیرصفحه‌ها: کوئری صفحه‌ی اول جدول users — سبک و ایندکس‌شده.
-        if (action === "home") { await answerCb(cb.id); await ccOverview(chat.id, msgId, env, false); return; }
-        if (action === "close") { await answerCb(cb.id); await deleteMessage(chat.id, msgId); return; }
-        if (action === "nav") {
-          const state = adminPanelStates.get(chat.id) ?? { page: 0, perPage: USER_PAGE_SIZE, sortBy: "new" as UserSortKey, search: null };
-          const dir = args[0];
-          const totalPages = Math.max(1, Math.ceil((await countUsers(env, state.search)) / state.perPage));
-          if (dir === "first") state.page = 0;
-          else if (dir === "prev") state.page = Math.max(0, state.page - 1);
-          else if (dir === "next") state.page = Math.min(totalPages - 1, state.page + 1);
-          else if (dir === "last") state.page = Math.max(0, totalPages - 1);
-          adminPanelStates.set(chat.id, state);
-          await answerCb(cb.id); await ccOverview(chat.id, msgId, env); return;
-        }
-        // سازگاری با «cc:ov:page:N» قبلی
-        if (action === "page") {
-          const state = adminPanelStates.get(chat.id) ?? { page: 0, perPage: USER_PAGE_SIZE, sortBy: "new" as UserSortKey, search: null };
-          state.page = Math.max(0, parseInt(args[0], 10) || 0);
-          adminPanelStates.set(chat.id, state);
-          await answerCb(cb.id); await ccOverview(chat.id, msgId, env); return;
-        }
-        if (action === "search") {
-          adminInputStates.set(chat.id, { kind: "search" });
-          await answerCb(cb.id);
-          await editMessageText(chat.id, msgId, `🔍 <b>Search users</b>\n\nType a <b>User ID</b>, <b>username</b> or <b>name</b> now.\n\n⚠️ Cancel: /cancel`, { parse_mode: "HTML" });
-          return;
-        }
-        if (action === "search_clear") {
-          const state = adminPanelStates.get(chat.id) ?? { page: 0, perPage: USER_PAGE_SIZE, sortBy: "new" as UserSortKey, search: null };
-          state.search = null;
-          state.page = 0;
-          adminPanelStates.set(chat.id, state);
-          await answerCb(cb.id, "✖️"); await ccOverview(chat.id, msgId, env); return;
-        }
-        if (action === "sort") {
-          const state = adminPanelStates.get(chat.id) ?? { page: 0, perPage: USER_PAGE_SIZE, sortBy: "new" as UserSortKey, search: null };
-          state.sortBy = args[0] as UserSortKey;
-          state.page = 0;
-          adminPanelStates.set(chat.id, state);
-          await answerCb(cb.id, "✅"); await ccOverview(chat.id, msgId, env); return;
-        }
-        if (action === "maint") {
-          const cur = maintenanceCache ? maintenanceCache.value : await isInMaintenance(env);
-          await env.SESSIONS.put("maintenance_mode", String(!cur));
-          cfg.MAINTENANCE_MODE = !cur;
-          maintenanceCache = { value: !cur, ts: Date.now() };
-          await answerCb(cb.id, !cur ? "🛠️ Maintenance ON" : "✅ Maintenance OFF");
-          await ccOverview(chat.id, msgId, env); return;
-        }
-        if (action === "csv") {
-          await answerCb(cb.id, "📊 Preparing...");
-          const users = await getAllUserStats(env);
-          let csv = "User ID,Name,Username,VIP,Blocked,Messages,Nova,Voices,First Used\n";
-          for (const u of users) {
-            csv += `${u.userId},"${u.firstName.replace(/"/g, '""')}","${(u.userName ?? "").replace(/"/g, '""')}",`;
-            csv += `${u.vipStatus ? "VIP" : "Free"},${u.blocked ? "Yes" : "No"},${u.statistics.totalMessages},${u.statistics.geminiMessages},${u.statistics.voicesReceived},`;
-            csv += `"${u.statistics.firstUsed ? new Date(u.statistics.firstUsed).toISOString() : ""}"\n`;
-          }
-          const form = new FormData();
-          form.append("chat_id", String(chat.id));
-          form.append("document", new Blob([csv], { type: "text/csv; charset=utf-8" }), `nova_users_${Date.now()}.csv`);
-          form.append("caption", "📊 User statistics export");
-          await fetchWithTimeout(`${API_URL}/sendDocument`, { method: "POST", body: form });
-          return;
-        }
-        break;
-      }
-
-      case "user": {
-        const userId = parseInt(args[0], 10);
-        if (!userId) { await answerCb(cb.id, "❌ Bad ID", true); return; }
-        if (action === "view") { await answerCb(cb.id); await ccUserDetail(chat.id, msgId, userId, env); return; }
-        if (action === "vip") {
-          const row = await getUserSummary(env, userId);
-          if (!row) { await answerCb(cb.id, "❌ Not found", true); return; }
-          const newVip = row.vip !== 1;
-          await answerCb(cb.id, newVip ? "💎" : "➖");
-          await setVIP(userId, newVip, env);
-          try {
-            await sendMessage(userId, newVip
-              ? "🎉 **تبریک!** اکانت شما VIP شد! 👑"
-              : `📢 VIP شما غیرفعال شد. برای تمدید ${cfg.VIP_CONTACT}`);
-          } catch { /* ignore */ }
-          // فقط همین پنل جزئیات دوباره رندر می‌شود — نه کل Overview.
-          await ccUserDetail(chat.id, msgId, userId, env); return;
-        }
-        if (action === "block") {
-          const row = await getUserSummary(env, userId);
-          if (!row) { await answerCb(cb.id, "❌ Not found", true); return; }
-          const newBlocked = row.blocked !== 1;
-          await answerCb(cb.id, newBlocked ? "🚫" : "✅");
-          const ok = await setUserBlocked(userId, newBlocked, env);
-          if (!ok) { await answerCb(cb.id, "❌ Not found", true); return; }
-          try {
-            await sendMessage(userId, newBlocked
-              ? `🚫 **مسدودیت**\n\nحساب شما مسدود شد. تماس: ${cfg.VIP_CONTACT}`
-              : "✅ **رفع مسدودیت**\n\nحساب شما آزاد شد! 🎉");
-          } catch { /* ignore */ }
-          await ccUserDetail(chat.id, msgId, userId, env); return;
-        }
-        if (action === "lang_pick") {
-          await answerCb(cb.id);
-          await editMessageText(chat.id, msgId, ccHeader("🌐", "SET LANGUAGE", `User ${userId}`), {
-            parse_mode: "HTML",
-            reply_markup: JSON.stringify({ inline_keyboard: [
-              [btn("🇮🇷 فارسی", ccData("cc", "user", "lang", userId, "fa"))],
-              [btn("🇺🇸 English", ccData("cc", "user", "lang", userId, "en"))],
-              [btn("🇸🇦 العربية", ccData("cc", "user", "lang", userId, "ar"))],
-              [btn("🔙 Back", ccData("cc", "user", "view", userId))],
-            ] })
-          });
-          return;
-        }
-        if (action === "lang") {
-          const newLang = (args[1] ?? "fa") as Language;
-          const session = await getOrCreateSession({ id: userId, type: "private" }, { id: userId, is_bot: false, first_name: "User" }, env).catch(() => null);
-          if (session) {
-            session.language = newLang;
-            session.settings.languageSet = true;
-            await Promise.all([
-              saveSession(session, env, { force: true }),
-              saveLanguageSnapshot(userId, newLang, env),
-            ]);
-            await patchUserSummary(env, userId, { language: newLang });
-          }
-          await answerCb(cb.id, "✅");
-          await ccUserDetail(chat.id, msgId, userId, env); return;
-        }
-        if (action === "persona_pick") {
-          const row = await getUserSummary(env, userId);
-          const lang = row?.language ?? "fa";
-          await answerCb(cb.id);
-          await ccUserPersonaPick(chat.id, msgId, userId, lang); return;
-        }
-        if (action === "persona") {
-          const personaId = args[1];
-          if (!PERSONAS[personaId]) { await answerCb(cb.id, "❌", true); return; }
-          await answerCb(cb.id, "🎭");
-          const session = await getOrCreateSession({ id: userId, type: "private" }, { id: userId, is_bot: false, first_name: "User" }, env).catch(() => null);
-          if (session) {
-            await applyPersona(session, personaId, { id: userId, is_bot: false, first_name: "User" }, false, env);
-          }
-          await patchUserSummary(env, userId, { personaId });
-          await ccUserDetail(chat.id, msgId, userId, env); return;
-        }
-        if (action === "prompt_set") {
-          adminInputStates.set(chat.id, { kind: "prompt", userId });
-          await answerCb(cb.id);
-          await editMessageText(chat.id, msgId, `✏️ <b>Set custom prompt</b>\n\nTarget: <code>${userId}</code>\n\nType the custom system prompt for this user now.\n\n⚠️ Cancel: /cancel`, { parse_mode: "HTML" });
-          return;
-        }
-        if (action === "prompt_clear") {
-          const session = await getOrCreateSession({ id: userId, type: "private" }, { id: userId, is_bot: false, first_name: "User" }, env).catch(() => null);
-          if (session) {
-            session.customPrompts.gemini = null;
-            session.customPromptSource = undefined;
-            await Promise.all([saveSession(session, env, { force: true }), saveIdentitySnapshot(session, userId, false, env)]);
-          }
-          await answerCb(cb.id, "🧹");
-          await ccUserDetail(chat.id, msgId, userId, env); return;
-        }
-        if (action === "usage_reset") {
-          const session = await getOrCreateSession({ id: userId, type: "private" }, { id: userId, is_bot: false, first_name: "User" }, env).catch(() => null);
-          if (session) {
-            session.dailyLimits = { messages: 0, voicesSent: 0, voicesReceived: 0, imagesGenerated: 0, imagesEdited: 0, webapps: 0, searches: 0, lastReset: Date.now() };
-            await saveSession(session, env, { force: true });
-            await upsertUserSummary(env, session).catch(() => {});
-          }
-          await answerCb(cb.id, "♻️");
-          await ccUserDetail(chat.id, msgId, userId, env); return;
-        }
-        if (action === "limit_set") {
-          adminInputStates.set(chat.id, { kind: "limit", userId });
-          await answerCb(cb.id);
-          await editMessageText(chat.id, msgId, `🔢 <b>Set daily limits</b>\n\nTarget: <code>${userId}</code>\n\nFormat: <code>message 200</code> <code>image 50</code> <code>edit 20</code> <code>voice 10</code> <code>webapp 15</code> <code>search 100</code>\nReset a limit with <code>message -1</code> (uses global default).\n\n⚠️ Cancel: /cancel`, { parse_mode: "HTML" });
-          return;
-        }
-        if (action === "session_reset_confirm") {
-          await answerCb(cb.id);
-          await ccShowConfirm(chat.id, msgId, {
-            icon: "🗑️", title: `RESET SESSION · ${userId}`,
-            body: "This user's session (history, persona, memory, settings) will be wiped to factory defaults. The user row in the summary table is kept.",
-            confirmLabel: "🗑️ Yes, reset", confirmData: ccData("cc", "user", "session_reset_do", userId),
-            cancelData: ccData("cc", "user", "view", userId),
-            danger: true,
-          });
-          return;
-        }
-        if (action === "session_reset_do") {
-          await answerCb(cb.id, "🗑️");
-          const fresh = createDefaultSession({ id: userId, type: "private" }, { id: userId, is_bot: false, first_name: "User" });
-          await saveSession(fresh, env, { force: true });
-          await upsertUserSummary(env, fresh).catch(() => {});
-          await ccUserDetail(chat.id, msgId, userId, env); return;
-        }
-        if (action === "msg") {
-          broadcastStates.set(chat.id, { mode: "specific", userId });
-          await answerCb(cb.id);
-          await editMessageText(chat.id, msgId, `📨 <b>Direct Message</b>\n\nTarget: <code>${userId}</code>\n\nType your message now.\n\n⚠️ Cancel: /cancel`, { parse_mode: "HTML" });
-          return;
-        }
-        break;
-      }
-
-      case "mem": {
-        const userId = parseInt(args[0], 10);
-        if (action === "view") { await answerCb(cb.id); await ccUserMemory(chat.id, msgId, userId, env); return; }
-        if (action === "dl") {
-          await answerCb(cb.id, "📥 Exporting...");
-          const raw = await env.SESSIONS.get(`session:${userId}`, "json") as ChatSession | null;
-          if (!raw) { await sendMessage(chat.id, "❌ Session not found."); return; }
-          const engine = raw.engines?.[raw.activeEngine ?? "gemini"];
-          const history = engine?.history ?? [];
-          const memories = toMap<number, UserMemory>(raw.userMemories as unknown, k => parseInt(k, 10));
-          const firstName = memories.get(userId)?.firstName ?? "Unknown";
-          let logText = `NOVA MEMORY EXPORT\nUser: ${userId} (${firstName})\nEngine: ${raw.activeEngine}\nTotal messages: ${raw.statistics?.totalMessages ?? 0}\n\n`;
-          history.forEach((h, idx) => {
-            const role = h.role === "user" ? "USER" : "NOVA";
-            const ts = h.timestamp ? new Date(h.timestamp).toISOString() : "unknown";
-            const content = h.parts?.map(p => p.text).join("\n") ?? "[non-text]";
-            logText += `[${idx + 1}] ${role} @ ${ts}\n${content}\n---\n`;
-          });
-          await sendTelegramTextDocument(chat.id, logText, `memory_${userId}.txt`, `💾 Memory export for ${userId}`);
-          return;
-        }
-        if (action === "reset_confirm") {
-          await answerCb(cb.id);
-          await ccShowConfirm(chat.id, msgId, {
-            title: `Wipe memory · user ${userId}`,
-            body: "All of this user's stored conversation history will be permanently cleared.",
-            confirmLabel: "🗑️ Yes, wipe it",
-            confirmData: ccData("cc", "mem", "reset_do", userId),
-            cancelData: ccData("cc", "mem", "view", userId),
-            danger: true,
-          });
-          return;
-        }
-        if (action === "reset_do") {
-          const raw = await env.SESSIONS.get(`session:${userId}`, "json") as Record<string, unknown> | null;
-          if (raw) {
-            const engines = raw.engines as Record<string, { history: unknown[]; userHistories: unknown }> | undefined;
-            if (engines) for (const eng of Object.values(engines)) {
-              if (Array.isArray(eng.history)) eng.history = [eng.history[0]].filter(Boolean);
-              eng.userHistories = {};
-            }
-            await safeKvPut(env, `session:${userId}`, JSON.stringify(raw));
-            dropSessionMemory(userId);
-          }
-          await answerCb(cb.id, "✅ Memory wiped");
-          await ccUserMemory(chat.id, msgId, userId, env); return;
-        }
-        break;
-      }
-
-      case "group": {
-        if (action === "list") { await answerCb(cb.id); await ccGroupsList(chat.id, msgId, env); return; }
-        const groupId = parseInt(args[0], 10);
-        if (action === "view") { await answerCb(cb.id); await ccGroupDetail(chat.id, msgId, groupId, env); return; }
-        if (action === "vip") {
-          const raw = await env.SESSIONS.get(`group_info:${groupId}`, "json") as GroupInfo | null;
-          if (raw) {
-            raw.vipStatus = !raw.vipStatus;
-            await safeKvPut(env, `group_info:${groupId}`, JSON.stringify(raw));
-            const sessionRaw = await env.SESSIONS.get(`session:${groupId}`, "json") as Record<string, unknown> | null;
-            if (sessionRaw) { sessionRaw.vipStatus = raw.vipStatus; await safeKvPut(env, `session:${groupId}`, JSON.stringify(sessionRaw)); dropSessionMemory(groupId); }
-            _groupInfoCache.delete(groupId);
-            _cachedGroupsList = null;
-          }
-          await answerCb(cb.id, raw?.vipStatus ? "💎 VIP granted" : "❌ VIP removed");
-          await ccGroupDetail(chat.id, msgId, groupId, env); return;
-        }
-        if (action === "msg") {
-          broadcastStates.set(chat.id, { mode: "specific", userId: groupId });
-          await answerCb(cb.id);
-          await editMessageText(chat.id, msgId, `📝 <b>Message to Group</b>\n\nTarget: <code>${groupId}</code>\n\nType your message.\n\n⚠️ Cancel: /cancel`, { parse_mode: "HTML" });
-          return;
-        }
-        if (action === "mem_confirm") {
-          await answerCb(cb.id);
-          await ccShowConfirm(chat.id, msgId, {
-            title: "Wipe group memory",
-            body: "All members' conversation history in this group will be cleared.",
-            confirmLabel: "🗑️ Yes, wipe it",
-            confirmData: ccData("cc", "group", "mem_do", groupId),
-            cancelData: ccData("cc", "group", "view", groupId),
-            danger: true,
-          });
-          return;
-        }
-        if (action === "mem_do") {
-          const raw = await env.SESSIONS.get(`session:${groupId}`, "json") as Record<string, unknown> | null;
-          if (raw) {
-            const engines = raw.engines as Record<string, { history: unknown[]; userHistories: unknown }> | undefined;
-            if (engines) for (const eng of Object.values(engines)) {
-              if (Array.isArray(eng.history)) eng.history = eng.history.slice(0, 1);
-              eng.userHistories = {};
-            }
-            await safeKvPut(env, `session:${groupId}`, JSON.stringify(raw));
-            dropSessionMemory(groupId);
-          }
-          await answerCb(cb.id, "✅ Group memory wiped");
-          await ccGroupDetail(chat.id, msgId, groupId, env); return;
-        }
-        if (action === "leave_confirm") {
-          await answerCb(cb.id);
-          await ccShowConfirm(chat.id, msgId, {
-            title: "Leave this group",
-            body: "Nova will leave the group and all stored data for it will be deleted.",
-            confirmLabel: "🚪 Yes, leave",
-            confirmData: ccData("cc", "group", "leave_do", groupId),
-            cancelData: ccData("cc", "group", "view", groupId),
-            danger: true,
-          });
-          return;
-        }
-        if (action === "leave_do") {
-          await answerCb(cb.id, "🚪 Leaving...");
-          try {
-            await tg("leaveChat", { chat_id: groupId });
-            await env.SESSIONS.delete(`group_info:${groupId}`);
-            await env.SESSIONS.delete(`session:${groupId}`);
-            _groupInfoCache.delete(groupId); _groupInfoLastPersistTs.delete(groupId);
-            _cachedGroupsList = null;
-            dropSessionMemory(groupId);
-            await editMessageText(chat.id, msgId, "✅ Left group and purged its data.", {
-              reply_markup: JSON.stringify({ inline_keyboard: [[btn("🔙 Back", ccData("cc", "group", "list"))]] })
-            });
-          } catch (e) {
-            await editMessageText(chat.id, msgId, `❌ Failed to leave: ${e instanceof Error ? e.message : e}`);
-          }
-          return;
-        }
-        break;
-      }
-
-      case "media": {
-        if (action === "list") { await answerCb(cb.id); await ccMediaList(chat.id, msgId, parseInt(args[0], 10) || 0, env); return; }
-        if (action === "del") {
-          const imgId = args[0];
-          const page = parseInt(args[1], 10) || 0;
-          await env.SESSIONS.delete(`media:${imgId}`).catch(() => {});
-          try {
-            const raw = await env.SESSIONS.get("media_registry", "json") as MediaMeta[] | null;
-            if (raw && Array.isArray(raw)) {
-              const filtered = raw.filter(item => item.id !== imgId);
-              await safeKvPut(env, "media_registry", JSON.stringify(filtered));
-            }
-          } catch { /* ignore */ }
-          await answerCb(cb.id, "🗑️ Deleted");
-          await ccMediaList(chat.id, msgId, page, env); return;
-        }
-        if (action === "purge_confirm") {
-          await answerCb(cb.id);
-          await ccShowConfirm(chat.id, msgId, {
-            icon: "🧹", title: "PURGE ALL MEDIA",
-            body: "Delete <b>all</b> hosted images?\n\n<i>This frees KV storage and cannot be undone.</i>",
-            confirmLabel: "🧹 Yes, purge all", confirmData: ccData("cc", "media", "purge_do"),
-            cancelData: ccData("cc", "media", "list", 0),
-          });
-          return;
-        }
-        if (action === "purge_do") {
-          await answerCb(cb.id, "🧹 Purging...");
-          try {
-            const raw = await env.SESSIONS.get("media_registry", "json") as MediaMeta[] | null;
-            if (raw && Array.isArray(raw)) for (const item of raw) await env.SESSIONS.delete(`media:${item.id}`).catch(() => {});
-          } catch { /* ignore */ }
-          await safeKvPut(env, "media_registry", "[]");
-          await ccMediaList(chat.id, msgId, 0, env); return;
-        }
-        break;
-      }
-
-      case "webapp": {
-        if (action === "list") { await answerCb(cb.id); await ccWebAppsList(chat.id, msgId, parseInt(args[0], 10) || 0, env, requestOrigin); return; }
-        if (action === "code") {
-          const appName = args[0];
-          await answerCb(cb.id, "📥 Sending...");
-          const code = await getWebAppCode(appName, env);
-          if (code) await sendTelegramTextDocument(chat.id, code, `${appName}.html`, `💾 Source: ${appName}`, msgId);
-          else await sendMessage(chat.id, `❌ Code for \`${appName}\` not found.`);
-          return;
-        }
-        if (action === "del_confirm") {
-          const appName = args[0];
-          await answerCb(cb.id);
-          await ccShowConfirm(chat.id, msgId, {
-            icon: "🗑️", title: "DELETE WEB APP",
-            body: `Delete <code>${escapeHTML(appName)}</code>?\n\n<i>The live link will stop working immediately.</i>`,
-            confirmLabel: "🗑️ Delete", confirmData: ccData("cc", "webapp", "del_do", appName),
-            cancelData: ccData("cc", "webapp", "list", 0),
-          });
-          return;
-        }
-        if (action === "del_do") {
-          const appName = args[0];
-          await deleteWebApp(appName, from.id, env);
-          await answerCb(cb.id, `✅ ${appName} deleted`);
-          await ccWebAppsList(chat.id, msgId, 0, env, requestOrigin); return;
-        }
-        if (action === "purge_confirm") {
-          await answerCb(cb.id);
-          await ccShowConfirm(chat.id, msgId, {
-            icon: "🧹", title: "PURGE ALL WEB APPS",
-            body: "Delete <b>every</b> deployed web app?\n\n<i>This cannot be undone. All live links stop working.</i>",
-            confirmLabel: "🧹 Purge all", confirmData: ccData("cc", "webapp", "purge_do"),
-            cancelData: ccData("cc", "webapp", "list", 0), danger: true,
-          });
-          return;
-        }
-        if (action === "purge_do") {
-          await answerCb(cb.id, "🗑️ Purging...");
-          const apps = await listWebApps(env);
-          for (const app of apps) await deleteWebApp(app.name, cfg.BOT_OWNER_ID, env);
-          await ccWebAppsList(chat.id, msgId, 0, env, requestOrigin); return;
-        }
-        break;
-      }
-
-      case "logs": {
-        if (action === "view") {
-          const filter = (args[0] ?? "all") as "all" | "error" | "warn" | "info";
-          const page = parseInt(args[1], 10) || 0;
-          await answerCb(cb.id);
-          await ccLogs(chat.id, msgId, filter, page); return;
-        }
-        if (action === "clear") {
-          recentLogs.length = 0;
-          await answerCb(cb.id, "✅ Cleared");
-          await ccLogs(chat.id, msgId, "all", 0); return;
-        }
-        if (action === "download") {
-          const logText = recentLogs.map(l => `[${new Date(l.timestamp).toISOString()}] [${l.level.toUpperCase()}] ${l.message}\n${l.context ? JSON.stringify(l.context) : ""}`).join("\n\n");
-          const form = new FormData();
-          form.append("chat_id", String(chat.id));
-          form.append("document", new Blob([logText], { type: "text/plain; charset=utf-8" }), `nova_logs_${Date.now()}.txt`);
-          await fetchWithTimeout(`${API_URL}/sendDocument`, { method: "POST", body: form });
-          await answerCb(cb.id, "📥 Sent"); return;
-        }
-        break;
-      }
-
-      case "keys": {
-        if (action === "view") { await answerCb(cb.id); await ccKeys(message, env, msgId); return; }
-        break;
-      }
-
-      case "req": {
-        if (action === "view") {
-          const filter = (args[0] ?? "all") as string;
-          const page = parseInt(args[1], 10) || 0;
-          await answerCb(cb.id);
-          await ccRequests(chat.id, msgId, filter, page); return;
-        }
-        if (action === "search") {
-          adminInputStates.set(chat.id, { kind: "reqid" });
-          await answerCb(cb.id);
-          await editMessageText(chat.id, msgId, `🔎 <b>Find RequestId</b>\n\nType a <b>requestId</b> or <b>user ID</b> to trace.\n\n⚠️ Cancel: /cancel`, { parse_mode: "HTML" });
-          return;
-        }
-        break;
-      }
-
-      case "bc": {
-        if (action === "menu") {
-          await answerCb(cb.id);
-          await editMessageText(chat.id, msgId, ccHeader("📢", "BROADCAST", "Select audience"), {
-            parse_mode: "HTML",
-            reply_markup: JSON.stringify({ inline_keyboard: [
-              [btn("👥 All users", ccData("cc", "bc", "start", "all")), btn("💎 VIP only", ccData("cc", "bc", "start", "vip"))],
-              [btn("🆓 Free only", ccData("cc", "bc", "start", "free"))],
-              [btn("🔙 Back", ccData("cc", "ov", "home"))],
-            ] })
-          });
-          return;
-        }
-        if (action === "start") {
-          const mode = args[0] as "all" | "vip" | "free";
-          broadcastStates.set(chat.id, { mode });
-          await answerCb(cb.id);
-          await editMessageText(chat.id, msgId, `📝 <b>Broadcast to ${mode}</b>\n\nType your message now.\n\n⚠️ Cancel: /cancel`, { parse_mode: "HTML" });
-          return;
-        }
-        if (action === "status") {
-          const job = await env.SESSIONS.get("broadcast_job:current", "json") as BroadcastJob | null;
-          await answerCb(cb.id, job ? `${job.processedIndex}/${job.totalUsers} | ${job.status}` : "No active job");
-          return;
-        }
-        if (action === "cancel") {
-          await env.SESSIONS.delete("broadcast_job:current");
-          await answerCb(cb.id, "🛑 Cancelled");
-          await editMessageText(chat.id, msgId, "🛑 <b>Broadcast cancelled.</b>", { parse_mode: "HTML" });
-          return;
-        }
-        if (action === "close") { await answerCb(cb.id); await deleteMessage(chat.id, msgId); return; }
-        break;
-      }
-    }
-    await answerCb(cb.id);
-  } catch (e) {
-    logger.error("Control Center callback error", e);
-    await answerCb(cb.id, "⚠️ Error", true);
-  }
-}
-
-// ─────────────────────────────────────────────
 // SECTION: CALLBACK QUERY HANDLER
 // ─────────────────────────────────────────────
 async function handleCallback(cb: TgCallbackQuery, env: Env): Promise<void> {
@@ -15889,13 +15077,42 @@ async function handleCallback(cb: TgCallbackQuery, env: Env): Promise<void> {
   callbackRateLimits.set(from.id, recent);
 
   // Maintenance check (skip for admin callbacks)
-  if (!data.startsWith("admin_") && !data.startsWith("log_") && !data.startsWith("db_")) {
+  if (!data.startsWith("admin_") && !data.startsWith("log_") && !data.startsWith("db_") && !data.startsWith("bcjob:") && !data.startsWith("cc:")) {
     const mc = await checkMaintenance(env, from.id);
     if (mc.blocked) { await answerCb(cb.id, "🛠️ Maintenance mode", true); return; }
   }
 
+  // دکمه‌های کارت پیشرفت Broadcast (status / cancel / close).
+  if (data.startsWith("bcjob:")) {
+    if (from.id !== cfg.BOT_OWNER_ID) { await answerCb(cb.id, "🚫", true); return; }
+    const sub = data.slice("bcjob:".length);
+    if (sub === "close") {
+      await answerCb(cb.id);
+      await deleteMessage(chat.id, message.message_id).catch(() => {});
+      return;
+    }
+    const job = await env.SESSIONS.get("broadcast_job:current", "json") as BroadcastJob | null;
+    if (!job) { await answerCb(cb.id, "موردی در جریان نیست.", true); return; }
+    if (sub === "cancel") {
+      job.status = "done";
+      await safeKvPut(env, "broadcast_job:current", JSON.stringify(job));
+      await answerCb(cb.id, "🛑 لغو شد.", true);
+      await editMessageText(chat.id, message.message_id,
+        `🛑 **ارسال همگانی لغو شد.**\n\n✅ ارسال‌شده: \`${job.sent}\` | ❌ خطا: \`${job.failed}\` از \`${job.totalUsers}\``,
+      ).catch(() => {});
+      return;
+    }
+    const pct = job.totalUsers ? Math.round((job.processedIndex / job.totalUsers) * 100) : 0;
+    await answerCb(cb.id, `📊 ${pct}% · ✅ ${job.sent} · ❌ ${job.failed}`, true);
+    return;
+  }
+
+  // پنل ادمین تلگرامی حذف شده است. دکمه‌های قدیمی «cc:*» که ممکن است در
+  // پیام‌های تاریخیِ کاربر باقی مانده باشند، به داشبورد وب هدایت می‌شوند.
   if (data.startsWith("cc:")) {
-    await handleControlCenterCallback(cb, env);
+    if (from.id !== cfg.BOT_OWNER_ID) { await answerCb(cb.id, "🚫", true); return; }
+    await answerCb(cb.id);
+    await sendAdminPanelEntry(chat.id, chat.type, { editMessageId: message.message_id });
     return;
   }
 
@@ -16426,14 +15643,6 @@ if (data === "open_language") {
     return;
   }
 
-  if (data === "gset_enabled") {
-    const cur = await getGroupConfig(chat.id, env);
-    const next = await setGroupConfig(chat.id, { enabled: !cur.enabled }, env);
-    await answerCb(cb.id, session.language === "fa" ? (next.enabled ? "✅ ربات روشن شد" : "⛔️ ربات خاموش شد") : (next.enabled ? "✅ Bot on" : "⛔️ Bot off"), true);
-    await showGroupSettings(chat.id, message.message_id, session, env);
-    return;
-  }
-
   if (data === "gset_heavy") {
     const cur = await getGroupConfig(chat.id, env);
     const next = await setGroupConfig(chat.id, { allowHeavy: !cur.allowHeavy }, env);
@@ -16464,8 +15673,7 @@ if (data === "open_language") {
   if (data === "admin_back_to_main" || data === "open_admin") {
     if (from.id !== cfg.BOT_OWNER_ID) { await answerCb(cb.id, "🚫", true); return; }
     await answerCb(cb.id);
-    adminPanelStates.set(chat.id, { page: 0, perPage: 5, sortBy: "new" });
-    await ccOverview(chat.id, message.message_id, env);
+    await sendAdminPanelEntry(chat.id, chat.type, { editMessageId: message.message_id });
     return;
   }
 
@@ -16717,24 +15925,17 @@ async function showGroupSettings(chatId: number, msgId: number, session: ChatSes
   const onTxt = (b: boolean) => b ? (fa ? "فعال ✅" : "On ✅") : (fa ? "غیرفعال ❌" : "Off ❌");
   
   const text = fa
-    ? `👥 *تنظیمات گروه (پیشرفته)*\n\n` +
-      `🤖 وضعیت ربات: *${onTxt(gcfg.enabled)}*\n` +
+    ? `👥 *تنظیمات گروه*\n\n` +
       `🛠️ کارهای سنگین (وب‌اپ/کد طولانی): *${onTxt(gcfg.allowHeavy)}*\n` +
-      `📢 حالت پاسخ: *فقط منشن (دائمی)*\n` +
-      `⌨️ تایپینگ افکت: *همیشه فعال ✅*\n\n` +
+      `📢 حالت پاسخ: *فقط منشن (دائمی)*\n\n` +
       `_تغییر تنظیمات فقط برای مالک ربات و مالک گروه امکان‌پذیر است._`
-    : `👥 *Group Settings (Advanced)*\n\n` +
-      `🤖 Bot: *${onTxt(gcfg.enabled)}*\n` +
+    : `👥 *Group Settings*\n\n` +
       `🛠️ Heavy tasks (web apps/long code): *${onTxt(gcfg.allowHeavy)}*\n` +
-      `📢 Reply mode: *Mention only (Permanent)*\n` +
-      `⌨️ Typing indicator: *Always On ✅*\n\n` +
+      `📢 Reply mode: *Mention only (Permanent)*\n\n` +
       `_Only the bot owner & group creator can modify these settings._`;
 
   const kb: InlineKeyboard = { inline_keyboard: [
-    [
-      btn(`🤖 ${fa ? "وضعیت ربات" : "Bot Status"}: ${gcfg.enabled ? (fa ? "روشن" : "On") : (fa ? "خاموش" : "Off")}`, "gset_enabled"),
-      btn(`🛠️ ${fa ? "کارهای سنگین" : "Heavy Tasks"}: ${gcfg.allowHeavy ? (fa ? "مجاز" : "On") : (fa ? "غیرمجاز" : "Off")}`, "gset_heavy")
-    ],
+    [btn(`🛠️ ${fa ? "کارهای سنگین" : "Heavy Tasks"}: ${gcfg.allowHeavy ? (fa ? "مجاز" : "On") : (fa ? "غیرمجاز" : "Off")}`, "gset_heavy")],
     [btn(fa ? "🔙 بازگشت" : "🔙 Back", "home:open")]
   ]};
   await editMessageText(chatId, msgId, text, { reply_markup: JSON.stringify(validateKeyboard(kb)) });
@@ -16818,19 +16019,13 @@ function pruneMemoryCaches(): void {
 
   // ۱۱. وضعیت‌های صفحه‌بندی
   if (modelListStates.size > 100) modelListStates.clear();
-  if (adminPanelStates.size > 100) adminPanelStates.clear();
 
   // ۱۱b. Dedup درخواست‌ها — ورودی‌های منقضی
   if (_recentRequestKeys.size > 1000) {
     for (const [k, exp] of _recentRequestKeys) if (exp <= now) _recentRequestKeys.delete(k);
   }
 
-  // ۱۱c. ورودی‌های متنیِ در انتظارِ مالک — قدیمی‌تر از ۱ ساعت
-  if (adminInputStates.size > 50) {
-    for (const [k] of adminInputStates) adminInputStates.delete(k);
-  }
-
-  // ۱۱d. Request log — قبلاً با MAX_REQUEST_LOG محدود شده است؛ اینجا فقط روزها را
+  // ۱۱c. Request log — قبلاً با MAX_REQUEST_LOG محدود شده است؛ اینجا فقط روزها را
   // در صورت نشت احتمالی کوتاه می‌کنیم.
   if (requestLog.length > MAX_REQUEST_LOG) requestLog.splice(0, requestLog.length - MAX_REQUEST_LOG);
 
@@ -16899,39 +16094,6 @@ async function dispatchUpdate(update: TgUpdate, env: Env): Promise<void> {
       const msg = update.message;
       if (!msg.from || msg.from.is_bot) return;
       if (!cfg.ALLOWED_CHAT_TYPES.includes(msg.chat.type)) return;
-
-      // GROUP ACTIVATION GATE: in groups the bot is dormant until the BOT OWNER
-      // runs /start. While dormant, only the owner's /start passes through.
-      if (msg.chat.type !== "private") {
-        const gActive = (await getGroupConfig(msg.chat.id, env)).enabled;
-        if (!gActive) {
-          const firstTok = (msg.text ?? "").trim().split(/\s+/)[0].split("@")[0].toLowerCase();
-          const ownerStart = firstTok === "/start" && msg.from.id === cfg.BOT_OWNER_ID;
-          if (!ownerStart) {
-            const session = await getOrCreateSession(msg.chat, msg.from, env);
-            const isCommand = (msg.text ?? "").trim().startsWith("/");
-            const isCalled = msg.text ? shouldRespondInGroup(msg, session) : false;
-            if (isCommand || isCalled) {
-              const lang = session.language;
-              const text = lang === "fa"
-                ? "⚠️ <b>نوا در این گروه فعال نیست.</b>\n\nبرای فعال‌سازی، به پیوی ربات بیا و دستور /start را بزن."
-                : "⚠️ <b>Nova is not active in this group.</b>\n\nGo to private chat and send /start to activate it.";
-              const kb: InlineKeyboard = {
-                inline_keyboard: [[urlBtn(
-                  lang === "fa" ? "💬 رفتن به پیوی" : "💬 Go to private chat",
-                  `tg://user?id=${cfg.BOT_OWNER_ID}`
-                )]]
-              };
-              await sendMessage(msg.chat.id, text, {
-                parse_mode: "HTML",
-                reply_to_message_id: msg.message_id,
-                reply_markup: JSON.stringify(kb),
-              }).catch(() => {});
-            }
-            return;
-          }
-        }
-      }
 
       if (msg.voice) {
         await handleVoiceMessage(msg, env);
@@ -17199,7 +16361,13 @@ ctx.waitUntil(
     }
 
     if (url.pathname === "/admin") {
-      return new Response(ADMIN_DASHBOARD_HTML, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+      return new Response(ADMIN_DASHBOARD_HTML, {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store",
+          "X-Frame-Options": "ALLOWALL",
+        },
+      });
     }
     if (url.pathname.startsWith("/api/admin/")) {
       try { return await handleAdminAPI(request, env, url); } catch (e) {
