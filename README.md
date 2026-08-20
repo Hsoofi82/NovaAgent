@@ -1,42 +1,25 @@
 <div align="center">
 
-<img src="assets/nova-banner.jpg" alt="ƝØVΛ — The AI Agent that ships" width="100%">
+# ƝØVΛ — Advanced AI Agent Platform for Telegram
 
-# ƝØVΛ
-
-### The AI Agent that doesn't just talk — it **ships**. 🚀
-
-**Free forever · Open Source · Self-hosted on Telegram**
-
-> 🟢 **Nova is live RIGHT NOW on Telegram.** The official bot is up and running at
-> **[@MyNovaChatBot](https://t.me/MyNovaChatBot)** — tap it, say *hi*, and watch it
-> plan, build and ship a real result in seconds. Like what you see?
-> **Join the Nova family 🖤** and follow the project.
+### A powerful, self-hostable AI Agent platform built on Cloudflare Workers
 
 <p>
-  <a href="#english">🇬🇧 English</a> ·
-  <a href="#persian">🇮🇷 فارسی</a>
+  <a href="#english">English</a> ·
+  <a href="#persian">فارسی</a>
 </p>
 
 <p>
-  <a href="https://t.me/MyNovaChatBot"><img src="https://img.shields.io/badge/Live_bot-%40MyNovaChatBot-2AABEE?style=for-the-badge&logo=telegram&logoColor=white" alt="Live bot — @MyNovaChatBot"></a>
-  <a href="https://t.me/Hacker1382"><img src="https://img.shields.io/badge/Contact-%40Hacker1382-2AABEE?style=for-the-badge&logo=telegram&logoColor=white" alt="Contact the creator — @Hacker1382"></a>
-  <a href="#-installation"><img src="https://img.shields.io/badge/Deploy_your_own-~10_min_guide-2ea44f?style=for-the-badge" alt="Deploy your own"></a>
-</p>
-
-<p>
-  <img src="https://img.shields.io/badge/Price-%240.00_forever-2ea44f?style=for-the-badge" alt="Price: $0.00 forever">
+  <img src="https://img.shields.io/badge/Version-0.949%20Beta-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Cloudflare-Workers-orange?style=for-the-badge&logo=cloudflare" alt="Cloudflare Workers">
+  <img src="https://img.shields.io/badge/TypeScript-green?style=for-the-badge&logo=typescript" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Gemini-AI-purple?style=for-the-badge&logo=google" alt="Gemini">
   <img src="https://img.shields.io/badge/License-AGPL--3.0-red?style=for-the-badge" alt="AGPL-3.0">
-  <img src="https://img.shields.io/badge/Runtime-Cloudflare_Workers-orange?style=for-the-badge&logo=cloudflare" alt="Cloudflare Workers">
-  <img src="https://img.shields.io/badge/Brain-Google_Gemini-purple?style=for-the-badge&logo=google" alt="Gemini">
-  <img src="https://img.shields.io/badge/Language-TypeScript-blue?style=for-the-badge&logo=typescript" alt="TypeScript">
 </p>
 
 <p>
-  <b>AI Agent · Function Calling · Long-Term Memory · Web Search · Image Studio · Web App Factory · Game Studio · TTS Voice · RTL PDF · Telegram Mini App</b>
+  <b>AI Agent · Function Calling · Memory · Web Search · Image Generation · Web Apps · Games · TTS · PDF · Telegram Mini App</b>
 </p>
-
-### ⭐ Star the repo · test the live bot · join the Nova family 🖤
 
 </div>
 
@@ -46,83 +29,23 @@
 
 # 🇬🇧 English
 
-## 🤯 This is NOT another ChatGPT wrapper
+## 🌟 What is Nova?
 
-Most AI bots answer with text. **Nova answers with results.**
+**Nova is not just a chatbot.**
 
-Ask it:
+Nova is a self-hostable **AI Agent Platform for Telegram**, designed to combine conversational AI, persistent memory, tool execution, media generation, web applications and automation into a single Cloudflare Workers application.
 
-> *“Find the latest news about X, analyze it, build me a website from the data, host it, and send me the link.”*
+Nova uses **Google Gemini** as its primary reasoning and function-calling engine, **Cloudflare AI / Flux** for image generation, **Cloudflare D1** for persistent data and Telegram as its primary user interface.
 
-**One message.** Nova plans the job, wakes up its tools, chains them end-to-end and replies with a **live public URL** — a real web app it wrote, deployed and hosted for you, seconds ago.
+The architecture is designed around a **single intelligent agent capable of selecting and chaining tools** to complete multi-step tasks.
 
-No copy-pasting. No “here's the code, do it yourself”. It. Just. Ships. ✅
+### Example
 
----
+A user can ask Nova:
 
-## ⚡ Nova vs ordinary AI chatbots
+> Search for the latest information about X, analyze the results, create a website using the data, host it publicly, and send me the link.
 
-| 😴 Ordinary chatbot | ⚡ ƝØVΛ Agent |
-| --- | --- |
-| Replies with text | **Ships real products** — websites, games, PDFs, voice notes |
-| Forgets you the moment the chat closes | **Remembers you forever** — long-term memory & user profiles |
-| Lives in one chat box | **Runs your Telegram** — groups, Business DMs, Mini App dashboard |
-| One prompt → one answer | One prompt → **a finished multi-step workflow** |
-| “Please upgrade to Pro 💸” | **$0.00 — forever**, engineered for free tiers |
-| Closed black box | **Fully open source (AGPL)** — own the whole stack |
-| One API key, dies at rate limits | **Key pool with auto-rotation** — never goes down |
-
----
-
-## 🎁 100% free. Not “freemium”. Not a trial. **Zero.**
-
-Nova is deliberately engineered to run **entirely on free tiers** — that's part of its architecture, not an afterthought:
-
-| Service | What it does | Plan |
-| --- | --- | --- |
-| ☁️ Cloudflare Workers | Runs the whole agent | Free |
-| 🗄️ Cloudflare D1 | Database & memory | Free |
-| 🧠 Google Gemini | Reasoning & function calling | Free tier |
-| 🎨 Cloudflare AI / Flux | Image generation | Free tier |
-| ✈️ Telegram Bot API | The whole user interface | Free |
-
-**Your monthly bill: `0.00` — in any currency. 😎**
-
-And because Nova is self-hostable, *you* own the keys, the data and the memory. No middleman, no subscription, no lock-in.
-
----
-
-## 🦸 Superpowers
-
-| | |
-| --- | --- |
-| 🧠 **Agentic brain** — plans, selects and chains tools across multiple steps to finish real jobs | 🔑 **Never goes down** — Gemini key pool with health checks & automatic rotation |
-| 🧠 **Total recall** — long-term memory, persistent profiles, group member awareness | 🎨 **Image studio** — generate (Flux), edit & search images on demand |
-| 🌐 **Web surfer** — live web search + reads and analyzes full pages | 🏗️ **App factory** — builds single-file web apps and **hosts them at public URLs** |
-| 🎮 **Game studio** — generates *playable* HTML5 games (canvas, physics, particles) | 📄 **Document engine** — RTL-aware PDFs with an embedded Persian font + DOCX export |
-| 🗣️ **A voice of its own** — TTS voice notes & speech-to-text | 👥 **Group IQ** — per-group settings, memory & VIP controls |
-| 🏢 **Business autopilot** — auto-replies on Telegram Business with per-customer prompts | 📱 **Mini App** — full dashboard: chats, image studio, hosted app manager |
-| 👑 **Control Center** — admin panel: users, groups, media, diagnostics, live logs | 🛡️ **Fortress mode** — webhook secrets, `initData` validation, rate limiting, dedup, concurrency locks |
-
----
-
-## 🚀 Deploy your OWN Nova — free, in ~10 minutes
-
-Fork it, set your secrets, deploy:
-
-```bash
-git clone https://github.com/YOUR_USERNAME/NovaAgent.git
-cd NovaAgent
-npm install
-npx wrangler login
-npx wrangler d1 create nova-db        # put the ID in wrangler.toml
-npx wrangler secret put TOKEN         # your bot token from @BotFather
-npx wrangler secret put WEBHOOK_SECRET
-npx wrangler secret put GEMINI_KEY_1  # free tier key — done 🎉
-npm run deploy
-```
-
-Full step-by-step guide (webhook, D1, all optional keys): [**Installation**](#-installation) below.
+Instead of treating every feature as an isolated command, Nova can orchestrate the required tools as a workflow.
 
 ---
 
@@ -447,34 +370,60 @@ Database credentials
 Private signing keys
 ```
 
-Use Cloudflare Worker Secrets instead (`wrangler secret put …`) and a local
-`.dev.vars` file (see `.dev.vars.example`) for development.
-
-> `npm test` includes an automated **secret-leak guard** that fails if any
-> credential-looking value (bot tokens, `AIza…` keys, `cfat_…` tokens, long
-> hex secrets) or credential entry in `wrangler.toml [vars]` is committed —
-> run it before every push.
+Use Cloudflare Worker Secrets instead.
 
 ---
 
 # 🚀 Installation
 
-## Requirements
+## ⚡ Quick Start (5 minutes)
+
+```bash
+# 1. Clone & install
+git clone https://github.com/YOUR_USERNAME/nova.git && cd nova && npm install
+
+# 2. Login to Cloudflare
+npx wrangler login
+
+# 3. Create database
+npx wrangler d1 create nova-db
+# → Copy the database_id and add it to wrangler.toml
+
+# 4. Set secrets (one by one)
+npx wrangler secret put TOKEN          # Your Telegram bot token from @BotFather
+nnpx wrangler secret put BOT_OWNER_ID   # Your numeric Telegram ID from @userinfobot
+nnpx wrangler secret put GEMINI_KEY_1   # Get from https://aistudio.google.com/apikey
+
+# 5. Deploy!
+npm run deploy
+
+# 6. Set webhook
+curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<YOUR_WORKER>.workers.dev/webhook&secret_token=<WEBHOOK_SECRET>"
+```
+
+> 💡 **نکته:** فقط ۳ متغیر TOKEN، BOT_OWNER_ID و GEMINI_KEY_1 الزامی هستند. بقیه اختیاری هستند.
+>
+> 💡 **Note:** Only TOKEN, BOT_OWNER_ID, and GEMINI_KEY_1 are required. The rest are optional.
+
+---
+
+## 📋 Requirements
 
 You need:
 
-* Cloudflare account
+* Cloudflare account (free tier works)
 * Cloudflare Workers
-* Cloudflare D1
-* Telegram Bot
-* Gemini API key
-* Node.js
+* Cloudflare D1 (free tier works)
+* Telegram Bot (from @BotFather)
+* Gemini API key (free tier available)
+* Node.js 18+
 * Wrangler CLI
 
 Optional:
 
-* Cloudflare AI
-* Google Custom Search API
+* Cloudflare AI (for image generation)
+* Google Custom Search API (for web/image search)
+* ElevenLabs API (for TTS fallback)
 
 ---
 
@@ -517,26 +466,40 @@ database_id = "<YOUR_DATABASE_ID>"
 
 ## 4. Configure secrets
 
-Example:
+### ⭐ Required (الزامی):
 
 ```bash
-wrangler secret put TOKEN
-wrangler secret put BOT_OWNER_ID
-wrangler secret put GEMINI_KEY_1
-wrangler secret put GEMINI_KEY_2
-wrangler secret put CF_ID_1
-wrangler secret put CF_TOKEN_1
-wrangler secret put GOOGLE_SEARCH_API_KEY
-wrangler secret put GOOGLE_SEARCH_ENGINE_ID
-wrangler secret put WEBHOOK_SECRET
+# 🔑 Telegram Bot Token — از @BotFather دریافت کنید
+echo "YOUR_TOKEN" | wrangler secret put TOKEN
+
+# 👤 Bot Owner ID — آیدی عددی خودتان از @userinfobot
+echo "YOUR_ID" | wrangler secret put BOT_OWNER_ID
+
+# 🤖 Gemini API Key — از https://aistudio.google.com/apikey
+echo "YOUR_KEY" | wrangler secret put GEMINI_KEY_1
 ```
 
-Only configure the services you actually use.
+### 🔧 Optional (اختیاری):
 
-> **Migrating from an older private deployment?** Older builds kept these
-> values as inline `[vars]` in `wrangler.toml`. Deploying this version
-> **removes** those inline vars, so run all the `wrangler secret put …`
-> commands **before** you redeploy, otherwise the bot will stop responding.
+```bash
+# ☁️ Cloudflare AI — برای تولید تصویر
+echo "YOUR_CF_ACCOUNT_ID" | wrangler secret put CF_ID_1
+echo "YOUR_CF_API_TOKEN" | wrangler secret put CF_TOKEN_1
+
+# 🔍 Google Search — برای جستجوی وب و تصویر
+echo "YOUR_SEARCH_KEY" | wrangler secret put GOOGLE_SEARCH_API_KEY
+echo "YOUR_SEARCH_ENGINE_ID" | wrangler secret put GOOGLE_SEARCH_ENGINE_ID
+
+# 🔒 Webhook Secret — برای امنیت webhook
+echo "RANDOM_SECRET" | wrangler secret put WEBHOOK_SECRET
+
+# 🎙️ ElevenLabs TTS — جایگزین Gemini TTS
+echo "YOUR_ELEVENLABS_KEY" | wrangler secret put ELEVENLABS_API_KEY
+```
+
+> 💡 فقط سرویس‌هایی را تنظیم کنید که واقعاً استفاده می‌کنید.
+>
+> 💡 Only configure the services you actually use.
 
 ---
 
@@ -579,31 +542,13 @@ curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<YOUR_WORKER>.w
 Start the local development server:
 
 ```bash
-cp .dev.vars.example .dev.vars   # then fill in your own test credentials
 npm run dev
 ```
-
-> `.dev.vars` is git-ignored — never commit real credentials.
 
 Type checking:
 
 ```bash
 npm run type-check
-```
-
-Source regression tests (license headers, required files, secret-leak guard):
-
-```bash
-npm test
-```
-
-Enable GitHub Actions CI (type-check + tests on every push/PR) by renaming
-the shipped workflow into place:
-
-```bash
-mkdir -p .github/workflows
-git mv .github/ci-workflow.example.yml .github/workflows/ci.yml
-git commit -m "ci: enable workflow" && git push
 ```
 
 Live logs:
@@ -654,42 +599,38 @@ npm run tail
 # 📁 Project Structure
 
 ```text
-NOVA/
+nova/
 ├── src/
-│   ├── index.ts               # Worker entrypoint: webhook, agent, admin, API
-│   ├── exportEngine.ts        # Nova Office (PDF/DOCX export engine)
-│   ├── gameEngine.ts          # Nova Game Engine
-│   ├── webBuilder.ts          # Nova Web Builder prompts/packaging
-│   ├── webSearch.ts           # Web search helpers
-│   ├── designSkills.ts        # Design-quality heuristics for generated apps
-│   ├── novaFont.ts            # Embedded Vazirmatn subset (OFL 1.1) for PDFs
-│   ├── dashboard.html         # Telegram Mini App dashboard
-│   ├── adminDashboard.html    # Nova Control Center (admin)
-│   └── telegram-web-app.txt   # Vendored Telegram bridge script (3rd-party)
+│   ├── index.ts
+│   ├── gameEngine.ts
+│   ├── webBuilder.ts
+│   ├── exportEngine.ts
+│   ├── novaFont.ts
+│   ├── dashboard.html
+│   └── telegram-web-app.txt
 │
-├── tests/
-│   └── source-regression.mjs  # License/secret-leak hygiene tests (npm test)
+├── migrations/
+│   └── ...
+│
+├── scripts/
+│   └── ...
 │
 ├── .github/
-│   ├── ci-workflow.example.yml # CI: rename to workflows/ci.yml to enable
-│   ├── ISSUE_TEMPLATE/         # Bug report / feature request templates
+│   ├── workflows/
+│   ├── ISSUE_TEMPLATE/
 │   ├── PULL_REQUEST_TEMPLATE.md
-│   ├── CODEOWNERS
-│   └── dependabot.yml
+│   └── CODEOWNERS
 │
 ├── package.json
 ├── tsconfig.json
-├── wrangler.toml              # Non-secret configuration only!
+├── wrangler.toml
 ├── globals.d.ts
-├── .env.example               # Example env for generic tooling
-├── .dev.vars.example          # Example secrets for local development
+├── .env.example
 ├── .gitignore
-├── LICENSE                    # AGPL-3.0-or-later
-├── CHANGELOG.md               # Release history
+├── LICENSE
 ├── SECURITY.md
 ├── CONTRIBUTING.md
 ├── CODE_OF_CONDUCT.md
-├── THIRD_PARTY_NOTICES.md     # Vazirmatn (OFL), Telegram bridge, services
 └── README.md
 ```
 
@@ -798,6 +739,22 @@ Operators are responsible for securing their own deployments and credentials.
 
 ---
 
+---
+
+# ❤️ Donate / حمایت مالی
+
+اگر از Nova لذت می‌برید و می‌خواهید از توسعه‌ی آن حمایت کنید:
+
+If you enjoy Nova and want to support its development:
+
+| Network | Address |
+|---------|---------|
+| TRON (TRC20) | `UQAYtRKTpqdn9EJDG_xilRT4q7vlzdaNuHe5omge4uZVPEZK`
+
+> ⚠️ **آدرس‌ها را قبل از استفاده تأیید کنید / Verify addresses before sending**
+
+---
+
 # 🗺️ Roadmap
 
 ### Current
@@ -812,11 +769,13 @@ Operators are responsible for securing their own deployments and credentials.
 * [x] Web Search
 * [x] Web App Hosting
 * [x] Game Engine
-* [x] TTS
+* [x] TTS (Gemini + ElevenLabs fallback)
 * [x] PDF Engine
 * [x] Telegram Mini App
 * [x] Admin Dashboard
 * [x] Business Automation
+* [x] Group Activation Control
+* [x] Improved Web Search Formatting
 
 ### Planned
 
@@ -831,20 +790,19 @@ Operators are responsible for securing their own deployments and credentials.
 
 ---
 
-# ❤️ Credits & Contact
+# ❤️ Credits
 
-Nova is built and maintained by **Hsoofi82**.
+Built and maintained by:
 
-| | |
-| --- | --- |
-| 🚀 **Creator & maintainer** | **Hsoofi82** — [@Hacker1382](https://t.me/Hacker1382) |
-| 🤖 **Live bot** (test it now) | [@MyNovaChatBot](https://t.me/MyNovaChatBot) |
+**Hsoofi82**
 
-### 💬 Want to reach out?
+Telegram:
 
-Message the creator directly on Telegram — **[@Hacker1382](https://t.me/Hacker1382)** — for
-questions, ideas, collaboration or just to say hi. Nova is a community project,
-and you're welcome in the family. 🖤
+[@Hacker1382](https://t.me/Hacker1382)
+
+Bot:
+
+[@MyNovaChatBot](https://t.me/MyNovaChatBot)
 
 ---
 
@@ -863,43 +821,6 @@ Made with 🖤 by Hsoofi82
 <a id="persian"></a>
 
 # 🇮🇷 فارسی
-
-<div align="center">
-
-### نوا فقط حرف نمی‌زنه — **کار تحویل می‌ده** 🚀
-
-**۱۰۰٪ رایگان · متن‌باز · روی تلگرام خودت میزبانی کن**
-
-یه پیام بده → وب‌اپ بساز، میزبانی کن، لینکش رو بفرست 🎯
-
-**قبض ماهانه: ۰ تومان — تا همیشه 😎**
-
-> 🟢 **نوا همین الان آنلاین و فعاله!** ربات رسمی روی تلگرام با آیدی
-> **[@MyNovaChatBot](https://t.me/MyNovaChatBot)** در حال سرویس‌دهیه — یه سر بهش بزن،
-> سلام کن و ببین چطور نقشه می‌کشه، می‌سازه و تحویل می‌ده. خوشت اومد؟
-> **به خانوادهٔ نوا بپیوند** و این پروژه رو دنبال کن. 🖤
-
-<p>
-  <a href="https://t.me/MyNovaChatBot"><img src="https://img.shields.io/badge/Live_bot-%40MyNovaChatBot-2AABEE?style=for-the-badge&logo=telegram&logoColor=white" alt="ربات فعال — @MyNovaChatBot"></a>
-  <a href="https://t.me/Hacker1382"><img src="https://img.shields.io/badge/Contact-%40Hacker1382-2AABEE?style=for-the-badge&logo=telegram&logoColor=white" alt="ارتباط با سازنده — @Hacker1382"></a>
-</p>
-
-</div>
-
----
-
-## نوا با بقیهٔ چت‌بات‌ها چه فرقی داره؟
-
-| 😴 چت‌بات‌های معمولی | ⚡ ƝØVΛ |
-| --- | --- |
-| جواب متنی می‌ده | **محصول واقعی تحویل می‌ده** — سایت، بازی، PDF، ویس |
-| بعد از هر چت یادش می‌ره | **برایت همیشه یادش می‌مونه** — حافظهٔ بلندمدت و پروفایل |
-| فقط توی یه چت جواب می‌ده | **کل تلگرامت رو مدیریت می‌کنه** — گروه، پیام‌های بیزینس، Mini App |
-| یک پیام → یک جواب | یک پیام → **یک کار چندمرحله‌ای تمام‌شده** |
-| «پلن Pro بخریت 💸» | **۰ تومان — برای همیشه** |
-| جعبهٔ سیاه بسته | **کاملاً متن‌باز (AGPL)** — همه‌چیز مال خودته |
-
----
 
 ## Nova چیست؟
 
@@ -1043,8 +964,6 @@ Nova شامل مکانیزم‌هایی مانند:
 
 **هیچ Secret، API Key یا Bot Token نباید داخل Git ذخیره شود.**
 
-همه اعتبارنامه‌ها از طریق Worker Secrets (یا `.dev.vars` برای توسعه لوکال) تنظیم شوند؛ فایل `wrangler.toml` فقط باید مقادیر غیرحساس داشته باشد. تست `npm test` یک **گارد نشت سکرت** دارد و اگر مقداری شبیه Token یا API Key در ریپو کامیت شود، شکست می‌خورد.
-
 ---
 
 ## 🚀 نصب
@@ -1056,20 +975,7 @@ npm install
 npx wrangler login
 ```
 
-سپس D1 را ایجاد کرده و Secrets موردنیاز را با Wrangler تنظیم کنید:
-
-```bash
-npx wrangler d1 create nova-db     # شناسه دیتابیس را در wrangler.toml بگذارید
-npx wrangler secret put TOKEN      # Bot Token تلگرام
-npx wrangler secret put WEBHOOK_SECRET
-npx wrangler secret put BOT_OWNER_ID
-npx wrangler secret put GEMINI_KEY_1   # ... تا GEMINI_KEY_5
-# و در صورت نیاز: CF_ID_1 / CF_TOKEN_1 ... و GOOGLE_SEARCH_API_KEY / GOOGLE_SEARCH_ENGINE_ID
-```
-
-برای توسعه لوکال، فایل `.dev.vars.example` را به `.dev.vars` کپی کنید و مقادیر تست خودتان را داخلش بگذارید (این فایل در `.gitignore` است و هرگز کامیت نمی‌شود).
-
-> **مهاجرت از نسخهٔ خصوصی قبلی؟** نسخه‌های قدیمی این مقادیر را به‌صورت `[vars]` داخل `wrangler.toml` داشتند. دپلوی این نسخه آن varهای قدیمی را **حذف می‌کند**؛ پس قبل از دپلوی دوباره، همه را با `wrangler secret put …` ست کنید وگرنه ربات از کار می‌افتد.
+سپس D1 را ایجاد کرده و Secrets موردنیاز را با Wrangler تنظیم کنید.
 
 ---
 
@@ -1089,13 +995,9 @@ Nova تحت مجوز:
 
 ## ™️ برند Nova
 
-نام‌ها و برندهای:
+نام‌ و برنده:
 
-* Nova
 * ƝØVΛ
-* Nova Control Center
-* Nova Game Engine
-
 و لوگوهای مرتبط، هویت برند پروژه هستند.
 
 AGPL به‌تنهایی به معنی واگذاری حقوق Trademark نیست.
@@ -1126,29 +1028,12 @@ Pull Request و Contribution استقبال می‌شود.
 
 ---
 
-## ❤️ سازنده و راه ارتباط
-
-نوا توسط **Hsoofi82** ساخته و نگهداری می‌شه.
-
-| | |
-| --- | --- |
-| 🚀 **سازنده و توسعه‌دهنده** | **Hsoofi82** — [@Hacker1382](https://t.me/Hacker1382) |
-| 🤖 **ربات فعال** (همین الان تستش کن) | [@MyNovaChatBot](https://t.me/MyNovaChatBot) |
-
-### 💬 می‌خوای در تماس باشی؟
-
-برای سؤال، ایده، همکاری یا یه سلام ساده، مستقیم به سازنده پیام بده —
-**[@Hacker1382](https://t.me/Hacker1382)**. نوا یه پروژهٔ جمعیه و تو هم عضوی از
-خانوادهٔ نوایی. 🖤
-
----
-
 <div align="center">
 
 # ƝØVΛ
 
 ### پلتفرم متن‌باز ایجنت هوش مصنوعی برای Telegram
 
-ساخته شده با 🖤 توسط **Hsoofi82**
+ساخته شده توسط **Hsoofi82**
 
 </div>
