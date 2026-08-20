@@ -3,57 +3,223 @@ main = "src/index.ts"
 compatibility_date = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 
-# Smaller upload + faster cold starts for a large worker.
+# ─────────────────────────────────────────────
+# Build / Performance
+# ─────────────────────────────────────────────
+
+# Minify the Worker bundle to reduce upload size and improve cold starts.
 minify = true
+
+# Upload source maps so production errors are easier to debug.
 upload_source_maps = true
+
+
+# ─────────────────────────────────────────────
+# Cloudflare Observability
+# ─────────────────────────────────────────────
 
 [observability]
 enabled = true
+
+# 1 = collect 100% of invocations.
+# For heavy production traffic you can lower this value, e.g. 0.25.
 head_sampling_rate = 1
 
 [observability.logs]
 invocation_logs = true
 
+
+# ─────────────────────────────────────────────
+# Scheduled Tasks
+# ─────────────────────────────────────────────
+
 [triggers]
+
+# Runs the Worker cron every minute.
+# Used by Nova for reminders, scheduled jobs and maintenance tasks.
 crons = ["* * * * *"]
 
+
+# ─────────────────────────────────────────────
+# Static HTML Assets
+# ─────────────────────────────────────────────
+
 [[rules]]
 type = "Text"
+
+# Load HTML files as text assets.
 globs = ["**/*.html"]
+
 fallthrough = true
 
-[[rules]]
-type = "Text"
-globs = ["**/*.txt"]
-fallthrough = true
 
-# ── Database ──────────────────────────────────────────────────────────────────
-# Create your own database first:
-#   npx wrangler d1 create nova-db
-# then paste the generated ID below.
+# ─────────────────────────────────────────────
+# Cloudflare D1 Database
+# ─────────────────────────────────────────────
+
 [[d1_databases]]
 binding = "DB"
-database_name = "nova-db"
-database_id = "<YOUR_D1_DATABASE_ID>"
 
-# ── Runtime configuration (non-secret values only!) ───────────────────────────
-#
-# ⚠️  NEVER put real credentials in this file — it is committed to Git.
-#     Nova reads all credentials from Worker Secrets at runtime:
-#
-#       npx wrangler secret put TOKEN                # Telegram bot token
-#       npx wrangler secret put WEBHOOK_SECRET       # Telegram webhook secret
-#       npx wrangler secret put BOT_OWNER_ID         # Your Telegram user ID
-#       npx wrangler secret put GEMINI_KEY_1         # ... up to GEMINI_KEY_5
-#       npx wrangler secret put CF_ID_1              # Cloudflare AI (optional)
-#       npx wrangler secret put CF_TOKEN_1           # ... up to _3
-#       npx wrangler secret put GOOGLE_SEARCH_API_KEY   # optional
-#       npx wrangler secret put GOOGLE_SEARCH_ENGINE_ID # optional
-#
-#     For local development, copy `.dev.vars.example` to `.dev.vars`
-#     (already git-ignored) and fill in your values there.
-#
-#     `npm test` fails if any secret-looking value ever appears in this file.
+# Your D1 database name.
+# Get it from:
+# Cloudflare Dashboard → Workers & Pages → D1 → Your Database
+database_name = "Your Database Name"
+
+# Your D1 database ID.
+# Get it from:
+# Cloudflare Dashboard → Workers & Pages → D1 → Your Database → Settings
+database_id = "Your Database Id"
+
+
+# ─────────────────────────────────────────────
+# Public / Non-Secret Configuration
+# ─────────────────────────────────────────────
+
 [vars]
+
+# Current environment.
+# Usually: production / development
 ENVIRONMENT = "production"
+
+
+# Master maintenance switch.
+# "true" = Nova is in maintenance mode.
+# "false" = normal operation.
+# Change this from the Cloudflare dashboard or your deployment config.
 MAINTENANCE_MODE = "false"
+
+
+# Telegram numeric ID of the Nova owner/admin.
+# Get it from Telegram using a bot such as @userinfobot,
+# or any trusted Telegram ID bot.
+BOT_OWNER_ID = "Your Number ID In Telegram"
+
+
+# Public URL of your deployed Worker.
+# Example:
+# https://nova.example.workers.dev
+# Get it after `wrangler deploy`.
+WEBHOOK_URL = "Your WEBHOOK_URL"
+
+
+# ─────────────────────────────────────────────
+# Telegram Bot
+# ─────────────────────────────────────────────
+
+# Telegram Bot API token.
+# Get it from @BotFather → /newbot or your existing bot → API Token.
+#
+# IMPORTANT:
+# Keep this value PRIVATE.
+# This placeholder is intentionally safe for Open Source repositories.
+TOKEN = "Your Bot Token"
+
+
+# Secret token used when Telegram sends updates to your webhook.
+# Create your own random long string.
+#
+# Example:
+# WEBHOOK_SECRET = "change-this-to-a-random-secret"
+#
+# Keep this value private in real deployments.
+WEBHOOK_SECRET = "Your WEBHOOK_SECRET"
+
+
+# ─────────────────────────────────────────────
+# Google Gemini
+# ─────────────────────────────────────────────
+
+# Gemini API keys used by Nova for AI responses.
+#
+# Get them from:
+# Google AI Studio → https://aistudio.google.com/apikey
+#
+# You can create multiple keys so Nova can rotate between them.
+GEMINI_KEY_1 = "Your Gemini API Key"
+GEMINI_KEY_2 = "Your Gemini API Key"
+GEMINI_KEY_3 = "Your Gemini API Key"
+GEMINI_KEY_4 = "Your Gemini API Key"
+GEMINI_KEY_5 = "Your Gemini API Key"
+
+
+# ─────────────────────────────────────────────
+# Google Custom Search
+# ─────────────────────────────────────────────
+
+# API key for Google Custom Search / Programmable Search.
+#
+# Get it from:
+# Google Cloud Console → APIs & Services → Credentials
+GOOGLE_SEARCH_API_KEY = "Your Google Search API Key"
+
+
+# Search Engine ID (CX).
+#
+# Create/manage it from:
+# Google Programmable Search Engine
+# https://programmablesearchengine.google.com/
+GOOGLE_SEARCH_ENGINE_ID = "Your Search Engine ID"
+
+
+# ─────────────────────────────────────────────
+# ElevenLabs Text-to-Speech
+# ─────────────────────────────────────────────
+
+# ElevenLabs API keys used for voice generation and key rotation.
+#
+# Get them from:
+# ElevenLabs Dashboard → Developers → API Keys
+#
+# Multiple keys allow Nova to rotate when one key hits a limit.
+ELEVENLABS_KEY_1 = "Your ElevenLabs API Key"
+ELEVENLABS_KEY_2 = "Your ElevenLabs API Key"
+ELEVENLABS_KEY_3 = "Your ElevenLabs API Key"
+ELEVENLABS_KEY_4 = "Your ElevenLabs API Key"
+ELEVENLABS_KEY_5 = "Your ElevenLabs API Key"
+ELEVENLABS_KEY_6 = "Your ElevenLabs API Key"
+
+
+# ElevenLabs TTS model.
+#
+# Example:
+# eleven_v3
+#
+# Change this only if you want to use another supported ElevenLabs model.
+ELEVENLABS_MODEL_ID = "eleven_v3"
+
+
+# ElevenLabs voice ID.
+#
+# Get it from:
+# ElevenLabs Dashboard → Voices → Select a voice → Voice ID
+ELEVENLABS_VOICE_ID = "FGY2WhTYpPnrIDTdsKH5"
+
+
+# ─────────────────────────────────────────────
+# Cloudflare API
+# ─────────────────────────────────────────────
+
+# Cloudflare Account IDs.
+#
+# Get them from:
+# Cloudflare Dashboard → Account → Account ID
+#
+# These are identifiers, not API tokens.
+CF_ID_1 = "Your Cloudflare Account ID"
+CF_ID_2 = "Your Cloudflare Account ID"
+CF_ID_3 = "Your Cloudflare Account ID"
+
+
+# Cloudflare API tokens used by Nova for Cloudflare AI/API requests.
+#
+# Create them from:
+# Cloudflare Dashboard → My Profile → API Tokens
+#
+# Recommended:
+# Create a dedicated API Token with only the permissions Nova needs.
+#
+# IMPORTANT:
+# Never publish real token values in an Open Source repository.
+CF_TOKEN_1 = "Your Cloudflare API Token"
+CF_TOKEN_2 = "Your Cloudflare API Token"
+CF_TOKEN_3 = "Your Cloudflare API Token"
