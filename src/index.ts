@@ -1,44 +1,5 @@
-/**
- * ƝØVΛ — Advanced AI Agent Platform for Telegram
- * Copyright (C) 2026 Hsoofi82
- *
- * SPDX-License-Identifier: AGPL-3.0-or-later
- *
- * This file is part of Nova (https://github.com/Hsoofi82/NovaAgent).
- *
- * Nova is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option)
- * any later version.
- *
- * Nova is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
- * more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with Nova. If not, see <https://www.gnu.org/licenses/>.
- */
-// ─────────────────────────────────────────────────────────────────────────────
-// ƝØVΛ · NOVA AGENT — single-file Cloudflare Worker
-// ─────────────────────────────────────────────────────────────────────────────
-// This file powers the Telegram bot, the Mini App dashboard, the admin
-// Control Center and every agent tool. It is organized in labeled SECTIONS —
-// search for "SECTION:" to jump to a major subsystem. The table of contents
-// below follows the same top-to-bottom reading order.
-// ─────────────────────────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ƝØVΛ · NOVA AGENT — single-file Cloudflare Worker
-// ─────────────────────────────────────────────────────────────────────────────
-// This file powers the Telegram bot, the Mini App dashboard, the admin
-// Control Center and every agent tool. It is organized in labeled SECTIONS —
-// search for "SECTION:" to jump to a major subsystem. The table of contents
-// below follows the same top-to-bottom reading order.
-// ─────────────────────────────────────────────────────────────────────────────
-
-
-const BOT_VERSION = "ƝØVΛ 0.952 Beta";
+const BOT_VERSION = "ƝØVΛ 0.953 HotFix";
 
 // ── Static assets (bundled by wrangler) ──────────────────────────────────────
 import DASHBOARD_HTML from "./dashboard.html";            // Telegram Mini App dashboard
@@ -2141,10 +2102,25 @@ function getCallName(session: ChatSession, userId: number, isGroup: boolean): st
 interface TgUser { id: number; is_bot: boolean; first_name: string; username?: string; language_code?: string }
 interface TgChat { id: number; type: ChatType; title?: string }
 interface TgPhotoSize { file_id: string; file_unique_id: string; width: number; height: number; file_size?: number }
-interface TgDocument { file_id: string; file_name?: string; mime_type?: string; file_size?: number }
 interface TgVoice { file_id: string; file_unique_id: string; duration: number; mime_type?: string; file_size?: number }
 interface TgVideo { file_id: string; duration: number; mime_type?: string; file_size?: number }
-interface TgAnimation { file_id: string; mime_type?: string; file_size?: number }
+interface TgDocument {
+  file_id: string;
+  file_name?: string;
+  mime_type?: string;
+  file_size?: number;
+  thumbnail?: TgPhotoSize;
+}
+
+interface TgAnimation {
+  file_id: string;
+  mime_type?: string;
+  file_size?: number;
+  width?: number;
+  height?: number;
+  duration?: number;
+  thumbnail?: TgPhotoSize;
+}
 interface TgMessageEntity { type: string; offset: number; length: number }
 interface TgAudio { file_id: string; file_unique_id: string; duration: number; mime_type?: string; file_size?: number; title?: string; performer?: string }
 interface TgMessage {
@@ -4847,8 +4823,34 @@ async function buildStickerImagePart(sticker: TgSticker, env: Env): Promise<Part
  * استفاده می‌کند تا مدل علاوه بر متن، چیزی بصری هم برای تحلیل داشته باشد.
  * اگر تامبنیل نبود، به پرامپت متنیِ متحرک‌محور برمی‌گردد.
  */
-async function buildGifAnalysisParts(animation: TgAnimation, caption: string | undefined, lang: Language, env: Env): Promise<Part[]> {
+async function buildGifAnalysisParts(
+  animation: TgAnimation,
+  mediaBuffer: ArrayBuffer,
+  mediaMime: string,
+  caption: string | undefined,
+  lang: Language,
+): Promise<Part[]> {
   const prompt = buildVisualAnalysisPrompt("gif", lang, caption);
+
+  // مهم: خودِ فایل انیمیشن را به مدل بده؛ thumbnail فقط fallback است.
+  // این جلوی حالت قبلی را می‌گیرد که بعضی GIFها چون thumbnail نداشتند،
+  // عملاً بدون هیچ محتوای بصری به Gemini می‌رسیدند.
+  if (mediaBuffer.byteLength >= 100) {
+    const rawMime = String(mediaMime || "").toLowerCase();
+    const mime = rawMime === "image/gif" || rawMime === "video/mp4" || rawMime === "video/webm"
+      ? rawMime
+      : "video/mp4";
+    try {
+      return [
+        { inline_data: { mime_type: mime, data: arrayBufferToBase64(mediaBuffer) } },
+        { text: `${prompt}\n(فایل واقعی گیف/انیمیشن پیوست شده است. محتوای فریم‌ها و حرکت را از خود فایل تحلیل کن؛ درباره توانایی دسترسی یا نام فایل حدس نزن.)` },
+      ];
+    } catch (e) {
+      logger.warn("buildGifAnalysisParts real animation encoding failed", e);
+    }
+  }
+
+  // Fallback: اگر فایل اصلی قابل ارسال نبود، thumbnail را حداقل به‌عنوان فریم واقعی بده.
   const thumb = (animation as TgAnimation & { thumbnail?: TgPhotoSize }).thumbnail;
   if (thumb?.file_id) {
     try {
@@ -4858,14 +4860,14 @@ async function buildGifAnalysisParts(animation: TgAnimation, caption: string | u
       if (bytes.byteLength >= 100) {
         return [
           { inline_data: { mime_type: "image/jpeg", data: arrayBufferToBase64(bytesToArrayBuffer(bytes)) } },
-          { text: `${prompt}\n(این یک گیف متحرک است؛ فریم اول آن پیوست شده — حرکت را از روی متن/کپشن و فریم اول استنتاج کن.)` },
+          { text: `${prompt}\n(فایل اصلی گیف در دسترس نبود؛ thumbnail/فریم نماینده پیوست شده است. درباره حرکت فقط بر اساس شواهد موجود صحبت کن.)` },
         ];
       }
     } catch (e) {
       logger.warn("buildGifAnalysisParts thumbnail fetch failed", e);
     }
   }
-  return [{ text: `${prompt}\n(این یک گیف متحرک است و فریمی در دسترس نیست؛ حرکت را از روی متن/کپشن استنتاج کن.)` }];
+  return [{ text: `${prompt}\n(محتوای باینری گیف در دسترس نبود؛ درباره تصویر یا حرکت حدس نزن و فقط بر اساس کپشن/متن پاسخ بده.)` }];
 }
 
 async function handleStickerMessage(msg: TgMessage, env: Env): Promise<void> {
@@ -10444,11 +10446,19 @@ case "host_web_app": {
 
               case "show_admin_panel": {
                 await taskMgr?.startTask(taskKey, "Loading admin panel...");
-                adminPanelStates.set(chatId, { page: 0, perPage: 5, sortBy: "new" });
-                const proc = await sendMessage(chatId, "⏳ Loading admin panel...", { reply_to_message_id: replyTo });
-                await ccOverview(chatId, proc.message_id, env);
+                if (!isOwner || originalMsg.chat.type !== "private") {
+                  await taskMgr?.failTask(taskKey, "Owner-only private chat");
+                  await sendMessage(chatId, lang === "fa" ? "🔐 پنل مدیریت فقط در پیوی مالک قابل باز شدن است. دستور /admin را در پیوی بزن." : "🔐 The admin panel can only be opened by the owner in private chat. Use /admin in the bot's private chat.", { reply_to_message_id: replyTo });
+                  return { name: call.name, response: { success: false, error: "ADMIN_PANEL_PRIVATE_OWNER_ONLY" } };
+                }
+                const adminUrl = `${requestOrigin || origin || ""}/admin`;
+                await sendMessage(chatId, lang === "fa" ? "👑 <b>Nova Control Center</b>\n\nپنل مدیریت آماده است:" : "👑 <b>Nova Control Center</b>\n\nYour admin panel is ready:", {
+                  reply_to_message_id: replyTo,
+                  parse_mode: "HTML",
+                  reply_markup: JSON.stringify({ inline_keyboard: [[{ text: lang === "fa" ? "⚙️ باز کردن پنل مدیریت" : "⚙️ Open Admin Panel", web_app: { url: adminUrl } }]] }),
+                });
                 await taskMgr?.completeTask(taskKey, "Panel ready ✓");
-                return { name: call.name, response: { success: true } };
+                return { name: call.name, response: { success: true, url: adminUrl } };
               }
 
               case "list_web_apps": {
@@ -14356,6 +14366,20 @@ async function buildPartsWithReplyContext(msg: TgMessage, env: Env, lang: Langua
 
   if (msg.reply_to_message) {
     const reply = msg.reply_to_message;
+    logger.info(
+    `[reply-media-debug] ` +
+    `chat=${msg.chat.id} ` +
+    `replyId=${reply.message_id} ` +
+    `text=${Boolean(reply.text)} ` +
+    `photo=${Boolean(reply.photo?.length)} ` +
+    `voice=${Boolean(reply.voice)} ` +
+    `audio=${Boolean(reply.audio)} ` +
+    `video=${Boolean(reply.video)} ` +
+    `animation=${Boolean(reply.animation)} ` +
+    `document=${Boolean(reply.document)} ` +
+    `documentMime=${reply.document?.mime_type ?? ""} ` +
+    `documentName=${reply.document?.file_name ?? ""}`,
+    );
     const replierName = reply.from?.first_name ?? (lang === "fa" ? "کاربر" : "User");
     
     // ۱. ریپلای روی متن
@@ -14442,44 +14466,584 @@ parts.push({ text: contextPrompt });
         logger.error("Failed to fetch/process replied voice", e);
         parts.push({ text: `[کاربر ${senderName} روی یک پیام صوتی ریپلای کرده اما پردازش آن ناموفق بود.]\n\nپیام کاربر: ${userText}` });
       }
+    } 
+else if (reply.audio) {
+  try {
+    const fileUrl = await getFileUrl(reply.audio.file_id);
+
+    const fileRes = await fetchExternalSafe(
+      fileUrl,
+      {},
+      25_000,
+      15 * 1024 * 1024,
+    );
+
+    const audioBytes = await readResponseBytesLimited(
+      fileRes,
+      15 * 1024 * 1024,
+    );
+
+    if (audioBytes.byteLength < 100) {
+      throw new Error("replied audio is empty");
     }
-    else if (reply.document) {
-      const doc = reply.document;
-      const mime = doc.mime_type ?? "";
-      if (mime === "application/pdf") {
-        try {
-          const fileUrl = await getFileUrl(doc.file_id);
-          const fileRes = await fetchWithTimeout(fileUrl, {}, 30_000);
-          const b64 = arrayBufferToBase64(await fileRes.arrayBuffer());
-          const contextPrompt = lang === "fa"
-            ? `[کاربر ${senderName} به سند PDF ریپلای کرده و نوشته: "${userText}". فایل PDF ضمیمه شده است. آن را تحلیل کن و پاسخ بده.]`
-            : `[User ${senderName} replied to a PDF saying: "${userText}". The PDF is attached. Please analyze it.]`;
-          parts.push({ inline_data: { mime_type: "application/pdf", data: b64 } });
-          parts.push({ text: contextPrompt });
-        } catch (e) {
-          logger.error("Failed to fetch replied PDF", e);
-          parts.push({ text: `[کاربر ${senderName} روی یک سند PDF ریپلای کرده اما لود آن ناموفق بود.]\n\nپیام کاربر: ${userText}` });
-        }
-      } else {
-        parts.push({ text: `[کاربر ${senderName} روی یک فایل با نام "${doc.file_name ?? "نامشخص"}" ریپلای کرده است.]\n\nپیام کاربر: ${userText}` });
+
+    const mime =
+      reply.audio.mime_type?.startsWith("audio/")
+        ? reply.audio.mime_type
+        : "audio/mpeg";
+
+    parts.push({
+      inline_data: {
+        mime_type: mime,
+        data: arrayBufferToBase64(
+          bytesToArrayBuffer(audioBytes),
+        ),
+      },
+    });
+
+    parts.push({
+      text:
+        lang === "fa"
+          ? `[REPLY_MEDIA_CONTEXT — AUDIO]
+کاربر ${senderName} روی فایل صوتی ${replierName} ریپلای کرده است.
+
+فایل صوتی واقعی پیوست شده.
+خود صوت را بررسی کن.
+
+پیام کاربر:
+"${userText}"`
+          : `[REPLY_MEDIA_CONTEXT — AUDIO]
+User ${senderName} replied to audio from ${replierName}.
+
+The actual audio is attached.
+Analyze the audio itself.
+
+User message:
+"${userText}"`,
+    });
+
+  } catch (e) {
+    logger.error("Failed to fetch replied audio", e);
+
+    parts.push({
+      text:
+        lang === "fa"
+          ? `[REPLY_MEDIA_ERROR] دریافت فایل صوتی موفق نشد.\n\nپیام کاربر: ${userText}`
+          : `[REPLY_MEDIA_ERROR] Failed to fetch replied audio.\n\nUser message: ${userText}`,
+    });
+  }
+}
+else if (reply.document) {
+  const doc = reply.document;
+  const mime = String(doc.mime_type ?? "").toLowerCase();
+  const fileName = String(doc.file_name ?? "").toLowerCase();
+
+  // Telegram may represent a GIF/video sent as "document" instead of
+  // message.animation. Therefore NEVER treat every non-PDF document as
+  // an opaque file. Inspect MIME + extension first.
+
+  const isPdf =
+    mime === "application/pdf" ||
+    fileName.endsWith(".pdf");
+
+  const isVideo =
+    mime.startsWith("video/") ||
+    /\.(mp4|webm|mov|m4v|mpeg|mpg)$/i.test(fileName);
+
+  const isGif =
+    mime === "image/gif" ||
+    fileName.endsWith(".gif");
+
+  const isAudio =
+    mime.startsWith("audio/") ||
+    /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(fileName);
+
+  const isImage =
+    mime.startsWith("image/") &&
+    !isGif;
+
+  try {
+    const fileUrl = await getFileUrl(doc.file_id);
+
+    const fileRes = await fetchExternalSafe(
+      fileUrl,
+      {},
+      30_000,
+      18 * 1024 * 1024,
+    );
+
+    const fileBytes = await readResponseBytesLimited(
+      fileRes,
+      18 * 1024 * 1024,
+    );
+
+    if (fileBytes.byteLength < 100) {
+      throw new Error("replied document is empty or too small");
+    }
+
+    const b64 = arrayBufferToBase64(
+      bytesToArrayBuffer(fileBytes),
+    );
+
+    // ------------------------------------------------------------
+    // PDF
+    // ------------------------------------------------------------
+    if (isPdf) {
+      parts.push({
+        inline_data: {
+          mime_type: "application/pdf",
+          data: b64,
+        },
+      });
+
+      parts.push({
+        text:
+          lang === "fa"
+            ? `[REPLY_MEDIA_CONTEXT — PDF]
+کاربر ${senderName} روی یک سند PDF از ${replierName} ریپلای کرده است.
+
+فایل PDF واقعی پیوست شده است.
+محتوای واقعی سند را بخوان و پاسخ بده.
+از نام فایل برای حدس زدن محتوا استفاده نکن.
+
+پیام کاربر:
+"${userText}"`
+            : `[REPLY_MEDIA_CONTEXT — PDF]
+User ${senderName} replied to a PDF from ${replierName}.
+
+The real PDF file is attached.
+Read the actual document contents and answer from them.
+Do not infer anything from the filename.
+
+User message:
+"${userText}"`,
+      });
+
+    // ------------------------------------------------------------
+    // VIDEO / GIF-AS-DOCUMENT
+    // ------------------------------------------------------------
+    } else if (isVideo || isGif) {
+
+      let videoMime = "video/mp4";
+
+      if (mime === "video/webm" || fileName.endsWith(".webm")) {
+        videoMime = "video/webm";
+      } else if (
+        mime === "video/quicktime" ||
+        fileName.endsWith(".mov")
+      ) {
+        videoMime = "video/quicktime";
+      } else if (
+        mime === "video/mp4" ||
+        fileName.endsWith(".mp4") ||
+        fileName.endsWith(".m4v")
+      ) {
+        videoMime = "video/mp4";
       }
+
+      // For GIF documents Telegram may expose image/gif.
+      // We intentionally use a representative visual payload when possible,
+      // but if it is actually an MP4-backed GIF, send it as video.
+      const effectiveMime =
+        isGif && mime === "image/gif"
+          ? "image/gif"
+          : videoMime;
+
+      parts.push({
+        inline_data: {
+          mime_type: effectiveMime,
+          data: b64,
+        },
+      });
+
+      parts.push({
+        text:
+          lang === "fa"
+            ? `[REPLY_MEDIA_CONTEXT — GIF/VIDEO]
+کاربر ${senderName} روی یک رسانه متحرک از ${replierName} ریپلای کرده است.
+
+رسانه واقعی به‌صورت binary به‌عنوان ورودی پیوست شده است.
+خود محتوای بصری/ویدیویی را بررسی کن.
+
+قوانین بسیار مهم:
+- هرگز از نام فایل، file_id، پسوند فایل یا placeholderهایی مثل "[GIF]" محتوا را حدس نزن.
+- ادعا نکن فایل به دستت نرسیده، مگر واقعاً هیچ payloadای در این درخواست وجود نداشته باشد.
+- اگر محتوای قابل مشاهده است، بر اساس همان محتوا توضیح بده.
+- اگر چیزی از رسانه قابل تشخیص نیست، فقط همان بخش را صریحاً نامشخص اعلام کن.
+
+نوع رسانه:
+${isGif ? "GIF" : "VIDEO"}
+
+نام فایل فقط برای metadata:
+${fileName || "unknown"}
+
+پیام کاربر:
+"${userText}"`
+            : `[REPLY_MEDIA_CONTEXT — GIF/VIDEO]
+User ${senderName} replied to an animated media item from ${replierName}.
+
+The real binary media is attached as input.
+Analyze the actual visual/video content.
+
+Critical rules:
+- NEVER infer content from filename, file_id, extension, or placeholders such as "[GIF]".
+- NEVER claim the file was not received when a binary payload is present.
+- Describe only what is supported by the actual media.
+- If something is genuinely not visible/determinable, say so explicitly.
+
+Media type:
+${isGif ? "GIF" : "VIDEO"}
+
+Filename metadata only:
+${fileName || "unknown"}
+
+User message:
+"${userText}"`,
+      });
+
+    // ------------------------------------------------------------
+    // AUDIO
+    // ------------------------------------------------------------
+    } else if (isAudio) {
+
+      const audioMime =
+        mime.startsWith("audio/")
+          ? mime
+          : /\.(mp3)$/i.test(fileName)
+            ? "audio/mpeg"
+            : "audio/ogg";
+
+      parts.push({
+        inline_data: {
+          mime_type: audioMime,
+          data: b64,
+        },
+      });
+
+      parts.push({
+        text:
+          lang === "fa"
+            ? `[REPLY_MEDIA_CONTEXT — AUDIO]
+کاربر ${senderName} روی یک فایل صوتی از ${replierName} ریپلای کرده است.
+
+خود فایل صوتی واقعی پیوست شده.
+در صورت امکان محتوای صوت، گفتار و صداهای قابل تشخیص را بررسی کن.
+
+پیام کاربر:
+"${userText}"`
+            : `[REPLY_MEDIA_CONTEXT — AUDIO]
+User ${senderName} replied to an audio file from ${replierName}.
+
+The actual audio file is attached.
+Analyze speech and other audible content when possible.
+
+User message:
+"${userText}"`,
+      });
+
+    // ------------------------------------------------------------
+    // IMAGE
+    // ------------------------------------------------------------
+    } else if (isImage) {
+
+      const imageMime =
+        mime === "image/png"
+          ? "image/png"
+          : mime === "image/webp"
+            ? "image/webp"
+            : mime === "image/jpeg"
+              ? "image/jpeg"
+              : "image/jpeg";
+
+      parts.push({
+        inline_data: {
+          mime_type: imageMime,
+          data: b64,
+        },
+      });
+
+      parts.push({
+        text:
+          lang === "fa"
+            ? `[REPLY_MEDIA_CONTEXT — IMAGE]
+کاربر ${senderName} روی یک تصویر از ${replierName} ریپلای کرده است.
+
+تصویر واقعی پیوست شده.
+خود تصویر را بررسی کن و فقط بر اساس محتوای واقعی آن پاسخ بده.
+
+پیام کاربر:
+"${userText}"`
+            : `[REPLY_MEDIA_CONTEXT — IMAGE]
+User ${senderName} replied to an image from ${replierName}.
+
+The actual image is attached.
+Analyze the image itself and answer from its real contents.
+
+User message:
+"${userText}"`,
+      });
+
+    // ------------------------------------------------------------
+    // UNKNOWN DOCUMENT
+    // ------------------------------------------------------------
+    } else {
+
+      // Even for an unknown document, attach the actual binary instead
+      // of sending only the filename to Gemini.
+      parts.push({
+        inline_data: {
+          mime_type:
+            mime ||
+            "application/octet-stream",
+          data: b64,
+        },
+      });
+
+      parts.push({
+        text:
+          lang === "fa"
+            ? `[REPLY_MEDIA_CONTEXT — DOCUMENT]
+کاربر ${senderName} روی یک فایل از ${replierName} ریپلای کرده است.
+
+فایل واقعی پیوست شده است.
+اگر این نوع فایل قابل خواندن/تحلیل است، محتوای واقعی آن را بررسی کن.
+هرگز از نام فایل به‌تنهایی برای حدس زدن محتوا استفاده نکن.
+
+نام فایل:
+"${doc.file_name ?? "نامشخص"}"
+
+پیام کاربر:
+"${userText}"`
+            : `[REPLY_MEDIA_CONTEXT — DOCUMENT]
+User ${senderName} replied to a file from ${replierName}.
+
+The actual file is attached.
+Analyze its real contents if supported.
+Never infer its contents from the filename alone.
+
+Filename:
+"${doc.file_name ?? "unknown"}"
+
+User message:
+"${userText}"`,
+      });
     }
-    else if (reply.animation) {
+
+    logger.info(
+      `[reply-media] document resolved: ` +
+      `mime=${mime || "unknown"} ` +
+      `name=${fileName || "unknown"} ` +
+      `bytes=${fileBytes.byteLength} ` +
+      `type=${
+        isPdf ? "pdf" :
+        isVideo ? "video" :
+        isGif ? "gif" :
+        isAudio ? "audio" :
+        isImage ? "image" :
+        "document"
+      }`,
+    );
+
+  } catch (e) {
+
+    logger.error(
+      "Failed to fetch/process replied document media",
+      e,
+    );
+
+    parts.push({
+      text:
+        lang === "fa"
+          ? `[REPLY_MEDIA_ERROR]
+کاربر ${senderName} روی یک فایل ریپلای کرده است، اما دریافت باینری فایل با خطا مواجه شد.
+
+هرگز از نام فایل حدس نزن.
+پیام کاربر:
+"${userText}"`
+          : `[REPLY_MEDIA_ERROR]
+User ${senderName} replied to a file, but fetching its binary failed.
+
+Never infer the file contents from its filename.
+User message:
+"${userText}"`,
+    });
+  }
+}
+else if (reply.animation) {
+  try {
+    const animation = reply.animation;
+    const prompt = lang === "fa"
+      ? `[REPLY_MEDIA_CONTEXT — GIF/ANIMATION]
+کاربر ${senderName} روی یک GIF/انیمیشن از ${replierName} ریپلای کرده و نوشته:
+"${userText}"
+
+این پیام واقعاً به یک GIF/انیمیشن پیوست شده است.
+محتوای رسانه را از داده‌ی تصویری/ویدیویی پیوست‌شده بررسی کن.
+هرگز درباره‌ی محتوای GIF از روی نام فایل، شناسه فایل، پسوند فایل یا متن‌هایی مثل "[GIF]" حدس نزن.
+اگر فریم نماینده/thumbnail پیوست شده، حتماً آن را به‌عنوان شاهد بصری بررسی کن.
+اگر فایل متحرک قابل تحلیل بود، حرکت و رویدادهای قابل مشاهده را نیز بررسی کن.
+اگر چیزی واقعاً قابل تشخیص نیست، همان را صریح بگو.
+
+پیام فعلی کاربر:
+"${userText}"`
+      : `[REPLY_MEDIA_CONTEXT — GIF/ANIMATION]
+User ${senderName} replied to a GIF/animation from ${replierName} saying:
+"${userText}"
+
+This message genuinely contains an attached GIF/animation.
+Analyze the attached visual/video data itself.
+NEVER infer the GIF's content from its filename, file ID, extension, or placeholders such as "[GIF]".
+If a representative thumbnail/frame is attached, inspect it as visual evidence.
+If the animated file is analyzable, also inspect the visible motion/events.
+If something cannot actually be determined, say so explicitly.
+
+Current user message:
+"${userText}"`;
+
+    let attached = false;
+
+    // ------------------------------------------------------------
+    // 1) اول thumbnail واقعی را بفرست.
+    // این مهم‌ترین fallback است چون بعضی مدل/فرمت‌ها ممکن است
+    // فایل animation خام را به‌صورت بصری پردازش نکنند.
+    // ------------------------------------------------------------
+    const thumb = animation.thumbnail;
+
+    if (thumb?.file_id) {
       try {
-        const fileUrl = await getFileUrl(reply.animation.file_id);
-        const fileRes = await fetchWithTimeout(fileUrl, {}, 25_000);
-        const b64 = arrayBufferToBase64(await fileRes.arrayBuffer());
-        const mime = reply.animation.mime_type || "video/mp4";
-        const contextPrompt = lang === "fa"
-          ? `[کاربر ${senderName} به یک گیف از ${replierName} ریپلای کرده و نوشته: "${userText}". محتوای گیف پیوست شده؛ آن را ببین و بر اساسش پاسخ بده.]`
-          : `[User ${senderName} replied to a GIF from ${replierName} saying: "${userText}". The GIF content is attached; view it and respond accordingly.]`;
-        parts.push({ inline_data: { mime_type: mime, data: b64 } });
-        parts.push({ text: contextPrompt });
-      } catch (e) {
-        logger.error("Failed to fetch replied animation", e);
-        parts.push({ text: `[کاربر ${senderName} روی یک گیف ریپلای کرده اما دریافت آن ناموفق بود.]\n\nپیام کاربر: ${userText}` });
+        const thumbUrl = await getFileUrl(thumb.file_id);
+        const thumbRes = await fetchExternalSafe(
+          thumbUrl,
+          {},
+          10_000,
+          5 * 1024 * 1024,
+        );
+
+        const thumbBytes = await readResponseBytesLimited(
+          thumbRes,
+          5 * 1024 * 1024,
+        );
+
+        if (thumbBytes.byteLength >= 100) {
+          parts.push({
+            inline_data: {
+              mime_type: "image/jpeg",
+              data: arrayBufferToBase64(bytesToArrayBuffer(thumbBytes)),
+            },
+          });
+
+          attached = true;
+        }
+      } catch (thumbErr) {
+        logger.warn(
+          `Failed to fetch replied GIF thumbnail: ${
+            thumbErr instanceof Error ? thumbErr.message : String(thumbErr)
+          }`,
+        );
       }
     }
+
+    // ------------------------------------------------------------
+    // 2) سپس خود فایل Animation را هم بده.
+    // MP4/WebM را به‌عنوان video بفرست.
+    // GIF خام را مستقیماً به Gemini تحمیل نکن؛ چون ممکن است
+    // در بعضی مسیرها به‌صورت visual input معتبر تفسیر نشود.
+    // ------------------------------------------------------------
+    try {
+      const fileUrl = await getFileUrl(animation.file_id);
+
+      const fileRes = await fetchExternalSafe(
+        fileUrl,
+        {},
+        25_000,
+        18 * 1024 * 1024,
+      );
+
+      const fileBytes = await readResponseBytesLimited(
+        fileRes,
+        18 * 1024 * 1024,
+      );
+
+      if (fileBytes.byteLength >= 100) {
+        const rawMime = String(animation.mime_type || "").toLowerCase();
+
+        // فقط MIMEهای ویدیویی معتبر را به مدل می‌دهیم.
+        // برای GIF خام، thumbnail کافی است و از ارسال image/gif
+        // که در بعضی مسیرها ممکن است unsupported شود جلوگیری می‌کنیم.
+        let videoMime = "";
+
+        if (rawMime === "video/mp4") {
+          videoMime = "video/mp4";
+        } else if (rawMime === "video/webm") {
+          videoMime = "video/webm";
+        } else if (rawMime === "video/quicktime") {
+          videoMime = "video/quicktime";
+        } else {
+          // اگر Telegram MIME درست گزارش نکرد، از file path کمک بگیر.
+          const lowerUrl = fileUrl.toLowerCase();
+
+          if (
+            lowerUrl.includes(".mp4") ||
+            rawMime.includes("mp4")
+          ) {
+            videoMime = "video/mp4";
+          } else if (
+            lowerUrl.includes(".webm") ||
+            rawMime.includes("webm")
+          ) {
+            videoMime = "video/webm";
+          }
+        }
+
+        if (videoMime) {
+          parts.push({
+            inline_data: {
+              mime_type: videoMime,
+              data: arrayBufferToBase64(bytesToArrayBuffer(fileBytes)),
+            },
+          });
+
+          attached = true;
+        }
+      }
+    } catch (fileErr) {
+      logger.warn(
+        `Failed to fetch replied GIF binary: ${
+          fileErr instanceof Error ? fileErr.message : String(fileErr)
+        }`,
+      );
+    }
+
+    // ------------------------------------------------------------
+    // 3) اگر هیچ باینری‌ای قابل دریافت نبود، مدل نباید شروع به
+    // حدس‌زدن از روی filename کند.
+    // ------------------------------------------------------------
+    if (!attached) {
+      logger.warn(
+        `Replied GIF had no readable visual payload. file_id=${animation.file_id}`,
+      );
+    }
+
+    parts.push({
+      text:
+        prompt +
+        (
+          attached
+            ? `\n\n[رسانه واقعی GIF/Animation به‌عنوان ورودی همین پیام پیوست شده است. فقط از همان ورودی بصری نتیجه‌گیری کن.]`
+            : `\n\n[هشدار: محتوای باینری GIF در این درخواست قابل دریافت نشد. درباره محتوای GIF یا نام فایل حدس نزن.]`
+        ),
+    });
+  } catch (e) {
+    logger.error("Failed to fetch replied animation", e);
+
+    parts.push({
+      text:
+        lang === "fa"
+          ? `[کاربر ${senderName} روی یک GIF/انیمیشن ریپلای کرده است، اما دریافت رسانه موفق نشد. درباره محتوای آن از روی نام فایل یا "[GIF]" حدس نزن.\n\nپیام کاربر: ${userText}]`
+          : `[User ${senderName} replied to a GIF/animation, but fetching the media failed. Do not infer its content from the filename or "[GIF]".\n\nUser message: ${userText}]`,
+    });
+  }
+}
     else if (reply.video) {
       try {
         const fileUrl = await getFileUrl(reply.video.file_id);
@@ -15168,7 +15732,25 @@ async function handleVoiceMessage(msg: TgMessage, env: Env): Promise<void> {
     recordRequest(session);
     releaseRequest(chat.id, reqId);
 
-    await processAIRequest(session, from, [{ text: transcript }], loadingMsg, env, requestOrigin);
+    // Send both the transcript and the original audio. The transcript remains the
+    // primary reliable text representation, while the binary audio preserves
+    // tone, non-speech sounds, pronunciation and anything STT may have missed.
+    try {
+      const audioRes = await fetchExternalSafe(fileUrl, {}, 20_000, 12 * 1024 * 1024);
+      const audioBytes = await readResponseBytesLimited(audioRes, 12 * 1024 * 1024);
+      const audioMime = String(voice.mime_type || "audio/ogg").toLowerCase();
+      const safeAudioMime = audioMime.startsWith("audio/") ? audioMime : "audio/ogg";
+      const voiceParts: Part[] = [
+        { inline_data: { mime_type: safeAudioMime, data: arrayBufferToBase64(bytesToArrayBuffer(audioBytes)) } },
+        { text: lang === "fa"
+          ? `[ویس واقعی کاربر به‌صورت فایل صوتی پیوست شده است. خود صوت را بررسی کن و از متن استخراج‌شده برای دقت بیشتر کمک بگیر. درباره نام فایل یا نداشتن دسترسی به صوت حدس نزن.\n\n🎙️ متن استخراج‌شده: ${transcript}`
+          : `[The user's actual voice note is attached as audio. Analyze the audio itself when possible and use the transcript as an additional aid. Do not infer from a filename or claim the audio is inaccessible.\n\n🎙️ Transcript: ${transcript}` }
+      ];
+      await processAIRequest(session, from, voiceParts, loadingMsg, env, requestOrigin);
+    } catch (audioErr) {
+      logger.warn(`Voice binary attachment failed; continuing with transcript only: ${audioErr instanceof Error ? audioErr.message : String(audioErr)}`);
+      await processAIRequest(session, from, [{ text: transcript }], loadingMsg, env, requestOrigin);
+    }
   } catch (e) {
     logger.error("Voice processing failed", e);
     const errMsg = e instanceof Error ? e.message : String(e);
@@ -15239,7 +15821,11 @@ if (photo?.length) { fileId = photo[photo.length - 1].file_id; mimeType = "image
     fileId = document.file_id; mimeType = document.mime_type ?? ""; fileName = document.file_name ?? "";
     if (mimeType === "application/pdf" || fileName.endsWith(".pdf")) { category = "pdf"; mimeType = "application/pdf"; }
     else if (mimeType.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac)$/i.test(fileName)) { category = "audio"; mimeType = mimeType || "audio/mpeg"; }
-    else if (mimeType.startsWith("text/") || /\.(txt|json|js|py|ts|csv|md|html|css|php|c|cpp|rs)$/i.test(fileName)) category = "text";
+    else if (mimeType.startsWith("text/") || /\.(txt|json|js|py|ts|csv|md|html|css|php|c|cpp|rs|log|xml|yaml|yml|toml)$/i.test(fileName)) category = "text";
+    else if (
+      /\.(doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp|rtf|epub)$/i.test(fileName) ||
+      /^(application\/(msword|vnd\.openxmlformats-officedocument\.(wordprocessingml\.document|spreadsheetml\.sheet|presentationml\.presentation)|vnd\.ms-excel|vnd\.ms-powerpoint|rtf|epub\+zip)|text\/rtf)$/i.test(mimeType)
+    ) category = "document";
     else { 
       await sendMessage(chat.id, "⚠️ فرمت فایل پشتیبانی نمی‌شود.", { reply_to_message_id: msg.message_id }); 
       return; 
@@ -15250,8 +15836,9 @@ if (photo?.length) { fileId = photo[photo.length - 1].file_id; mimeType = "image
 
   try {
     const fileUrl = await getFileUrl(fileId);
-    const fileRes = await fetchWithTimeout(fileUrl, {}, 30_000);
-    const arrayBuf = await fileRes.arrayBuffer();
+    const maxDownloadBytes = 18 * 1024 * 1024;
+    const fileRes = await fetchExternalSafe(fileUrl, {}, 30_000, maxDownloadBytes);
+    const arrayBuf = bytesToArrayBuffer(await readResponseBytesLimited(fileRes, maxDownloadBytes));
 
     if (category === "text") {
       const realType = detectBinarySignature(arrayBuf);
@@ -15286,8 +15873,14 @@ if (photo?.length) { fileId = photo[photo.length - 1].file_id; mimeType = "image
       parts.push({ inline_data: { mime_type: mimeType, data: b64 } });
       parts.push({ text: textPrompt });
     } else if (category === "gif") {
-      // 🎞️ تحلیل یکپارچه گیف: فریم اول (تامبنیل) به‌عنوان تصویر واقعی به مدل داده می‌شود
-      parts.push(...await buildGifAnalysisParts(animation!, caption, lang, env));
+      // 🎞️ خودِ فایل GIF/MP4 به Gemini می‌رود؛ thumbnail فقط fallback است.
+      parts.push(...await buildGifAnalysisParts(animation!, arrayBuf, mimeType, caption, lang));
+    } else if (category === "video") {
+      const videoMime = /^video\/(mp4|webm|mpeg|quicktime)$/i.test(mimeType) ? mimeType : "video/mp4";
+      parts.push({ inline_data: { mime_type: videoMime, data: arrayBufferToBase64(arrayBuf) } });
+      parts.push({ text: lang === "fa"
+        ? `[این یک ویدیوی واقعی است و فایل آن پیوست شده. خود ویدیو را بررسی کن: افراد/اشیا، اتفاقات، ترتیب رویدادهای مهم، متن‌های قابل مشاهده و فضای کلی را فقط از محتوای واقعی ویدیو استخراج کن. اگر چیزی را نمی‌توانی تشخیص بدهی، صریح بگو. درباره نام فایل یا دسترسی فرضی صحبت نکن.]\nدرخواست کاربر: ${caption?.trim() || "این ویدیو را تحلیل کن."}`
+        : `[This is a real video and the video file is attached. Analyze the actual video: people/objects, important events and sequence, visible text, and overall context. If something cannot be determined, say so explicitly. Never infer content from the filename.]\nUser request: ${caption?.trim() || "Analyze this video."}` });
     } else if (category === "text") {
       const text = new TextDecoder("utf-8", { fatal: false, ignoreBOM: false }).decode(arrayBuf).slice(0, 30_000);
       const ext = fileName.split(".").pop() ?? "txt";
@@ -15302,7 +15895,11 @@ if (photo?.length) { fileId = photo[photo.length - 1].file_id; mimeType = "image
     } else if (category === "pdf") {
       const b64 = arrayBufferToBase64(arrayBuf);
       parts.push({ inline_data: { mime_type: "application/pdf", data: b64 } });
-      parts.push({ text: caption?.trim() || (lang === "fa" ? "این فایل PDF را خلاصه و بررسی کن." : "Analyze and summarize this PDF.") });
+      parts.push({ text: caption?.trim() || (lang === "fa" ? "این فایل PDF را دقیق بخوان و در صورت سؤال، پاسخ را فقط بر اساس محتوای واقعی سند بده." : "Read this PDF carefully and answer based on its actual contents.") });
+    } else if (category === "document") {
+      const b64 = arrayBufferToBase64(arrayBuf);
+      parts.push({ inline_data: { mime_type: mimeType, data: b64 } });
+      parts.push({ text: caption?.trim() || (lang === "fa" ? `این سند «${fileName || "فایل"}» را بررسی کن و پاسخ را فقط بر اساس محتوای واقعی آن بده.` : `Analyze the attached document "${fileName || "file"}" and answer only from its actual contents.`) });
     } else {
       const b64 = arrayBufferToBase64(arrayBuf);
       parts.push({ inline_data: { mime_type: mimeType, data: b64 } });
@@ -15333,9 +15930,23 @@ if (photo?.length) { fileId = photo[photo.length - 1].file_id; mimeType = "image
 // SECTION: NOVA CONTROL CENTER (v2) — UNIFIED ADMIN SYSTEM
 async function handleAdmin(msg: TgMessage, env: Env): Promise<void> {
   if (!msg.from || msg.from.id !== cfg.BOT_OWNER_ID) return;
-  const sent = await sendMessage(msg.chat.id, "⏳ Loading admin control center...", { reply_to_message_id: msg.message_id });
-  adminPanelStates.set(msg.chat.id, { page: 0, perPage: 5, sortBy: "new", search: null });
-  await ccOverview(msg.chat.id, sent.message_id, env);
+
+  // کنترل‌سنتر جدید یک Telegram Mini App واقعی است؛ ارسال آن به‌صورت web_app
+  // باعث می‌شود initData معتبر Telegram داخل پنل قرار بگیرد و APIهای ادمین احراز هویت شوند.
+  if (msg.chat.type !== "private") {
+    await sendMessage(msg.chat.id, "🔐 پنل مدیریت فقط از چت خصوصی نوا باز می‌شود. در پیوی /admin را بزن.", { reply_to_message_id: msg.message_id });
+    return;
+  }
+
+  const adminUrl = `${requestOrigin || ""}/admin`;
+  await sendMessage(msg.chat.id, "👑 <b>Nova Control Center</b>\n\nپنل مدیریت را از دکمه زیر باز کن:", {
+    reply_to_message_id: msg.message_id,
+    parse_mode: "HTML",
+    reply_markup: JSON.stringify({
+      inline_keyboard: [[{ text: "⚙️ باز کردن پنل مدیریت", web_app: { url: adminUrl } }]],
+    }),
+  });
+  void env;
 }
 
 async function handleLog(msg: TgMessage): Promise<void> {
@@ -17030,8 +17641,17 @@ ctx.waitUntil(
       }
     }
 
-    if (url.pathname === "/admin") {
-      return new Response(JSON.stringify({ ok: true, admin: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+    if (url.pathname === "/admin" || url.pathname === "/admin/") {
+      return new Response(ADMIN_DASHBOARD_HTML, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https:; img-src 'self' data: https: blob:; frame-ancestors 'none'",
+          "X-Content-Type-Options": "nosniff",
+          "Cache-Control": "no-store",
+          "Referrer-Policy": "no-referrer",
+        },
+      });
     }
     if (url.pathname.startsWith("/api/admin/")) {
       try { return await handleAdminAPI(request, env, url); } catch (e) {
