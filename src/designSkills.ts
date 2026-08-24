@@ -1,24 +1,3 @@
-/**
- * ƝØVΛ — Advanced AI Agent Platform for Telegram
- * Copyright (C) 2026 Hsoofi82
- *
- * SPDX-License-Identifier: AGPL-3.0-or-later
- *
- * This file is part of Nova (https://github.com/Hsoofi82/NovaAgent).
- *
- * Nova is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option)
- * any later version.
- *
- * Nova is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
- * more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with Nova. If not, see <https://www.gnu.org/licenses/>.
- */
 export type DesignSurface = "webapp" | "game";
 export type ContentDirection = "rtl" | "ltr";
 
@@ -41,10 +20,20 @@ const SKILLS = [
   `POLISH: use subtle shadows, borders, radii and short transitions with restraint. No default browser controls, no giant empty canvas, no placeholder copy, no fake links and no unfinished sections.`,
 ] as const;
 
-export function buildUniversalDesignSkills(direction: ContentDirection | "auto", surface: DesignSurface): string {
+/**
+ * @param surfaceNote Optional replacement for the generic surface rule. The game
+ *   generator passes a genre-specific rule here so a horror game and a board
+ *   game do not receive the same "readable HUD, obvious controls" instruction.
+ */
+export function buildUniversalDesignSkills(
+  direction: ContentDirection | "auto",
+  surface: DesignSurface,
+  surfaceNote?: string,
+): string {
+  const note = surfaceNote?.trim();
   const surfaceRule = surface === "game"
-    ? `GAME SURFACE: prioritize a readable HUD, obvious controls, responsive canvas, start/pause/retry states and high-contrast gameplay.`
-    : `APPLICATION SURFACE: prioritize task completion, clear forms/results, responsive cards and useful feedback.`;
+    ? `GAME SURFACE: ${note || "prioritize a readable HUD, obvious controls, responsive canvas, start/pause/retry states and high-contrast gameplay."}`
+    : `APPLICATION SURFACE: ${note || "prioritize task completion, clear forms/results, responsive cards and useful feedback."}`;
   return [
     "GENERAL UI/UX SKILLS — apply all of them regardless of topic:",
     ...SKILLS.map((skill, index) => `${index + 1}. ${skill}`),

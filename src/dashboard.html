@@ -198,6 +198,31 @@
             outline-offset: 3px;
             border-radius: 6px;
         }
+        /* Accessible-but-invisible text for screen readers. */
+        .sr-only {
+            position: absolute;
+            width: 1px; height: 1px;
+            padding: 0; margin: -1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        .skipLink {
+            position: absolute;
+            inset-inline-start: 10px;
+            top: 10px;
+            z-index: 200;
+            transform: translateY(-200%);
+            transition: transform 0.2s var(--transition-smooth);
+            background: var(--accent);
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 12px;
+        }
+        .skipLink:focus-visible { transform: none; }
         ::-webkit-scrollbar {
             width: 3px;
         }
@@ -530,7 +555,7 @@
         }
 
         #statusPill {
-            margin-right: auto;
+            margin-inline-start: auto;
             flex-shrink: 0;
             display: flex;
             align-items: center;
@@ -611,33 +636,24 @@
             opacity: 1;
             pointer-events: auto;
         }
+        /* Logical properties: one rule that is correct in both LTR and RTL.
+           Replaces the previous pair of [dir]-duplicated physical rules. */
         #sidebar {
             position: absolute;
-            inset: 0;
-            right: auto;
-            left: -90%;
+            inset-block: 0;
+            inset-inline-start: -90%;
+            inset-inline-end: auto;
             width: min(86%, 340px);
             background: var(--bg-1);
-            border-right: 1px solid var(--border);
+            border-inline-end: 1px solid var(--border);
             z-index: 25;
             display: flex;
             flex-direction: column;
-            transition: left 0.32s var(--transition-smooth);
+            transition: inset-inline-start 0.32s var(--transition-smooth);
             box-shadow: var(--shadow-lg);
         }
-        [dir="rtl"] #sidebar {
-            left: auto;
-            right: -90%;
-            border-right: none;
-            border-left: 1px solid var(--border);
-            transition: right 0.32s var(--transition-smooth);
-        }
         #sidebar.open {
-            left: 0;
-        }
-        [dir="rtl"] #sidebar.open {
-            right: 0;
-            left: auto;
+            inset-inline-start: 0;
         }
         .sbHead {
             padding: calc(var(--safe-top) + 10px) 14px 10px;
@@ -1108,7 +1124,9 @@
         .copyBtn {
             position: absolute;
             top: 5px;
-            left: 5px;
+            /* Code blocks are LTR, but the button should still track the
+               reading direction of the surrounding UI. */
+            inset-inline-end: 5px;
             background: var(--bg-3);
             border: 1px solid var(--border);
             color: var(--text-dim);
@@ -1187,7 +1205,7 @@
         .imgEditBtn {
             position: absolute;
             bottom: 12px;
-            right: 12px;
+            inset-inline-end: 12px;
             width: 32px;
             height: 32px;
             border-radius: 50%;
@@ -1332,9 +1350,10 @@
         }
         .audioTrack i {
             position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
+            /* Progress must fill from the reading-start edge, i.e. from the
+               right in RTL. `left:0` made it fill backwards in Persian. */
+            inset-inline-start: 0;
+            inset-block: 0;
             border-radius: 99px;
             background: var(--accent-2);
             width: 0%;
@@ -1954,7 +1973,7 @@
         #lightbox .lbClose {
             position: absolute;
             top: calc(var(--safe-top) + 10px);
-            left: 12px;
+            inset-inline-start: 12px;
             width: 36px;
             height: 36px;
             border-radius: 50%;
@@ -2393,9 +2412,10 @@
 </style>
 </head>
 <body>
+    <a class="skipLink" href="#chatScroll">پرش به گفتگو</a>
     <div id="app">
         <header class="topbar">
-            <button class="menuBtn" id="menuBtn" type="button" aria-label="مکالمه‌ها">
+            <button class="menuBtn" id="menuBtn" type="button" aria-label="مکالمه‌ها" aria-expanded="false" aria-controls="sidebar">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 <span class="dot"></span>
             </button>
@@ -2421,7 +2441,7 @@
             <div class="sbHead">
                 <div class="sbTop"><b>گفتگوها</b><div class="sbCloseX" id="sbClose"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div></div>
                 <button class="newChatBtn" id="newChatBtn" type="button"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>گفتگوی جدید</button>
-                <div class="sbSearch"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input type="text" id="convSearch" placeholder="جستجو…"></div>
+                <div class="sbSearch"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><label class="sr-only" for="convSearch">جستجوی گفتگوها</label><input type="text" id="convSearch" placeholder="جستجو…"></div>
             </div>
             <div class="sbList" id="convList"></div>
             <div class="sbFoot">
@@ -2431,7 +2451,7 @@
             </div>
         </aside>
 
-        <main id="chatScroll">
+        <main id="chatScroll" role="log" aria-live="polite" aria-relevant="additions text" aria-label="گفتگو با نوا" tabindex="-1">
             <div id="hero">
                 <div class="heroOrb">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -2472,6 +2492,7 @@
             <form id="composerBar">
                 <button type="button" class="iconBtn" id="plusBtn" aria-label="ابزارها"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
                 <button type="button" class="iconBtn" id="attachBtn" aria-label="پیوست تصویر"><svg viewBox="0 0 24 24" fill="none"><path d="M21.4 11.1 12.7 19.8a5 5 0 0 1-7.1-7.1l8.5-8.5a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-2.8-2.8l7.8-7.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <label class="sr-only" for="inp">متن پیام</label>
                 <textarea id="inp" rows="1" placeholder="پیامتو بنویس…"></textarea>
                 <button type="submit" id="sendBtn" aria-label="ارسال"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 11.5 21 3l-6 18-3.5-7.5L3 11.5Z"/></svg></button>
             </form>
@@ -3056,16 +3077,35 @@
                     body.personaId = currentPersonaId; 
                 } 
                 
-                const serverProgressTimer = setInterval(async () => { 
-                    const { data } = await api("progress"); 
-                    if (data && data.ok && data.phase && thinkingEl) { 
-                        const detailLabel = thinkingEl.querySelectorAll(".thinkLabel")[1]; 
-                        if (detailLabel) detailLabel.textContent = data.phase; 
-                    } 
-                }, 1500); 
-                
-                const { status, data } = await api("chat", { method: "POST", body: JSON.stringify(body) });
-                clearInterval(serverProgressTimer);
+                // نظرسنجیِ پیشرفت باید بی‌همپوشانی و کران‌دار باشد:
+                // ۱) سقف abort در api() صد ثانیه است، پس یک درخواستِ progress کند باعث
+                //    می‌شد تیک‌های بعدی روی آن سوار شوند و درخواست‌ها انبار شوند — هر یک
+                //    یک اعتبارسنجی initData به‌علاوه یک خواندن ذخیره‌سازی روی سرور.
+                // ۲) اگر clearInterval از دست برود (خطای میانی، ناوبری)، تایمرِ رهاشده تا
+                //    بسته‌شدن Mini App هر ۱.۵ ثانیه درخواست می‌فرستد. سقف تیک آن را می‌بندد.
+                let pollInFlight = false;
+                let pollTicks = 0;
+                const POLL_MAX_TICKS = 160; // ≈ ۴ دقیقه با فاصله‌ی ۱۵۰۰ms
+                const serverProgressTimer = setInterval(async () => {
+                    if (pollInFlight) return;
+                    if (++pollTicks > POLL_MAX_TICKS) { clearInterval(serverProgressTimer); return; }
+                    pollInFlight = true;
+                    try {
+                        const { data } = await api("progress");
+                        if (data && data.ok && data.phase && thinkingEl) {
+                            const detailLabel = thinkingEl.querySelectorAll(".thinkLabel")[1];
+                            if (detailLabel) detailLabel.textContent = data.phase;
+                        }
+                    } finally { pollInFlight = false; }
+                }, 1500);
+
+                let status, data;
+                try {
+                    ({ status, data } = await api("chat", { method: "POST", body: JSON.stringify(body) }));
+                } finally {
+                    // api() خودش همه‌چیز را می‌گیرد، ولی توقفِ این تایمر نباید به آن وابسته باشد.
+                    clearInterval(serverProgressTimer);
+                }
                 hideThinking();
                 setSending(false); 
                 
@@ -3123,10 +3163,14 @@
                 capSheet.classList.contains("open") ? closeCapSheet() : openCapSheet(); });
 
             function openSidebar() { sidebar.classList.add("open");
-                sidebarBackdrop.classList.add("open"); }
+                sidebarBackdrop.classList.add("open");
+                const mb = document.getElementById("menuBtn");
+                if (mb) mb.setAttribute("aria-expanded", "true"); }
 
             function closeSidebar() { sidebar.classList.remove("open");
-                sidebarBackdrop.classList.remove("open"); }
+                sidebarBackdrop.classList.remove("open");
+                const mb = document.getElementById("menuBtn");
+                if (mb) mb.setAttribute("aria-expanded", "false"); }
             menuBtn.addEventListener("click", () => { haptic("impact", "light");
                 openSidebar(); });
             sbClose.addEventListener("click", closeSidebar);

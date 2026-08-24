@@ -1,28 +1,12 @@
-/**
- * ƝØVΛ — Advanced AI Agent Platform for Telegram
- * Copyright (C) 2026 Hsoofi82
- *
- * SPDX-License-Identifier: AGPL-3.0-or-later
- *
- * This file is part of Nova (https://github.com/Hsoofi82/NovaAgent).
- *
- * Nova is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option)
- * any later version.
- *
- * Nova is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
- * more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with Nova. If not, see <https://www.gnu.org/licenses/>.
- */
-import { assessVisualQuality, buildUniversalDesignSkills, type ContentDirection, type VisualQualityReport } from "./designSkills";
+import {
+  assessVisualQuality,
+  buildUniversalDesignSkills,
+  type ContentDirection,
+  type VisualQualityReport,
+} from "./designSkills";
 
 export const NOVA_WEB_BUILDER_NAME = "Nova Web Builder";
-export const NOVA_WEB_BUILDER_VERSION = "0.1.5 (Turbo Ultra)";
+export const NOVA_WEB_BUILDER_VERSION = "0.2.0 (Design-System Enforced)";
 
 const MAX_DESCRIPTION_CHARS = 2_000;
 const MAX_EXISTING_CODE_CHARS = 100_000;
@@ -44,18 +28,30 @@ function directionFor(text: string): ContentDirection {
   return /[\u0600-\u06ff]/.test(text) ? "rtl" : "ltr";
 }
 
-export function buildWebBuilderSystemInstruction(): string {
-  return `You are Nova Web Builder 3, a world-class frontend engineer and UI designer.
+export function buildWebBuilderSystemInstruction(direction: ContentDirection | "auto" = "auto"): string {
+  // The 12-skill design system in designSkills.ts existed but was never wired
+  // into any prompt — buildUniversalDesignSkills() had zero callers, so every
+  // generated app relied only on the short style blurb below. Injecting it here
+  // is the single highest-leverage quality change for generated output.
+  return `You are Nova Web Builder, a world-class frontend engineer and UI designer.
 Generate a complete, modern, interactive, single-file HTML5 web application.
 
-CRITICAL PERFORMANCE & OUTPUT RULES:
-- Output ONLY valid HTML starting with <!doctype html> and ending with </html>.
-- Do NOT output markdown code blocks (no \`\`\`html), no conversational text.
-- Use clean semantic HTML5, embedded modern CSS, and vanilla JavaScript.
-- Provide a sleek Dark Mode UI with vibrant gradients, rounded cards, and smooth micro-interactions.
-- Must be 100% fully functional with complete working logic (no placeholders, no TODOs).
-- Include interactive feedback (sound effects via Web Audio or toast messages where appropriate).
-- Ensure high responsiveness for mobile and desktop screens.`;
+OUTPUT CONTRACT (violating any of these makes the output unusable):
+- Output ONLY valid HTML: start with <!doctype html>, end with </html>.
+- No markdown fences, no commentary, no explanation before or after.
+- Everything inline in ONE file: no external CSS/JS/font/image requests, no build step, no CDN.
+- No eval(), no new Function(), no document.write() — these are rejected by the validator.
+- Fully working logic. No TODOs, no placeholder copy, no dead controls, no fake links.
+
+${buildUniversalDesignSkills(direction, "webapp")}
+
+ENGINEERING REQUIREMENTS:
+- Structure state explicitly: a single state object, pure render function(s), and event handlers that mutate state then re-render. Avoid scattered ad-hoc DOM mutation.
+- Handle empty input, invalid input, and boundary values on every control.
+- Provide visible loading / empty / error states wherever an operation can fail or return nothing.
+- Persist user-owned preferences with try/catch around storage; storage failure must never break the app.
+- Keep the DOM small: build lists with a single innerHTML assignment or a fragment, not per-item reflows.
+- Escape any user-supplied string before inserting it into HTML.`;
 }
 
 function clip(value: string, max: number): string {
@@ -95,27 +91,77 @@ export function extractWebAppHtml(value: string): string {
   const htmlStart = source.search(/<html\b/i);
   const start = doctype >= 0 ? doctype : htmlStart;
   if (start < 0) {
-    if (source.includes("<body") || source.includes("<div") || source.includes("<script")) {
+    // Case-insensitive so <BODY>/<DIV>/<SCRIPT> fragments are still recognised.
+    if (/<(body|div|script|main|section|header)\b/i.test(source)) {
       return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>${source}</body></html>`;
     }
     return "";
   }
-  const endTag = source.toLowerCase().lastIndexOf("</html>");
-  return source.slice(start, endTag >= start ? endTag + 7 : undefined).trim();
+  // Locate the closing tag case-insensitively over the ORIGINAL string, so the
+  // index and length refer to the same text. The previous
+  // `toLowerCase().lastIndexOf("</html>")` also missed `</html >` (legal
+  // whitespace), which left trailing junk attached to the document.
+  let sliceEnd: number | undefined;
+  const closeRe = /<\/html\s*>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = closeRe.exec(source)) !== null) {
+    if (match.index >= start) sliceEnd = match.index + match[0].length;
+  }
+  return source.slice(start, sliceEnd).trim();
 }
 
 export function isWebAppComplete(code: string): boolean {
   const html = extractWebAppHtml(code);
   if (html.length < 300 || html.length > MAX_HTML_CHARS) return false;
   if (/\b(eval|new\s+Function|document\.write)\s*\(/i.test(html)) return false;
-  return html.includes("<script") && (html.includes("<!doctype html") || html.includes("<html"));
+  // Case-insensitive: <SCRIPT>/<HTML>/<!DOCTYPE> are valid HTML and models do
+  // emit them, but the original substring checks were case-sensitive so such
+  // output was rejected outright.
+  if (!/<script\b/i.test(html)) return false;
+  if (!/<!doctype\s+html/i.test(html) && !/<html\b/i.test(html)) return false;
+  // Truncated output used to pass this gate: it only checked that <script> and a
+  // doctype were PRESENT, so a response cut off mid-function was declared
+  // "complete" and shipped — the browser then rendered a blank page because the
+  // unterminated script swallowed the rest of the document. Require balanced
+  // <script> tags and a closed document; salvageWebApp() repairs the rest.
+  const opens = (html.match(/<script\b[^>]*>/gi) ?? []).length;
+  const closes = (html.match(/<\/script\s*>/gi) ?? []).length;
+  if (opens !== closes) return false;
+  return /<\/html\s*>\s*$/i.test(html);
+}
+
+/**
+ * Structural + visual validation of a generated app.
+ *
+ * `assessVisualQuality` (12-point design-system scorer) previously had no
+ * callers at all. This wires it in so the generator can tell "structurally
+ * parseable" apart from "actually a finished-looking app", and report why.
+ */
+export function validateWebApp(code: string, directionHint?: ContentDirection): WebAppValidationReport {
+  const html = extractWebAppHtml(code);
+  const direction = directionHint ?? directionFor(html);
+  const structuralPass = isWebAppComplete(html);
+  const visual = assessVisualQuality(html, direction);
+  return { ...visual, structuralPass, direction };
 }
 
 export function salvageWebApp(partial: string): string {
   let html = extractWebAppHtml(partial);
   if (!html || html.length > MAX_HTML_CHARS) return "";
-  if (!html.startsWith("<!doctype") && !html.startsWith("<!DOCTYPE")) {
+  if (!/^<!doctype/i.test(html)) {
     html = "<!doctype html>\n" + html;
+  }
+  // Generation can be cut off INSIDE a <script>. Appending </body></html> after
+  // an unterminated script leaves the closing tags inside the script body, so the
+  // browser parses no markup at all and renders a blank page. Close the script
+  // first when the open/close counts disagree.
+  const opens = (html.match(/<script\b[^>]*>/gi) ?? []).length;
+  const closes = (html.match(/<\/script\s*>/gi) ?? []).length;
+  if (opens > closes) {
+    // Drop a trailing partial statement so the recovered script can still parse,
+    // then balance every unclosed <script>.
+    html = html.replace(/[^\n;{}]*$/, "");
+    html += "\n/* truncated by generator */\n" + "</script>".repeat(opens - closes);
   }
   if (!/<\/body>/i.test(html)) html += "\n</body>";
   if (!/<\/html>/i.test(html)) html += "\n</html>";

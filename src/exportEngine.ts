@@ -1,30 +1,10 @@
-/**
- * ƝØVΛ — Advanced AI Agent Platform for Telegram
- * Copyright (C) 2026 Hsoofi82
- *
- * SPDX-License-Identifier: AGPL-3.0-or-later
- *
- * This file is part of Nova (https://github.com/Hsoofi82/NovaAgent).
- *
- * Nova is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option)
- * any later version.
- *
- * Nova is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
- * more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with Nova. If not, see <https://www.gnu.org/licenses/>.
- */
 
 import {
   NOVA_FONT_TTF_B64,
   NOVA_FONT_UNI2GID,
   NOVA_FONT_GID2ADV,
 } from "./novaFont";
+import { sanitizeHyperlink } from "./core";
 
 /* ════════════════════════════════════════════════════════════════════════
  * SECTION 1 — PUBLIC TYPES
@@ -236,12 +216,31 @@ function parseInline(raw: string): Inline[] {
     if (ch === "[") {
       const close = text.indexOf("]", i);
       if (close > i && text[close + 1] === "(") {
-        const paren = text.indexOf(")", close + 2);
+        // Match the CLOSING paren at depth 0 rather than the first ")": link
+        // targets legitimately contain balanced parens
+        // (https://en.wikipedia.org/wiki/Foo_(bar)), and stopping early both
+        // corrupted the URL and split the rest of the line into stray text.
+        let depth = 1;
+        let paren = -1;
+        for (let k = close + 2; k < text.length; k++) {
+          const c = text[k];
+          if (c === "(") depth++;
+          else if (c === ")") { depth--; if (depth === 0) { paren = k; break; } }
+        }
         if (paren > close) {
           const label = text.slice(i + 1, close);
-          const url = text.slice(close + 2, paren).trim();
-          // labels may themselves contain styling
-          for (const seg of parseInline(label)) out.push({ ...seg, link: url });
+          const rawUrl = text.slice(close + 2, paren).trim();
+          // Sanitize ONCE, here at the parse boundary, so every renderer
+          // (PDF annotations, HTML href, DOCX/PPTX relationships) inherits the
+          // scheme allowlist. Link targets come from model output and fetched
+          // pages, and `javascript:` / `data:text/html` in a PDF annotation or
+          // an exported page is live active content in a real viewer.
+          const url = sanitizeHyperlink(rawUrl);
+          // labels may themselves contain styling; drop only the unsafe target,
+          // never the visible text.
+          for (const seg of parseInline(label)) {
+            out.push(url ? { ...seg, link: url } : { ...seg });
+          }
           i = paren + 1;
           continue;
         }
@@ -383,9 +382,17 @@ export function parseDocument(input: string, opts: ExportOptions = {}): ParsedDo
     }
 
     // standalone image  ![alt](url)
-    const img = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    // Greedy inner group + anchored ")" so URLs containing parentheses
+    // (Wikipedia-style, or "javascript:alert(1)") match as ONE target instead of
+    // truncating at the first ")" — which previously made such images parse as
+    // plain text and silently bypass URL sanitization.
+    const img = trimmed.match(/^!\[([^\]]*)\]\((.+)\)$/);
     if (img) {
-      blocks.push({ type: "image", alt: img[1], url: img[2].trim() });
+      // Image URLs are rendered as a visible placeholder that doubles as a
+      // hyperlink (see renderImagePlaceholder / DocxRenderer), so the same
+      // scheme allowlist applies. An unsafe target keeps the alt text but
+      // becomes non-clickable rather than being dropped entirely.
+      blocks.push({ type: "image", alt: img[1], url: sanitizeHyperlink(img[2]) ?? "" });
       i++;
       continue;
     }
@@ -796,6 +803,9 @@ function buildZip(files: Array<{ name: string; data: string | Uint8Array }>): Ui
 function zipSync(parts: Array<{ path: string; data: string | Uint8Array }>): Uint8Array {
   return buildZip(parts.map(p => ({ name: p.path, data: p.data })));
 }
+
+/** Public API: build a ZIP archive from named string/binary entries. */
+export { buildZip as buildProjectZip };
 
 /* ════════════════════════════════════════════════════════════════════════
  * SECTION 6 — PDF FONT METRICS  (Standard-14 AFM widths, units/1000 em)
@@ -1531,7 +1541,7 @@ class PdfBuilder {
     );
     this.cursorY += 16;
     const label = this.clip(("[img] " + (b.alt || b.url)).replace(/[^\x20-\x7e]/g, ""), 84);
-    const labelRun: LaidRun = { text: label, style: "italic", link: b.url, w: this.measure(label, "italic", 10) };
+    const labelRun: LaidRun = { text: label, style: "italic", link: b.url || undefined, w: this.measure(label, "italic", 10) };
     this.emitLine(
       [labelRun],
       MARGIN_X + 12, 10, this.theme.textFaint, 14,
@@ -1817,8 +1827,15 @@ class PdfBuilder {
       // link annotations
       const annotNums: number[] = [];
       for (const l of pg.links) {
+        // Defence in depth: parseInline already applied the scheme allowlist,
+        // but a link annotation is live active content in a PDF viewer, so
+        // re-check here rather than trusting an upstream invariant.
+        const safe = sanitizeHyperlink(l.url);
+        if (!safe) continue;
         const rect = `[${l.x.toFixed(2)} ${l.y.toFixed(2)} ${(l.x + l.w).toFixed(2)} ${(l.y + l.h).toFixed(2)}]`;
-        const uri = l.url.replace(/[()\\]/g, "\\$&");
+        // Escape PDF string-literal metacharacters; strip raw newlines which
+        // would terminate the literal and corrupt the object.
+        const uri = safe.replace(/[()\\]/g, "\\$&").replace(/[\r\n]+/g, "");
         annotNums.push(addObj(`<< /Type /Annot /Subtype /Link /Rect ${rect} /Border [0 0 0] /A << /S /URI /URI (${uri}) >> >>`));
       }
       const annotsRef = annotNums.length ? ` /Annots [${annotNums.map(n => `${n} 0 R`).join(" ")}]` : "";
@@ -1962,6 +1979,8 @@ class DocxRenderer {
 
   /** Register an external hyperlink relationship; returns its r:id. */
   private addHyperlink(url: string): string {
+    // Re-validate: Word follows a .docx hyperlink relationship on click.
+    url = sanitizeHyperlink(url) ?? "";
     const id = `rId${100 + this.relSeq++}`;
     this.rels.push(
       `<Relationship Id="${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="${xmlEsc(url)}" TargetMode="External"/>`,
@@ -2034,7 +2053,7 @@ class DocxRenderer {
       case "table":
         return this.table(b);
       case "image":
-        return this.para([{ text: `[${b.alt || "image"}] ${b.url}`, italic: true, link: b.url }], { style: "Body" });
+        return this.para([{ text: `[${b.alt || "image"}] ${b.url}`.trim(), italic: true, link: b.url || undefined }], { style: "Body" });
       case "hr":
         return `<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="${hex(this.theme.rule)}"/></w:pBdr></w:pPr></w:p>`;
     }
@@ -2945,8 +2964,18 @@ export function exportDocument(content: string, options: ExportOptions = {}): Ex
   const doc = parseDocument(content, opts);
   const rtl = opts.rtl ?? doc.rtl;
 
-  let format = opts.format ?? "pdf";
-  let note: string | undefined;
+  // Normalize the requested format instead of indexing RENDERERS blindly.
+  // `format` reaches this function from model-supplied tool arguments, so an
+  // unknown value (`"docxx"`, `"PDF"`, `""`) previously threw
+  // "RENDERERS[format] is not a function", and a prototype key (`"constructor"`)
+  // returned a bogus object with undefined bytes. Both are now impossible.
+  const requested = String(opts.format ?? "pdf").trim().toLowerCase();
+  const format: ExportFormat = Object.prototype.hasOwnProperty.call(RENDERERS, requested)
+    ? (requested as ExportFormat)
+    : "pdf";
+  const note: string | undefined = format === requested
+    ? undefined
+    : `Unsupported format "${String(opts.format)}" — exported as PDF instead.`;
 
   // NOTE: Persian/Arabic PDF used to be force-routed to DOCX because the base-14
   // fonts can't shape Arabic. Nova Office now embeds a real Unicode font and does
@@ -2956,7 +2985,7 @@ export function exportDocument(content: string, options: ExportOptions = {}): Ex
   // XLSX only makes sense with tabular data; if none, still emit an outline sheet
   // (handled inside the renderer) — no reroute needed.
 
-  const bytes = RENDERERS[format](doc, { ...opts, rtl });
+  const bytes = RENDERERS[format](doc, { ...opts, format, rtl });
   const meta = MIME[format];
   return { bytes, mime: meta.mime, ext: meta.ext, format, note };
 }

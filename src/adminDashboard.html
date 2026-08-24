@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
@@ -9,151 +8,675 @@
 <title>Nova — Admin Control Center</title>
 <script src="/tg-webapp.js"></script>
 <style>
-:root{--bg:#06080f;--surface:#0e1422;--surface2:#141d30;--border:#243149;--text:#edf3ff;--muted:#8d99b2;--accent:#7c6ff7;--accent2:#35d7ac;--bad:#ff6675;--warn:#ffbf63;--good:#35d7ac;--shadow:0 16px 48px rgba(0,0,0,.35);--radius:16px;
-  --app-height:100vh;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);--safe-left:env(safe-area-inset-left,0px);--safe-right:env(safe-area-inset-right,0px)}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%}
-body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;background:radial-gradient(circle at top,#121b30,#06080f 50%,#04060b);color:var(--text);-webkit-font-smoothing:antialiased;overscroll-behavior-y:none}
-button{font:inherit;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:12px;min-height:44px;padding:0 14px;transition:background .15s,border-color .15s,transform .15s}
-button:hover{border-color:#4a5e86}button:active{transform:scale(.97)}button:disabled{opacity:.45;cursor:not-allowed;transform:none}
-.primary{background:linear-gradient(135deg,#7b6df6,#976aff);border:0;color:#fff}.danger{background:#5f202b;border-color:#7e3441}.ghost{background:transparent}
-.sm{min-height:34px;padding:0 10px;font-size:12.5px;border-radius:9px}
-input,select,textarea{font:inherit;background:#090f18;color:var(--text);border:1px solid var(--border);border-radius:12px;min-height:44px;padding:0 12px}
-input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,111,247,.16)}
-textarea{padding:10px;resize:vertical;width:100%;line-height:1.6}a{color:var(--accent2);text-decoration:none}
-label.lbl{display:block;font-size:11.5px;color:var(--muted);margin:0 0 5px;font-weight:600}
+/* ══════════════════════════════════════════════════════════════════════
+   NOVA CONTROL CENTER — DESIGN SYSTEM
+   All values come from tokens below. No ad-hoc colours/radii/spacing.
+   RTL-first: every directional rule uses logical properties so the same
+   stylesheet is correct in both dir=rtl and dir=ltr.
+   ══════════════════════════════════════════════════════════════════════ */
+:root{
+  /* ── surfaces: layered, each step lighter than the last ── */
+  --bg:#070910;
+  --surface-1:#0d1220;          /* cards */
+  --surface-2:#131b2c;          /* raised controls */
+  --surface-3:#1a2438;          /* hover */
+  --sunken:#080d16;             /* inputs, list rows */
+
+  /* ── borders ── */
+  --border:#212d44;
+  --border-strong:#31415f;
+  --border-focus:#6f63e8;
+
+  /* ── text ── */
+  --text:#eaf0ff;
+  --text-soft:#a8b4cc;
+  --muted:#7c8aa5;
+  --text-inverse:#080b12;
+
+  /* ── brand + semantic ── */
+  --accent:#7c6ff7;
+  --accent-soft:rgba(124,111,247,.15);
+  --accent-2:#2fd3a7;
+  --good:#2fd3a7;
+  --good-soft:rgba(47,211,167,.13);
+  --warn:#f5b855;
+  --warn-soft:rgba(245,184,85,.13);
+  --bad:#ff6070;
+  --bad-soft:rgba(255,96,112,.13);
+
+  /* ── type scale ── */
+  --fs-xs:11px; --fs-sm:12.5px; --fs-base:13.5px; --fs-md:15px;
+  --fs-lg:17px; --fs-xl:21px; --fs-2xl:26px;
+  --lh-tight:1.35; --lh:1.6;
+
+  /* ── spacing scale (4px base) ── */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s8:32px;
+
+  /* ── radii ── */
+  --r-sm:9px; --r-md:12px; --r-lg:16px; --r-xl:20px; --r-full:999px;
+
+  /* ── elevation ── */
+  --shadow-sm:0 2px 8px rgba(0,0,0,.28);
+  --shadow:0 12px 32px rgba(0,0,0,.34);
+  --shadow-lg:0 24px 64px rgba(0,0,0,.45);
+
+  /* ── motion ── */
+  --ease:cubic-bezier(.22,1,.36,1);
+  --dur-fast:.14s; --dur:.22s;
+
+  /* ── layout ── */
+  --sidebar-w:216px;
+  --tap:44px;                   /* minimum touch target */
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --safe-left:env(safe-area-inset-left,0px);
+  --safe-right:env(safe-area-inset-right,0px);
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;min-width:0}
+html,body{margin:0;height:100%}
+body{
+  font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;
+  font-size:var(--fs-base);line-height:var(--lh);
+  background:
+    radial-gradient(1200px 600px at 50% -10%,rgba(124,111,247,.10),transparent 60%),
+    radial-gradient(800px 500px at 100% 0%,rgba(47,211,167,.06),transparent 55%),
+    var(--bg);
+  color:var(--text);-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;
+}
+
+/* Numbers/IDs/URLs must stay LTR even inside RTL prose. */
+.ltr,.mono,code{direction:ltr;unicode-bidi:isolate;text-align:start}
+
+/* ── focus: visible for keyboards, quiet for pointers ───────────────── */
+:focus{outline:none}
+:focus-visible{
+  outline:2px solid var(--border-focus);
+  outline-offset:2px;
+  border-radius:var(--r-sm);
+}
+.skip-link{
+  position:absolute;inset-inline-start:var(--s3);top:var(--s3);z-index:100;
+  transform:translateY(-200%);transition:transform var(--dur) var(--ease);
+  background:var(--accent);color:#fff;padding:var(--s2) var(--s4);
+  border-radius:var(--r-sm);font-weight:700;
+}
+.skip-link:focus-visible{transform:none}
+
+/* ── controls ───────────────────────────────────────────────────────── */
+button{
+  font:inherit;cursor:pointer;color:var(--text);
+  border:1px solid var(--border);background:var(--surface-2);
+  border-radius:var(--r-md);min-height:var(--tap);padding:0 var(--s4);
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);
+  transition:background var(--dur-fast),border-color var(--dur-fast),transform var(--dur-fast),opacity var(--dur-fast);
+}
+button:hover:not(:disabled){background:var(--surface-3);border-color:var(--border-strong)}
+button:active:not(:disabled){transform:scale(.975)}
+button:disabled{opacity:.42;cursor:not-allowed}
+button[aria-busy="true"]{opacity:.6;cursor:progress}
+.primary{background:linear-gradient(135deg,#7b6df6,#9a6aff);border-color:transparent;color:#fff;font-weight:650}
+.primary:hover:not(:disabled){background:linear-gradient(135deg,#8b7ef8,#a87bff);border-color:transparent}
+.danger{background:var(--bad-soft);border-color:#6d2a35;color:#ff9ba5;font-weight:600}
+.danger:hover:not(:disabled){background:rgba(255,96,112,.22);border-color:#8d3644}
+.ghost{background:transparent}
+.ghost:hover:not(:disabled){background:var(--surface-2)}
+.sm{min-height:34px;padding:0 var(--s3);font-size:var(--fs-sm);border-radius:var(--r-sm)}
+.icon-btn{width:var(--tap);height:var(--tap);padding:0;flex:0 0 auto}
+
+input,select,textarea{
+  font:inherit;width:100%;background:var(--sunken);color:var(--text);
+  border:1px solid var(--border);border-radius:var(--r-md);
+  min-height:var(--tap);padding:0 var(--s3);
+  transition:border-color var(--dur-fast),box-shadow var(--dur-fast);
+}
+input::placeholder,textarea::placeholder{color:var(--muted)}
+input:focus,select:focus,textarea:focus{
+  outline:0;border-color:var(--border-focus);
+  box-shadow:0 0 0 3px var(--accent-soft);
+}
+input[aria-invalid="true"]{border-color:var(--bad)}
+textarea{padding:var(--s3);resize:vertical;line-height:var(--lh);min-height:96px}
+select{appearance:none;padding-inline-end:var(--s8);
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(var(--s4) - 3px) 50%,calc(var(--s4) + 2px) 50%;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+html[dir="rtl"] select{background-position:calc(var(--s4) - 3px) 50%,calc(var(--s4) + 2px) 50%}
+a{color:var(--accent-2);text-decoration:none}
+a:hover{text-decoration:underline}
+label.lbl{display:block;font-size:var(--fs-xs);color:var(--text-soft);margin-block-end:var(--s1);font-weight:650;letter-spacing:.2px}
+hr{border:0;border-block-start:1px solid var(--border);margin-block:var(--s3)}
+
+/* ── app shell ──────────────────────────────────────────────────────── */
 #app{display:flex;height:100%;flex-direction:column}
-.topbar{display:flex;align-items:center;gap:10px;padding:calc(var(--safe-top) + 10px) max(14px,var(--safe-right)) 10px max(14px,var(--safe-left));border-bottom:1px solid var(--border);background:rgba(10,14,24,.85);backdrop-filter:blur(10px);flex:0 0 auto}
-.brand{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
-.logo{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#7c6ff7,#35d7ac);font-weight:900;flex:0 0 auto;color:#0b0e16}
-.brand b{font-size:16px;display:block}.brand span{font-size:11px;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hamb{display:none;width:44px;height:44px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-size:18px;flex:0 0 auto;padding:0}
+.topbar{
+  display:flex;align-items:center;gap:var(--s3);flex:0 0 auto;
+  padding:calc(var(--safe-top) + var(--s3)) max(var(--s4),var(--safe-right)) var(--s3) max(var(--s4),var(--safe-left));
+  border-block-end:1px solid var(--border);
+  background:rgba(9,12,21,.82);backdrop-filter:blur(14px);
+  position:sticky;top:0;z-index:20;
+}
+.brand{display:flex;align-items:center;gap:var(--s3);flex:1;min-width:0}
+.logo{
+  width:40px;height:40px;border-radius:var(--r-md);display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  font-weight:900;font-size:var(--fs-lg);color:var(--text-inverse);flex:0 0 auto;
+  box-shadow:0 4px 14px rgba(124,111,247,.32);
+}
+.brand b{font-size:var(--fs-md);display:block;line-height:1.25}
+.brand span{font-size:var(--fs-xs);color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hamb{display:none}
 .body{display:flex;flex:1;min-height:0}
-.sidebar{width:210px;flex-shrink:0;border-left:1px solid var(--border);background:rgba(10,14,24,.5);padding:10px 10px calc(var(--safe-bottom) + 10px);overflow:auto}
-.navitem{display:flex;align-items:center;gap:10px;width:100%;text-align:right;background:transparent;border:0;min-height:44px;padding:0 10px;border-radius:12px;color:var(--text);margin-bottom:4px}
-.navitem .ni{width:24px;text-align:center;font-size:16px}
-.navitem:hover{background:var(--surface2)}
-.navitem.active{background:linear-gradient(135deg,rgba(124,111,247,.25),rgba(53,215,172,.15));border:1px solid #4e61a0}
-.main{flex:1;min-width:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px max(14px,var(--safe-right)) calc(var(--safe-bottom) + 18px) max(14px,var(--safe-left))}
-/* تب‌ها: فقط پنل فعال دیده می‌شود. .dpanel داخل drawer از این قاعده مستثناست. */
+
+/* ── sidebar ────────────────────────────────────────────────────────── */
+.sidebar{
+  width:var(--sidebar-w);flex-shrink:0;overflow:auto;
+  border-inline-end:1px solid var(--border);
+  background:rgba(9,12,21,.45);
+  padding:var(--s3) var(--s3) calc(var(--safe-bottom) + var(--s3));
+}
+.navitem{
+  display:flex;align-items:center;gap:var(--s3);width:100%;
+  text-align:start;justify-content:flex-start;
+  background:transparent;border:1px solid transparent;
+  min-height:var(--tap);padding:0 var(--s3);border-radius:var(--r-md);
+  color:var(--text-soft);font-size:var(--fs-base);
+}
+.navitem .ni{width:22px;text-align:center;font-size:var(--fs-md);flex:0 0 auto}
+.navitem:hover{background:var(--surface-2);color:var(--text);border-color:transparent}
+.navitem[aria-current="page"]{
+  background:linear-gradient(135deg,var(--accent-soft),rgba(47,211,167,.09));
+  border-color:var(--border-strong);color:var(--text);font-weight:650;
+}
+.navitem[aria-current="page"] .ni{filter:drop-shadow(0 0 6px rgba(124,111,247,.6))}
+
+/* ── main + panels ──────────────────────────────────────────────────── */
+.main{
+  flex:1;min-width:0;overflow:auto;-webkit-overflow-scrolling:touch;
+  padding:var(--s4) max(var(--s4),var(--safe-right)) calc(var(--safe-bottom) + var(--s5)) max(var(--s4),var(--safe-left));
+  scroll-behavior:smooth;
+}
 .main .panel{display:none}
-.main .panel.active{display:block;animation:fadeIn .22s cubic-bezier(.22,1,.36,1)}
-@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.card{background:rgba(14,20,34,.85);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px}
-.section-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border)}
-.section-head h2{font-size:15px;margin:0}
-.list{padding:12px;display:grid;gap:8px}
-.item{background:#0a1019;border:1px solid var(--border);border-radius:12px;padding:10px;min-width:0}.item b{display:block;margin-bottom:4px;word-break:break-word}.item small{color:var(--muted);display:block;word-break:break-word;line-height:1.55}
-.item-row{display:flex;justify-content:space-between;align-items:flex-start;gap:9px}
-.item-actions{display:flex;gap:6px;flex:0 0 auto;flex-wrap:wrap}
-.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin-bottom:14px}
-.metric{background:rgba(14,20,34,.85);border:1px solid var(--border);border-radius:14px;padding:12px;min-width:0}.metric span{font-size:11px;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.metric b{display:block;font-size:20px;margin-top:4px}
-.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}table{width:100%;border-collapse:collapse;min-width:640px}th,td{padding:10px;border-bottom:1px solid #1d2637;text-align:right;font-size:13px}th{position:sticky;top:0;background:#101827;color:var(--muted);font-size:11px;white-space:nowrap}
-.userbtn{background:0;border:0;width:100%;text-align:right;color:var(--text);padding:0;min-height:0}.userbtn:hover{color:#c2bbff}
-.tag{font-size:10px;padding:3px 8px;border-radius:999px;border:1px solid var(--border);display:inline-block;white-space:nowrap}.vip{border-color:#705fdf;color:#c7c1ff}.blocked{border-color:#71313b;color:#ff9ca6}
-.pill{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:999px;padding:5px 11px;font-size:11.5px;color:var(--muted)}
-.risk-high{color:#ff7b88}.risk-med{color:#ffca72}.risk-low{color:#5de6c0}.good-text{color:var(--good)}.bad-text{color:var(--bad)}
-.status{padding:16px;color:var(--muted);font-size:13px;text-align:center}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;padding:12px;border-bottom:1px solid var(--border)}.toolbar input{flex:1 1 170px;min-width:0}.toolbar-line{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
-.pager{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px;border-top:1px solid var(--border);flex-wrap:wrap}
-.drawer{position:fixed;inset:0;display:none;z-index:40}.drawer.open{display:block}
-.drawer .back{position:absolute;inset:0;background:rgba(0,0,0,.55)}
-.drawer .dpanel{position:absolute;top:0;bottom:0;right:0;width:min(280px,86%);background:var(--surface);border-left:1px solid var(--border);padding:calc(var(--safe-top) + 14px) 14px calc(var(--safe-bottom) + 14px);overflow:auto}
-.detail .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:8px;margin:12px 0}.detail .kv div{background:#0a1019;border:1px solid var(--border);border-radius:12px;padding:9px;min-width:0}.detail .kv span{display:block;color:var(--muted);font-size:10px}.detail .kv b{display:block;margin-top:4px;word-break:break-word}
-.detail .actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}.detail .actions button{width:100%}
-.detail .section{border-top:1px solid var(--border);margin-top:12px;padding-top:12px}.detail .section h3{font-size:12px;margin:0 0 8px}
-.dhead{display:flex;gap:12px;align-items:center}.avatar{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#7c6ff7,#35d7ac);display:grid;place-items:center;font-weight:900;font-size:20px;flex:0 0 auto;color:#0b0e16}
-.mono{font:12px ui-monospace,monospace;color:var(--muted);word-break:break-all}
-.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
-.chip{font-size:11px;padding:4px 9px;border-radius:999px;background:rgba(124,111,247,.14);border:1px solid rgba(124,111,247,.3);color:#cdc7ff}
-.bar{height:7px;border-radius:999px;background:var(--surface2);overflow:hidden;margin-top:7px}
-.bar>i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s cubic-bezier(.22,1,.36,1)}
-.chat{display:grid;gap:8px;max-height:58vh;overflow-y:auto;padding:2px}
-.msg{padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.65;max-width:88%;word-break:break-word;white-space:pre-wrap}
-.msg.user{background:linear-gradient(135deg,#7c6ff7,#976aff);color:#fff;margin-inline-start:auto;border-bottom-right-radius:4px}
-.msg.model{background:var(--surface2);border:1px solid var(--border);margin-inline-end:auto;border-bottom-left-radius:4px}
-.msg time{display:block;font-size:9.5px;opacity:.6;margin-top:4px}
-.toast{position:fixed;inset-inline:0;bottom:calc(var(--safe-bottom) + 20px);margin:0 auto;width:max-content;max-width:calc(100% - 32px);background:#101827;border:1px solid var(--border);padding:11px 16px;border-radius:12px;z-index:60;box-shadow:var(--shadow);font-size:13px;opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .24s,transform .24s}
+.main .panel.active{display:block;animation:panelIn var(--dur) var(--ease)}
+@keyframes panelIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.page-head{margin-block-end:var(--s4)}
+.page-head h1{font-size:var(--fs-xl);margin:0 0 var(--s1);letter-spacing:-.2px}
+.page-head p{margin:0;color:var(--muted);font-size:var(--fs-sm)}
+
+/* ── card ───────────────────────────────────────────────────────────── */
+.card{
+  background:linear-gradient(180deg,rgba(19,27,44,.7),rgba(13,18,32,.9));
+  border:1px solid var(--border);border-radius:var(--r-lg);
+  box-shadow:var(--shadow);overflow:hidden;margin-block-end:var(--s4);
+}
+.section-head{
+  display:flex;justify-content:space-between;align-items:center;gap:var(--s2);
+  padding:var(--s3) var(--s4);border-block-end:1px solid var(--border);
+  background:rgba(255,255,255,.015);
+}
+.section-head h2{font-size:var(--fs-md);margin:0;font-weight:650}
+.section-body{padding:var(--s4)}
+.list{padding:var(--s3);display:grid;gap:var(--s2)}
+
+/* ── list item ──────────────────────────────────────────────────────── */
+.item{
+  background:var(--sunken);border:1px solid var(--border);
+  border-radius:var(--r-md);padding:var(--s3);
+  transition:border-color var(--dur-fast),background var(--dur-fast);
+}
+.item:hover{border-color:var(--border-strong)}
+.item b{display:block;margin-block-end:var(--s1);word-break:break-word;font-weight:650}
+.item small{color:var(--muted);display:block;word-break:break-word;line-height:var(--lh);font-size:var(--fs-sm)}
+.item-row{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3)}
+.item-actions{display:flex;gap:var(--s2);flex:0 0 auto;flex-wrap:wrap}
+
+/* ── metrics ────────────────────────────────────────────────────────── */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--s3);margin-block-end:var(--s4)}
+.metric{
+  background:linear-gradient(180deg,rgba(19,27,44,.75),rgba(13,18,32,.92));
+  border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--s3) var(--s4);
+  position:relative;overflow:hidden;
+}
+.metric::before{
+  content:"";position:absolute;inset-block-start:0;inset-inline:0;height:2px;
+  background:linear-gradient(90deg,var(--accent),var(--accent-2));opacity:.55;
+}
+.metric span{font-size:var(--fs-xs);color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.metric b{display:block;font-size:var(--fs-xl);margin-block-start:var(--s1);font-weight:750;letter-spacing:-.4px;font-variant-numeric:tabular-nums}
+
+/* ── table ──────────────────────────────────────────────────────────── */
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th,td{padding:var(--s3);border-block-end:1px solid var(--border);text-align:start;font-size:var(--fs-base)}
+th{
+  position:sticky;top:0;z-index:1;background:var(--surface-2);
+  color:var(--text-soft);font-size:var(--fs-xs);white-space:nowrap;
+  font-weight:650;letter-spacing:.3px;
+}
+tbody tr{transition:background var(--dur-fast)}
+tbody tr:hover{background:rgba(255,255,255,.022)}
+td.num{font-variant-numeric:tabular-nums}
+.userbtn{
+  background:0;border:0;width:100%;text-align:start;justify-content:flex-start;
+  color:var(--text);padding:0;min-height:0;
+}
+.userbtn:hover{color:#c3bcff;background:transparent}
+
+/* ── tags / pills / chips ───────────────────────────────────────────── */
+.tag{
+  font-size:var(--fs-xs);padding:3px var(--s2);border-radius:var(--r-full);
+  border:1px solid var(--border);display:inline-block;white-space:nowrap;color:var(--text-soft);
+}
+.tag.vip{border-color:#6656d4;background:var(--accent-soft);color:#c9c3ff}
+.tag.blocked{border-color:#6d2a35;background:var(--bad-soft);color:#ff9ba5}
+.tag.ok{border-color:#22705d;background:var(--good-soft);color:var(--good)}
+.tag.warn{border-color:#7a5a24;background:var(--warn-soft);color:var(--warn)}
+.pill{
+  display:inline-flex;align-items:center;gap:var(--s1);
+  border:1px solid var(--border);border-radius:var(--r-full);
+  padding:5px var(--s3);font-size:var(--fs-sm);color:var(--text-soft);
+}
+.chips{display:flex;flex-wrap:wrap;gap:var(--s1);margin-block-start:var(--s1)}
+.chip{
+  font-size:var(--fs-xs);padding:4px var(--s2);border-radius:var(--r-full);
+  background:var(--accent-soft);border:1px solid rgba(124,111,247,.28);color:#cdc7ff;
+}
+.risk-high{color:#ff7b88;font-weight:650}.risk-med{color:var(--warn)}.risk-low{color:var(--good)}
+.good-text{color:var(--good)}.bad-text{color:var(--bad)}
+
+/* ── status / empty / skeleton ──────────────────────────────────────── */
+.status{padding:var(--s5) var(--s4);color:var(--muted);font-size:var(--fs-base);text-align:center}
+.empty{padding:var(--s8) var(--s4);text-align:center;color:var(--muted)}
+.empty .ico{font-size:32px;display:block;margin-block-end:var(--s2);opacity:.5}
+.empty b{display:block;color:var(--text-soft);margin-block-end:var(--s1);font-size:var(--fs-base)}
+.empty small{font-size:var(--fs-sm);line-height:var(--lh)}
+.skel{display:grid;gap:var(--s2);padding:var(--s3)}
+.skel i{
+  display:block;height:52px;border-radius:var(--r-md);
+  background:linear-gradient(90deg,var(--sunken) 25%,var(--surface-2) 50%,var(--sunken) 75%);
+  background-size:200% 100%;animation:shimmer 1.3s linear infinite;
+}
+@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+
+/* ── toolbar / pager ────────────────────────────────────────────────── */
+.toolbar{display:flex;gap:var(--s2);flex-wrap:wrap;padding:var(--s3);border-block-end:1px solid var(--border);align-items:center}
+.toolbar input,.toolbar select{flex:1 1 170px;width:auto}
+.toolbar button{flex:0 0 auto}
+.toolbar-line{display:flex;gap:var(--s2);flex-wrap:wrap;margin-block-start:var(--s2);align-items:center}
+.pager{display:flex;justify-content:space-between;align-items:center;gap:var(--s2);padding:var(--s3);border-block-start:1px solid var(--border);flex-wrap:wrap}
+.pager-group{display:flex;gap:var(--s2)}
+
+/* ── drawer (mobile nav) ────────────────────────────────────────────── */
+.drawer{position:fixed;inset:0;display:none;z-index:40}
+.drawer.open{display:block}
+.drawer .back{position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);animation:fadeIn var(--dur) var(--ease)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.drawer .dpanel{
+  position:absolute;inset-block:0;inset-inline-end:0;width:min(288px,86%);
+  background:var(--surface-1);border-inline-start:1px solid var(--border);
+  padding:calc(var(--safe-top) + var(--s4)) var(--s4) calc(var(--safe-bottom) + var(--s4));
+  overflow:auto;box-shadow:var(--shadow-lg);animation:slideIn var(--dur) var(--ease);
+}
+@keyframes slideIn{from{transform:translateX(var(--drawer-from,100%))}to{transform:none}}
+html[dir="rtl"] .drawer .dpanel{--drawer-from:-100%}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;margin-block-end:var(--s3)}
+.drawer-head b{font-weight:750;font-size:var(--fs-md)}
+
+/* ── user detail ────────────────────────────────────────────────────── */
+.detail .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:var(--s2);margin-block:var(--s3)}
+.detail .kv div{background:var(--sunken);border:1px solid var(--border);border-radius:var(--r-md);padding:var(--s2) var(--s3)}
+.detail .kv span{display:block;color:var(--muted);font-size:var(--fs-xs)}
+.detail .kv b{display:block;margin-block-start:var(--s1);word-break:break-word;font-variant-numeric:tabular-nums}
+.detail .actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:var(--s2)}
+.detail .actions button{width:100%}
+.detail .section{border-block-start:1px solid var(--border);margin-block-start:var(--s3);padding-block-start:var(--s3)}
+.detail .section h3{font-size:var(--fs-sm);margin:0 0 var(--s2);color:var(--text-soft);font-weight:650}
+.dhead{display:flex;gap:var(--s3);align-items:center}
+.avatar{
+  width:48px;height:48px;border-radius:var(--r-lg);flex:0 0 auto;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  display:grid;place-items:center;font-weight:900;font-size:var(--fs-xl);color:var(--text-inverse);
+}
+.mono{font:var(--fs-sm)/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);word-break:break-all}
+
+/* ── progress bar ───────────────────────────────────────────────────── */
+.bar{height:7px;border-radius:var(--r-full);background:var(--surface-2);overflow:hidden;margin-block-start:var(--s2)}
+.bar>i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .45s var(--ease)}
+
+/* ── chat transcript ────────────────────────────────────────────────── */
+.chat{display:grid;gap:var(--s2);max-height:58vh;overflow-y:auto;padding:2px}
+.msg{
+  padding:var(--s2) var(--s3);border-radius:var(--r-md);font-size:var(--fs-base);
+  line-height:var(--lh);max-width:88%;word-break:break-word;white-space:pre-wrap;
+}
+.msg.user{background:linear-gradient(135deg,var(--accent),#9a6aff);color:#fff;margin-inline-start:auto;border-end-end-radius:var(--s1)}
+.msg.model{background:var(--surface-2);border:1px solid var(--border);margin-inline-end:auto;border-end-start-radius:var(--s1)}
+.msg time{display:block;font-size:9.5px;opacity:.62;margin-block-start:var(--s1)}
+
+/* ── toast ──────────────────────────────────────────────────────────── */
+.toast{
+  position:fixed;inset-inline:0;bottom:calc(var(--safe-bottom) + var(--s5));
+  margin:0 auto;width:max-content;max-width:calc(100% - var(--s8));
+  background:var(--surface-2);border:1px solid var(--border-strong);
+  padding:var(--s3) var(--s4);border-radius:var(--r-md);z-index:60;
+  box-shadow:var(--shadow-lg);font-size:var(--fs-base);
+  opacity:0;transform:translateY(12px);pointer-events:none;
+  transition:opacity var(--dur),transform var(--dur);
+}
 .toast.show{opacity:1;transform:none}
-.toast.err{border-color:#7e3441;color:#ffb3ba}.toast.ok{border-color:#2c7d68;color:var(--good)}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:16px;z-index:70}
-.modal.open{display:flex}
-.modalbox{width:min(520px,100%);max-height:86vh;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:17px;box-shadow:var(--shadow)}
-.modalbox h3{margin:0 0 7px;font-size:16px}.modalbox p{color:var(--muted);font-size:13px;line-height:1.6;margin:0}
-.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:15px;flex-wrap:wrap}
-hr{border:0;border-top:1px solid var(--border);margin:10px 0}
-@media(max-width:900px){.sidebar{display:none}.hamb{display:grid;place-items:center}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.detail .actions{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.main{padding:10px max(10px,var(--safe-right)) calc(var(--safe-bottom) + 14px) max(10px,var(--safe-left))}.list,.toolbar{padding:10px}.metric b{font-size:17px}.toolbar input{flex-basis:100%}.detail .actions{grid-template-columns:1fr}.brand b{font-size:14.5px}.chat{max-height:none}.msg{max-width:94%}}
-@media(max-height:520px) and (orientation:landscape){.topbar{padding-top:calc(var(--safe-top) + 6px);padding-bottom:6px}.logo{width:34px;height:34px}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms !important;transition-duration:.001ms !important}}
+.toast.err{border-color:#8d3644;background:#26141a;color:#ffb3ba}
+.toast.ok{border-color:#22705d;background:#0f2020;color:var(--good)}
+
+/* ── modal ──────────────────────────────────────────────────────────── */
+.modal{
+  position:fixed;inset:0;background:rgba(3,5,10,.72);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;padding:var(--s4);z-index:70;
+}
+.modal.open{display:flex;animation:fadeIn var(--dur-fast) var(--ease)}
+.modalbox{
+  width:min(520px,100%);max-height:86vh;overflow-y:auto;
+  background:var(--surface-1);border:1px solid var(--border-strong);
+  border-radius:var(--r-xl);padding:var(--s5);box-shadow:var(--shadow-lg);
+  animation:modalIn var(--dur) var(--ease);
+}
+@keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:none}}
+.modalbox h3{margin:0 0 var(--s2);font-size:var(--fs-lg)}
+.modalbox p{color:var(--text-soft);font-size:var(--fs-base);line-height:var(--lh);margin:0}
+.modalbox p:empty{display:none}
+.modal-actions{display:flex;justify-content:flex-end;gap:var(--s2);margin-block-start:var(--s5);flex-wrap:wrap}
+.modal-actions button{min-width:96px}
+
+/* ── auth wall ──────────────────────────────────────────────────────── */
+.authwall{display:grid;place-items:center;min-height:60vh;padding:var(--s5);text-align:center}
+.authwall .box{max-width:420px}
+.authwall .ico{font-size:44px;margin-block-end:var(--s3);display:block}
+.authwall h2{margin:0 0 var(--s2);font-size:var(--fs-lg)}
+.authwall p{color:var(--muted);font-size:var(--fs-base);line-height:var(--lh);margin:0 0 var(--s3)}
+
+/* ── screen-reader only ─────────────────────────────────────────────── */
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;
+}
+
+/* ── async section states ───────────────────────────────────────────────
+   Four states must be visually distinct everywhere: loading, empty, failed
+   and unavailable. `.state` is the shared shell; the modifier decides tone. */
+.state{padding:var(--s6) var(--s4);text-align:center;color:var(--muted)}
+.state .ico{font-size:30px;display:block;margin-block-end:var(--s2);opacity:.6}
+.state b{display:block;color:var(--text-soft);margin-block-end:var(--s1);font-size:var(--fs-base)}
+.state small{display:block;font-size:var(--fs-sm);line-height:var(--lh);max-width:36ch;margin-inline:auto}
+.state.err b{color:#ffb3ba}
+.state.na b{color:var(--warn)}
+.state .retry{margin-block-start:var(--s3)}
+.loading-row{display:flex;align-items:center;justify-content:center;gap:var(--s2);padding:var(--s5) var(--s4);color:var(--muted);font-size:var(--fs-sm)}
+.spin{
+  width:15px;height:15px;border-radius:50%;flex:0 0 auto;
+  border:2px solid var(--border-strong);border-top-color:var(--accent);
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tag.loading{border-color:#4a4380;background:var(--accent-soft);color:#c9c3ff}
+.tag.stale{border-color:#7a5a24;background:var(--warn-soft);color:var(--warn)}
+.tag.err{border-color:#6d2a35;background:var(--bad-soft);color:#ff9ba5}
+
+/* ── re-auth banner ─────────────────────────────────────────────────────
+   A 403 mid-session (initData older than Telegram's 1h validity) used to
+   replace the whole app and throw away every tab's state. This sits on top
+   instead, so a reload is the admin's choice and nothing is lost. */
+.authbanner{
+  position:fixed;inset-inline:0;top:0;z-index:80;display:none;
+  align-items:center;justify-content:center;gap:var(--s3);flex-wrap:wrap;
+  padding:calc(var(--safe-top) + var(--s3)) var(--s4) var(--s3);
+  background:#2a1520;border-block-end:1px solid #8d3644;color:#ffc9cf;
+  font-size:var(--fs-sm);box-shadow:var(--shadow);
+}
+.authbanner.show{display:flex}
+
+/* ── media grid ─────────────────────────────────────────────────────────
+   Thumbnails are the stored objects themselves (there is no separate
+   thumbnail pipeline), so every one is lazy and decoded off the main thread;
+   nothing above the fold blocks on media that may never be scrolled to. */
+.mbar{display:flex;justify-content:space-between;align-items:center;gap:var(--s2);flex-wrap:wrap;padding:var(--s3);border-block-end:1px solid var(--border)}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:var(--s3);padding:var(--s3)}
+.mcard{background:var(--sunken);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;display:flex;flex-direction:column}
+.mcard:hover{border-color:var(--border-strong)}
+.mthumb{
+  position:relative;aspect-ratio:1/1;background:#0b1120;
+  display:grid;place-items:center;overflow:hidden;
+  border-block-end:1px solid var(--border);
+}
+.mthumb img{width:100%;height:100%;object-fit:cover;display:block}
+/* Placeholder tile: voice cards stack a label above the player, and anything
+   with no renderable preview (document, unknown kind, expired blob) says so. */
+.mthumb .ph{
+  width:100%;height:100%;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:var(--s1);
+  font-size:22px;opacity:.9;
+}
+.mthumb .ph.pad{padding:var(--s2)}
+.mthumb .phlabel{font-size:var(--fs-xs);color:var(--muted)}
+.mthumb audio,.mthumb video{width:100%;max-height:100%}
+.mcard .meta{padding:var(--s2) var(--s3);display:grid;gap:2px;min-width:0}
+.mcard .meta b{font-size:var(--fs-sm);font-weight:650;word-break:break-all}
+.mcard .meta small{color:var(--muted);font-size:var(--fs-xs);word-break:break-word}
+.mcard .row{display:flex;gap:var(--s1);padding:0 var(--s2) var(--s2)}
+.mcard .row>*{flex:1 1 0;min-width:0}
+.linkbtn{
+  display:inline-flex;align-items:center;justify-content:center;min-height:34px;
+  border:1px solid var(--border);border-radius:var(--r-sm);
+  font-size:var(--fs-sm);color:var(--text-soft);background:var(--surface-2);
+}
+.linkbtn:hover{text-decoration:none;background:var(--surface-3);color:var(--text)}
+
+/* ── responsive ─────────────────────────────────────────────────────── */
+@media(max-width:900px){
+  .sidebar{display:none}
+  .hamb{display:inline-flex}
+  .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .detail .actions{grid-template-columns:1fr 1fr}
+}
+@media(max-width:560px){
+  .main{padding:var(--s3) max(var(--s3),var(--safe-right)) calc(var(--safe-bottom) + var(--s4)) max(var(--s3),var(--safe-left))}
+  .list,.toolbar,.section-body{padding:var(--s3)}
+  .metric b{font-size:var(--fs-lg)}
+  .metrics{gap:var(--s2)}
+  .toolbar input,.toolbar select{flex-basis:100%}
+  .toolbar button{flex:1 1 auto}
+  .brand b{font-size:14.5px}
+  .chat{max-height:none}
+  .msg{max-width:94%}
+  .detail .actions{grid-template-columns:1fr}
+  .page-head h1{font-size:var(--fs-lg)}
+  .mgrid{grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:var(--s2)}
+}
+@media(max-height:520px) and (orientation:landscape){
+  .topbar{padding-block:calc(var(--safe-top) + var(--s1)) var(--s1)}
+  .logo{width:34px;height:34px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important}
+}
+@media(prefers-contrast:more){
+  :root{--border:#4a5c7d;--border-strong:#6b7fa5;--muted:#9dabc4}
+}
 </style>
 </head>
 <body>
+<a class="skip-link" href="#mainContent">پرش به محتوای اصلی</a>
+<div class="authbanner" id="authBanner" role="alert">
+  <span>نشست تلگرام منقضی شده — برای ادامه پنل را از دستور <b>/admin</b> دوباره باز کن.</span>
+  <button class="sm" id="authReload">تلاش دوباره</button>
+  <button class="sm ghost" id="authDismiss" aria-label="بستن هشدار">✕</button>
+</div>
 <div id="app">
-  <div class="topbar">
-    <button class="hamb" id="hamburger">☰</button>
-    <div class="brand"><div class="logo">N</div><div><b>Nova Control Center</b><span id="version">در حال اتصال…</span></div></div>
-    <button class="sm" id="refreshBtn">↻</button>
+  <header class="topbar">
+    <button class="hamb icon-btn" id="hamburger" aria-label="باز کردن منو" aria-expanded="false" aria-controls="drawer">☰</button>
+    <div class="brand">
+      <div class="logo" aria-hidden="true">N</div>
+      <div>
+        <b>Nova Control Center</b>
+        <span id="version">در حال اتصال…</span>
+      </div>
+    </div>
+    <button class="sm icon-btn" id="refreshBtn" aria-label="تازه‌سازی این بخش" title="تازه‌سازی">↻</button>
     <button class="sm ghost" id="closeBtn">بستن</button>
-  </div>
+  </header>
   <div class="body">
-    <aside class="sidebar"><div id="sidebarNav" style="display:grid;gap:4px"></div></aside>
-    <main class="main">
-      <section class="panel" id="panel-overview">
+    <aside class="sidebar" aria-label="ناوبری اصلی">
+      <nav id="sidebarNav" style="display:grid;gap:var(--s1)"></nav>
+    </aside>
+    <main class="main" id="mainContent" tabindex="-1">
+      <section class="panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
+        <div class="page-head"><h1>نمای کلی</h1><p>وضعیت لحظه‌ای ربات، کاربران و مصرف امروز</p></div>
         <div class="metrics" id="metrics"></div>
         <div class="card"><div class="section-head"><h2>وضعیت لحظه‌ای</h2><span class="tag" id="overviewState">—</span></div><div class="list" id="overviewLive"></div></div>
         <div class="card"><div class="section-head"><h2>مصرف امروز</h2></div><div class="list" id="overviewUsage"></div></div>
       </section>
 
-      <section class="panel" id="panel-users">
-        <div class="card"><div class="toolbar"><input id="search" placeholder="User ID، username یا نام"><select id="sort"><option value="new">جدیدترین</option><option value="active">فعال‌ترین</option><option value="messages">بیشترین پیام</option></select><button class="primary" id="searchBtn">جستجو</button><button id="clearBtn">پاک</button></div>
-        <div class="tablewrap"><table><thead><tr><th>کاربر</th><th>وضعیت</th><th>Persona</th><th>پیام</th><th>امروز</th><th>ریسک</th><th>فعالیت</th></tr></thead><tbody id="userRows"></tbody></table></div>
-        <div class="pager"><div style="display:flex;gap:8px"><button class="sm" id="firstBtn">⏮</button><button class="sm" id="prevBtn">‹ قبلی</button></div><span class="tag" id="pageState">صفحه ۱</span><div style="display:flex;gap:8px"><button class="sm" id="nextBtn">بعدی ›</button></div></div></div>
+      <section class="panel" id="panel-users" role="tabpanel" aria-labelledby="tab-users">
+        <div class="page-head"><h1>کاربران</h1><p>جستجو، بازرسی و مدیریت کاربران</p></div>
+        <div class="card">
+          <div class="toolbar" role="search">
+            <label class="sr-only" for="search">جستجوی کاربر</label>
+            <input id="search" placeholder="User ID، username یا نام">
+            <label class="sr-only" for="sort">ترتیب</label>
+            <select id="sort"><option value="new">جدیدترین</option><option value="active">فعال‌ترین</option><option value="messages">بیشترین پیام</option></select>
+            <button class="primary" id="searchBtn">جستجو</button>
+            <button id="clearBtn">پاک</button>
+          </div>
+          <div class="tablewrap">
+            <table>
+              <caption class="sr-only">فهرست کاربران ربات</caption>
+              <thead><tr>
+                <th scope="col">کاربر</th><th scope="col">وضعیت</th><th scope="col">Persona</th>
+                <th scope="col">پیام</th><th scope="col">امروز</th><th scope="col">ریسک</th><th scope="col">فعالیت</th>
+              </tr></thead>
+              <tbody id="userRows"></tbody>
+            </table>
+          </div>
+          <div class="pager">
+            <div class="pager-group">
+              <button class="sm" id="firstBtn" aria-label="صفحه اول">⏮</button>
+              <button class="sm" id="prevBtn">‹ قبلی</button>
+            </div>
+            <span class="tag" id="pageState" aria-live="polite">صفحه ۱</span>
+            <div class="pager-group"><button class="sm" id="nextBtn">بعدی ›</button></div>
+          </div>
+        </div>
         <div class="card detail" id="detail"><div class="status">یک کاربر را انتخاب کنید.</div></div>
       </section>
 
-      <section class="panel" id="panel-broadcast">
-        <div class="card"><div class="section-head"><h2>ارسال همگانی</h2></div><div style="padding:14px">
-          <label class="lbl">مخاطبان</label>
-          <select id="bcAudience" style="width:100%"><option value="all">همه کاربران</option><option value="vip">فقط VIP</option><option value="free">فقط رایگان</option></select>
-          <div style="height:10px"></div>
-          <label class="lbl">متن پیام (حداکثر ۴۰۰۰ کاراکتر)</label>
+      <section class="panel" id="panel-broadcast" role="tabpanel" aria-labelledby="tab-broadcast">
+        <div class="page-head"><h1>ارسال پیام</h1><p>ارسال همگانی یا پیام مستقیم به یک کاربر</p></div>
+        <div class="card"><div class="section-head"><h2>ارسال همگانی</h2></div><div class="section-body">
+          <label class="lbl" for="bcAudience">مخاطبان</label>
+          <select id="bcAudience"><option value="all">همه کاربران</option><option value="vip">فقط VIP</option><option value="free">فقط رایگان</option></select>
+          <div style="height:var(--s3)"></div>
+          <label class="lbl" for="bcMessage">متن پیام (حداکثر ۴۰۰۰ کاراکتر)</label>
           <textarea id="bcMessage" maxlength="4000" placeholder="متن پیام برادکست…" style="min-height:120px"></textarea>
-          <div class="toolbar-line"><button class="primary" id="bcSend">📢 ارسال به صف</button><span class="pill" id="bcCount">۰ کاراکتر</span></div>
+          <div class="toolbar-line"><button class="primary" id="bcSend">📢 ارسال به صف</button><span class="pill" id="bcCount" aria-live="polite">۰ کاراکتر</span></div>
         </div></div>
-        <div class="card"><div class="section-head"><h2>وضعیت ارسال</h2><button class="sm ghost" id="bcRefresh">↻</button></div><div id="bcStatus" class="list"><div class="status">موردی در جریان نیست.</div></div></div>
-        <div class="card"><div class="section-head"><h2>پیام مستقیم به یک کاربر</h2></div><div style="padding:14px">
-          <label class="lbl">شناسه کاربر</label>
-          <input id="dmUser" inputmode="numeric" placeholder="مثلاً 123456789" style="width:100%">
-          <div style="height:10px"></div>
-          <label class="lbl">متن</label>
+        <div class="card"><div class="section-head"><h2>وضعیت ارسال</h2><button class="sm ghost icon-btn" id="bcRefresh" aria-label="تازه‌سازی وضعیت ارسال">↻</button></div><div id="bcStatus" class="list" aria-live="polite"><div class="status">موردی در جریان نیست.</div></div></div>
+        <div class="card"><div class="section-head"><h2>پیام مستقیم به یک کاربر</h2></div><div class="section-body">
+          <label class="lbl" for="dmUser">شناسه کاربر</label>
+          <input id="dmUser" inputmode="numeric" class="ltr" placeholder="مثلاً 123456789">
+          <div style="height:var(--s3)"></div>
+          <label class="lbl" for="dmMessage">متن</label>
           <textarea id="dmMessage" maxlength="4000" style="min-height:80px"></textarea>
-          <button class="primary" id="dmSend" style="margin-top:9px;width:100%">📨 ارسال</button>
+          <button class="primary" id="dmSend" style="margin-top:var(--s2);width:100%">📨 ارسال</button>
         </div></div>
       </section>
 
-      <section class="panel" id="panel-groups"><div class="card"><div class="section-head"><h2>گروه‌ها</h2><button class="sm ghost" id="groupsLoad">↻</button></div><div class="list" id="groupsList"></div></div></section>
-      <section class="panel" id="panel-webapps"><div class="card"><div class="section-head"><h2>وب‌اپ‌ها</h2><button class="sm ghost" id="appsLoad">↻</button></div><div class="list" id="appsList"></div></div></section>
-      <section class="panel" id="panel-media"><div class="card">
-        <div class="toolbar"><select id="mediaKind"><option value="media">رسانه‌های تولیدشده</option><option value="assets">آپلودهای کاربران</option></select><button class="primary" id="mediaLoad">بارگذاری</button></div>
-        <div class="list" id="mediaList"></div></div></section>
-      <section class="panel" id="panel-requests"><div class="card"><div class="toolbar"><input id="reqSearch" placeholder="Request ID، User ID، نوع یا خطا"><button class="primary" id="reqLoad">بارگذاری</button></div><div class="list" id="requestList"></div></div></section>
-      <section class="panel" id="panel-logs"><div class="card"><div class="toolbar"><select id="logLimit"><option value="50">۵۰</option><option value="100" selected>۱۰۰</option><option value="200">۲۰۰</option></select><select id="logLevel"><option value="">همه سطوح</option><option value="error">خطا</option><option value="warn">هشدار</option><option value="info">اطلاع</option></select><button class="primary" id="logsLoad">بارگذاری لاگ</button></div><div class="list" id="logsList"></div></div></section>
-      <section class="panel" id="panel-keys"><div class="card"><div class="section-head"><h2>کلیدهای Gemini</h2><button class="sm ghost" id="keysLoad">↻</button></div><div class="list" id="keysList"></div></div></section>
-      <section class="panel" id="panel-business"><div class="card"><div class="section-head"><h2>اتوماسیون Business</h2></div><div style="padding:14px"><div class="pill" id="bizState">—</div><div style="height:8px"></div><button class="primary" id="businessToggle" style="width:100%">تغییر وضعیت</button><div class="status">فعال/غیرفعال بودن پاسخ‌دهی خودکار Business برای مالک و VIPها.</div></div></div></section>
-      <section class="panel" id="panel-system">
-        <div class="card"><div class="section-head"><h2>سیستم</h2><button class="sm ghost" id="systemLoad">↻</button></div><div style="padding:14px">
-          <div class="pill" id="maintState">—</div>
-          <button class="danger" id="maintToggle" style="width:100%;margin-top:9px">تغییر Maintenance</button>
+      <section class="panel" id="panel-groups" role="tabpanel" aria-labelledby="tab-groups">
+        <div class="page-head"><h1>گروه‌ها</h1><p>گروه‌هایی که ربات در آن‌ها عضو است</p></div>
+        <div class="card"><div class="section-head"><h2>فهرست گروه‌ها</h2><button class="sm ghost icon-btn" id="groupsLoad" aria-label="تازه‌سازی گروه‌ها">↻</button></div><div class="list" id="groupsList"></div></div>
+      </section>
+      <section class="panel" id="panel-webapps" role="tabpanel" aria-labelledby="tab-webapps">
+        <div class="page-head"><h1>وب‌اپ‌ها</h1><p>اپ‌ها و بازی‌های ساخته‌شده و میزبانی‌شده</p></div>
+        <div class="card"><div class="section-head"><h2>فهرست وب‌اپ‌ها</h2><button class="sm ghost icon-btn" id="appsLoad" aria-label="تازه‌سازی وب‌اپ‌ها">↻</button></div><div class="list" id="appsList"></div></div>
+      </section>
+      <section class="panel" id="panel-media" role="tabpanel" aria-labelledby="tab-media">
+        <div class="page-head"><h1>رسانه</h1><p>تصاویر تولیدشده و آپلودهای کاربران</p></div>
+        <div class="card">
+          <div class="toolbar">
+            <label class="sr-only" for="mediaKind">نوع رسانه</label>
+            <select id="mediaKind"><option value="media">رسانه‌های تولیدشده</option><option value="assets">آپلودهای کاربران</option></select>
+            <button class="primary" id="mediaLoad">بارگذاری</button>
+          </div>
+          <div class="mbar" id="mediaBar" aria-live="polite"><span class="tag loading">—</span></div>
+          <div id="mediaList"></div>
+          <div class="pager" id="mediaPager" hidden>
+            <div class="pager-group"><button class="sm" id="mediaPrev">‹ قبلی</button></div>
+            <span class="tag" id="mediaPageState" aria-live="polite">—</span>
+            <div class="pager-group"><button class="sm" id="mediaNext">بعدی ›</button></div>
+          </div>
+        </div>
+      </section>
+      <section class="panel" id="panel-requests" role="tabpanel" aria-labelledby="tab-requests">
+        <div class="page-head"><h1>درخواست‌ها</h1><p>تشخیص و ردیابی درخواست‌های اخیر</p></div>
+        <div class="card">
+          <div class="toolbar" role="search">
+            <label class="sr-only" for="reqSearch">جستجوی درخواست</label>
+            <input id="reqSearch" placeholder="Request ID، User ID، نوع یا خطا">
+            <button class="primary" id="reqLoad">بارگذاری</button>
+          </div>
+          <div class="list" id="requestList"></div>
+        </div>
+      </section>
+      <section class="panel" id="panel-logs" role="tabpanel" aria-labelledby="tab-logs">
+        <div class="page-head"><h1>لاگ‌ها</h1><p>رویدادهای اخیر سیستم</p></div>
+        <div class="card">
+          <div class="toolbar">
+            <label class="sr-only" for="logLimit">تعداد</label>
+            <select id="logLimit"><option value="50">۵۰</option><option value="100" selected>۱۰۰</option><option value="200">۲۰۰</option></select>
+            <label class="sr-only" for="logLevel">سطح</label>
+            <select id="logLevel"><option value="">همه سطوح</option><option value="error">خطا</option><option value="warn">هشدار</option><option value="info">اطلاع</option></select>
+            <button class="primary" id="logsLoad">بارگذاری لاگ</button>
+          </div>
+          <div class="list" id="logsList"></div>
+        </div>
+      </section>
+      <section class="panel" id="panel-keys" role="tabpanel" aria-labelledby="tab-keys">
+        <div class="page-head"><h1>کلیدهای API</h1><p>سلامت و وضعیت کلیدهای Gemini</p></div>
+        <div class="card"><div class="section-head"><h2>کلیدهای Gemini</h2><button class="sm ghost icon-btn" id="keysLoad" aria-label="تازه‌سازی کلیدها">↻</button></div><div class="list" id="keysList"></div></div>
+      </section>
+      <section class="panel" id="panel-business" role="tabpanel" aria-labelledby="tab-business">
+        <div class="page-head"><h1>Business</h1><p>پاسخ‌دهی خودکار حساب Business</p></div>
+        <div class="card"><div class="section-head"><h2>اتوماسیون Business</h2></div><div class="section-body">
+          <div class="pill" id="bizState" aria-live="polite">—</div>
+          <button class="primary" id="businessToggle" style="width:100%;margin-top:var(--s3)">تغییر وضعیت</button>
+          <p class="status" style="padding-bottom:0">فعال/غیرفعال بودن پاسخ‌دهی خودکار Business برای مالک و VIPها.</p>
+        </div></div>
+      </section>
+      <section class="panel" id="panel-system" role="tabpanel" aria-labelledby="tab-system">
+        <div class="page-head"><h1>سیستم</h1><p>سلامت سرویس و تنظیمات سراسری ربات</p></div>
+        <div class="card"><div class="section-head"><h2>وضعیت سرویس</h2><button class="sm ghost icon-btn" id="systemLoad" aria-label="تازه‌سازی وضعیت سیستم">↻</button></div><div class="section-body">
+          <div class="pill" id="maintState" aria-live="polite">—</div>
+          <button class="danger" id="maintToggle" style="width:100%;margin-top:var(--s3)">تغییر Maintenance</button>
         </div><div class="list" id="systemList"></div></div>
-        <div class="card"><div class="section-head"><h2>تنظیمات ربات</h2><button class="sm ghost" id="cfgLoad">↻</button></div><div id="cfgBody" style="padding:14px"><div class="status">در حال بارگذاری…</div></div></div>
+        <div class="card"><div class="section-head"><h2>تنظیمات ربات</h2><button class="sm ghost icon-btn" id="cfgLoad" aria-label="تازه‌سازی تنظیمات">↻</button></div><div id="cfgBody" class="section-body"><div class="skel"><i></i><i></i><i></i></div></div></div>
       </section>
     </main>
   </div>
 </div>
 
-<div class="drawer" id="drawer"><div class="back" id="drawerBackdrop"></div><div class="dpanel"><div style="font-weight:800;margin-bottom:10px">منو</div><div id="drawerNav" style="display:grid;gap:4px"></div></div></div>
-<div class="modal" id="modal"><div class="modalbox"><h3 id="modalTitle"></h3><p id="modalText"></p><div id="modalExtra"></div><div class="modal-actions"><button id="modalCancel">لغو</button><button class="primary" id="modalOk">تأیید</button></div></div></div>
-<div class="toast" id="toast"></div>
+<div class="drawer" id="drawer">
+  <div class="back" id="drawerBackdrop"></div>
+  <div class="dpanel" role="dialog" aria-modal="true" aria-label="منوی ناوبری">
+    <div class="drawer-head"><b>منو</b><button class="sm ghost icon-btn" id="drawerClose" aria-label="بستن منو">✕</button></div>
+    <nav id="drawerNav" style="display:grid;gap:var(--s1)"></nav>
+  </div>
+</div>
+<div class="modal" id="modal">
+  <div class="modalbox" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalText">
+    <h3 id="modalTitle"></h3>
+    <p id="modalText"></p>
+    <div id="modalExtra"></div>
+    <div class="modal-actions"><button id="modalCancel">لغو</button><button class="primary" id="modalOk">تأیید</button></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 (()=>{
@@ -218,7 +741,14 @@ function confirmAction(title, text){
     }
     const m=$("modal"); $("modalTitle").textContent=title; $("modalText").textContent=text;
     $("modalExtra").innerHTML=""; m.classList.add("open");
-    const done = v => { m.classList.remove("open"); $("modalOk").onclick=null; $("modalCancel").onclick=null; resolve(v); };
+    // Remember where focus came from so it can be returned on close.
+    const returnTo = document.activeElement;
+    try{ $("modalOk").focus(); }catch(e){}
+    const done = v => {
+      m.classList.remove("open"); $("modalOk").onclick=null; $("modalCancel").onclick=null;
+      if(returnTo && returnTo.focus) try{ returnTo.focus(); }catch(e){}
+      resolve(v);
+    };
     $("modalOk").onclick=()=>done(true); $("modalCancel").onclick=()=>done(false);
   });
 }
@@ -228,45 +758,175 @@ function askInput(title, label, value, opts){
   return new Promise(resolve=>{
     const m=$("modal"); $("modalTitle").textContent=title; $("modalText").textContent="";
     const isSelect = Array.isArray(opts.options);
-    $("modalExtra").innerHTML = `<label class="lbl" style="margin-top:10px">${esc(label)}</label>` + (isSelect
-      ? `<select id="_ai" style="width:100%">${opts.options.map(o=>`<option value="${esc(o.value)}"${o.value===value?" selected":""}>${esc(o.label)}</option>`).join("")}</select>`
+    $("modalExtra").innerHTML = `<label class="lbl" style="margin-top:var(--s3)" for="_ai">${esc(label)}</label>` + (isSelect
+      ? `<select id="_ai">${opts.options.map(o=>`<option value="${esc(o.value)}"${o.value===value?" selected":""}>${esc(o.label)}</option>`).join("")}</select>`
       : opts.multiline
         ? `<textarea id="_ai" style="min-height:110px">${esc(value||"")}</textarea>`
-        : `<input id="_ai" ${opts.numeric?'inputmode="numeric"':""} style="width:100%" value="${esc(value||"")}">`);
+        : `<input id="_ai" ${opts.numeric?'inputmode="numeric"':""} value="${esc(value||"")}">`);
     m.classList.add("open");
+    const returnTo = document.activeElement;
     const el=$("_ai"); try{ el.focus(); }catch(e){}
-    const done = v => { m.classList.remove("open"); $("modalOk").onclick=null; $("modalCancel").onclick=null; $("modalExtra").innerHTML=""; resolve(v); };
+    // Enter submits a single-line input, matching normal form behaviour.
+    if(!opts.multiline && !isSelect){
+      el.addEventListener("keydown", ev=>{ if(ev.key==="Enter"){ ev.preventDefault(); $("modalOk").click(); } });
+    }
+    const done = v => {
+      m.classList.remove("open"); $("modalOk").onclick=null; $("modalCancel").onclick=null; $("modalExtra").innerHTML="";
+      if(returnTo && returnTo.focus) try{ returnTo.focus(); }catch(e){}
+      resolve(v);
+    };
     $("modalOk").onclick=()=>done(el.value);
     $("modalCancel").onclick=()=>done(null);
   });
 }
 
-/* ── لایه API ────────────────────────────────────────────────────────── */
+/* ── لایه API ──────────────────────────────────────────────────────────
+   هر خطا پیش از خروج از این تابع دسته‌بندی می‌شود: «تایم‌اوت»، «قطع شبکه»،
+   «نشست منقضی» و «خطای سرور» در UI یکسان نیستند و AbortError که قبلاً بی‌صدا
+   دور ریخته می‌شد، اسکلتون را برای همیشه روی صفحه جا می‌گذاشت. */
+const ERR_TEXT = {
+  timeout: "پاسخ سرور در زمان مقرر نرسید.",
+  offline: "اتصال شبکه برقرار نیست.",
+  auth:    "نشست تلگرام منقضی شده است.",
+  server:  "سرور به این درخواست پاسخ نداد.",
+  unavailable: "این سرویس روی این استقرار در دسترس نیست.",
+};
+function apiError(kind, message){
+  const e = new Error(message || ERR_TEXT[kind] || "خطای ناشناخته");
+  e.kind = kind;
+  // نام AbortError نگه داشته می‌شود تا گاردهای قدیمیِ e.name همچنان کار کنند.
+  if(kind==="abort") e.name = "AbortError";
+  return e;
+}
+/* یک‌بار احراز موفق = نشست معتبر بوده؛ ۴۰۳ بعد از آن یعنی انقضا، نه دسترسی غلط. */
+let everAuthed = false;
+/* نشست منقضی: تا اولین پاسخ موفق بعدی، کارهای پس‌زمینه متوقف می‌شوند. */
+let authDead = false;
 async function api(path, opts){
   opts = opts || {};
+  if(opts.signal && opts.signal.aborted) throw apiError("abort","superseded");
   const ctrl = new AbortController();
-  const timer = setTimeout(()=>ctrl.abort(), opts.timeoutMs || 12000);
+  let timedOut = false;
+  const timer = setTimeout(()=>{ timedOut = true; ctrl.abort(); }, opts.timeoutMs || 12000);
+  // سیگنال بیرونی هم باید fetch را لغو کند: قبلاً وقتی caller سیگنال می‌داد،
+  // سیگنال تایم‌اوت کنار گذاشته می‌شد و آن درخواست هیچ سقف زمانی نداشت.
+  const onOuterAbort = ()=>{ try{ ctrl.abort(); }catch(e){} };
+  if(opts.signal) opts.signal.addEventListener("abort", onOuterAbort);
   try{
     const headers = { "Content-Type":"application/json" };
     if(initData) headers["X-Telegram-Init-Data"] = initData;
     const body = opts.body===undefined ? undefined : (typeof opts.body==="string"?opts.body:JSON.stringify(opts.body));
-    const r = await fetch(path, { method: opts.method||"GET", headers, body, signal: opts.signal||ctrl.signal });
+    let r;
+    try{
+      r = await fetch(path, { method: opts.method||"GET", headers, body, signal: ctrl.signal });
+    }catch(e){
+      if(opts.signal && opts.signal.aborted) throw apiError("abort","superseded");
+      if(timedOut || (e && e.name==="AbortError")) throw apiError("timeout");
+      throw apiError("offline");
+    }
     let d; try{ d = await r.json(); }catch(e){ d = { ok:false, error:"bad_json" }; }
     if(r.status===403){
-      showAuthWall();
-      throw new Error("دسترسی رد شد — پنل باید از داخل تلگرام باز شود.");
+      onAuthFailure();
+      throw apiError("auth");
     }
-    if(!r.ok || !d.ok) throw new Error(d.error || ("HTTP "+r.status));
+    if(r.status===503) throw apiError("unavailable", d && d.error ? ERR_TEXT.unavailable+" ("+d.error+")" : undefined);
+    if(!r.ok || !d.ok) throw apiError("server", d.error || ("HTTP "+r.status));
+    everAuthed = true;
+    authDead = false;
+    const banner = $("authBanner");
+    if(banner) banner.classList.remove("show");
     return d;
-  } finally { clearTimeout(timer); }
+  } finally {
+    clearTimeout(timer);
+    if(opts.signal) opts.signal.removeEventListener("abort", onOuterAbort);
+  }
+}
+/**
+ * A 403 after a working session means the Telegram initData passed its 1h
+ * validity window. Tearing down #app for that threw away every tab's state and
+ * left no way back, so an expiry now only raises a banner; the full wall is
+ * reserved for the case where authentication never worked at all.
+ */
+function onAuthFailure(){
+  // با نشست مرده، پولینگ ۱۵ثانیه‌ای فقط ۴۰۳ تولید می‌کند؛ تا اولین پاسخ موفق
+  // بعدی متوقف می‌شود.
+  authDead = true;
+  if(!everAuthed){ showAuthWall(); return; }
+  const banner = $("authBanner");
+  if(banner) banner.classList.add("show");
 }
 function showAuthWall(){
-  $("app").innerHTML =
-    '<div style="display:grid;place-items:center;height:100%;padding:24px;text-align:center">'+
-    '<div><div class="logo" style="width:60px;height:60px;font-size:26px;margin:0 auto 16px"></div>'+
-    '<h2 style="margin:0 0 8px;font-size:18px">دسترسی رد شد</h2>'+
-    '<p style="color:var(--muted);font-size:13px;line-height:1.7;max-width:330px;margin:0 auto">'+
-    'این پنل فقط با احراز هویت تلگرام باز می‌شود.<br>در چت خصوصی ربات دستور <b>/admin</b> را بزن و روی دکمه‌ی پنل کلیک کن.</p></div></div>';
+  const app = $("app"); if(!app) return;
+  app.innerHTML =
+    '<div class="authwall"><div class="box">'+
+    '<span class="ico" aria-hidden="true">🔒</span>'+
+    '<h2>دسترسی رد شد</h2>'+
+    '<p>این پنل فقط با احراز هویت تلگرام باز می‌شود. در چت خصوصی ربات دستور <b>/admin</b> را بزن و روی دکمه‌ی پنل کلیک کن.</p>'+
+    '</div></div>';
+}
+/** Reusable empty state so every list looks finished when it has no data. */
+function emptyState(icon, title, hint){
+  return '<div class="empty"><span class="ico" aria-hidden="true">'+esc(icon)+'</span>'+
+    '<b>'+esc(title)+'</b>'+(hint?'<small>'+esc(hint)+'</small>':"")+'</div>';
+}
+/** Skeleton rows — communicates "loading" without collapsing layout height. */
+function skeleton(n){
+  return '<div class="skel">'+Array.from({length:n||3},()=>"<i></i>").join("")+'</div>';
+}
+/** Inline spinner for sections too small for skeleton rows. */
+function loadingState(label){
+  return '<div class="loading-row"><span class="spin" aria-hidden="true"></span>'+
+    '<span>'+esc(label||"در حال بارگذاری…")+'</span></div>';
+}
+/** Failure state: names the failure category and always offers a way back. */
+function errorState(err, retryable){
+  const kind = (err && err.kind) || "server";
+  const icon  = kind==="timeout" ? "⏱" : kind==="offline" ? "📡" : kind==="auth" ? "🔒" : kind==="unavailable" ? "🚫" : "⚠️";
+  const title = kind==="timeout" ? "پاسخ نرسید"
+              : kind==="offline" ? "اتصال قطع است"
+              : kind==="auth"    ? "نشست منقضی شد"
+              : kind==="unavailable" ? "در دسترس نیست" : "بارگذاری نشد";
+  return '<div class="state err"><span class="ico" aria-hidden="true">'+icon+'</span><b>'+esc(title)+'</b>'+
+    ((err&&err.message)?'<small>'+esc(err.message)+'</small>':"")+
+    (retryable===false?"":'<button class="sm retry" data-retry="1">↻ تلاش دوباره</button>')+'</div>';
+}
+/** "Not configured on this deployment" — deliberately not the empty state. */
+function unavailableState(title, hint){
+  return '<div class="state na"><span class="ico" aria-hidden="true">🚫</span><b>'+esc(title)+'</b>'+
+    (hint?'<small>'+esc(hint)+'</small>':"")+'</div>';
+}
+/**
+ * Runs one async section end to end: paints a loading state, lets `run` render
+ * on success, and on failure leaves a categorised error with a retry button
+ * wired back to the same loader. Returns true only when the render succeeded,
+ * which is what lets loadTab decide whether the tab may be cached.
+ *
+ * `quiet` is for background refreshes: an already-populated section keeps its
+ * content instead of flashing a skeleton every poll, and a failed poll degrades
+ * to a stale marker rather than wiping good data off the screen.
+ */
+async function section(el, run, opts){
+  if(!el) return false;
+  opts = opts || {};
+  const hadContent = el.children.length>0 && !el.querySelector(".state.err");
+  const quiet = !!(opts.quiet && hadContent);
+  if(!quiet){
+    el.innerHTML = opts.rows ? skeleton(opts.rows) : loadingState(opts.label);
+    el.setAttribute("aria-busy","true");
+  }
+  try{
+    await run();
+    return true;
+  }catch(e){
+    if(e && e.kind==="abort") return false;      // یک لود جدیدتر جای این را گرفته
+    if(quiet){ if(opts.onQuietError) opts.onQuietError(e); return false; }
+    el.innerHTML = errorState(e, opts.retry!==false);
+    const btn = el.querySelector("[data-retry]");
+    if(btn) btn.onclick = ()=> section(el, run, opts);
+    return false;
+  }finally{
+    el.removeAttribute("aria-busy");
+  }
 }
 
 /* ── ناوبری ──────────────────────────────────────────────────────────── */
@@ -285,13 +945,31 @@ const TABS = [
 ];
 const state = { tab:"overview" };
 function buildNav(){
-  const html = TABS.map(t=>`<button class="navitem" data-tab="${t.id}"><span class="ni">${t.icon}</span><span>${esc(t.label)}</span></button>`).join("");
-  $("sidebarNav").innerHTML = html; $("drawerNav").innerHTML = html;
-  document.querySelectorAll(".navitem").forEach(b=> b.onclick = ()=>{ setTab(b.dataset.tab); closeDrawer(); });
+  // Real <button>s inside <nav>, each with a stable id so the matching panel can
+  // point at it via aria-labelledby.
+  const html = TABS.map(t=>
+    `<button class="navitem" type="button" id="tab-${t.id}" data-tab="${t.id}">`+
+    `<span class="ni" aria-hidden="true">${t.icon}</span><span>${esc(t.label)}</span></button>`).join("");
+  $("sidebarNav").innerHTML = html;
+  $("drawerNav").innerHTML = html.replace(/id="tab-/g,'id="dtab-');
+  // Event delegation: two listeners instead of one per nav item.
+  const onNav = e => {
+    const b = e.target.closest(".navitem");
+    if(!b) return;
+    setTab(b.dataset.tab);
+    closeDrawer();
+  };
+  $("sidebarNav").addEventListener("click", onNav);
+  $("drawerNav").addEventListener("click", onNav);
 }
 function setTab(tab){
   state.tab = tab;
-  document.querySelectorAll(".navitem").forEach(b=> b.classList.toggle("active", b.dataset.tab===tab));
+  // aria-current is the accessible equivalent of the old .active class and is
+  // what the stylesheet now keys off, so state and semantics cannot diverge.
+  document.querySelectorAll(".navitem").forEach(b=>{
+    if(b.dataset.tab===tab) b.setAttribute("aria-current","page");
+    else b.removeAttribute("aria-current");
+  });
   document.querySelectorAll(".main .panel").forEach(p=> p.classList.remove("active"));
   const panel = $("panel-"+tab); if(panel) panel.classList.add("active");
   if(location.hash !== "#"+tab) history.replaceState(null,"","#"+tab);
@@ -303,47 +981,109 @@ function routeFromHash(){
   setTab(TABS.some(t=>t.id===h) ? h : "overview");
 }
 window.addEventListener("hashchange", routeFromHash);
-function closeDrawer(){ $("drawer").classList.remove("open"); }
-
-async function loadTab(tab){
-  try{
-    if(tab==="overview")  return await loadOverview();
-    if(tab==="users")     return await loadUsers(true);
-    if(tab==="broadcast") return await loadBroadcast();
-    if(tab==="groups")    return await loadGroups();
-    if(tab==="webapps")   return await loadWebApps();
-    if(tab==="media")     return await loadMedia();
-    if(tab==="requests")  return await loadRequests();
-    if(tab==="logs")      return await loadLogs();
-    if(tab==="keys")      return await loadKeys();
-    if(tab==="business")  return await loadBusiness();
-    if(tab==="system")    { await loadSystem(); return await loadConfig(); }
-  }catch(e){ if(e.name!=="AbortError") toast(e.message, "err"); }
+function openDrawer(){
+  $("drawer").classList.add("open");
+  $("hamburger").setAttribute("aria-expanded","true");
+  const first = $("drawerNav").querySelector(".navitem");
+  if(first) try{ first.focus(); }catch(e){}
+}
+function closeDrawer(){
+  const d = $("drawer");
+  if(!d.classList.contains("open")) return;
+  d.classList.remove("open");
+  $("hamburger").setAttribute("aria-expanded","false");
+  try{ $("hamburger").focus(); }catch(e){}
 }
 
-/* ── داشبورد ─────────────────────────────────────────────────────────── */
-async function loadOverview(){
-  $("overviewState").textContent = "در حال بارگذاری…";
-  const d = await api("/api/admin/overview");
-  const u = d.users||{}, r = d.runtime||{};
-  const cards = [
-    ["کاربران", fmtNum(u.total)], ["VIP", fmtNum(u.vip)], ["مسدود", fmtNum(u.blocked)],
-    ["فعال امروز", fmtNum(u.activeToday)], ["پیام امروز", fmtNum(u.msgsToday)],
-    ["خطاها", fmtNum(r.errors)], ["میانگین پاسخ", fmtNum(r.avgLatencyMs)+"ms"], ["قفل AI", fmtNum(r.activeAiLocks)],
-  ];
-  $("metrics").innerHTML = cards.map(c=>`<div class="metric"><span>${esc(c[0])}</span><b>${c[1]}</b></div>`).join("");
-  $("version").textContent = (d.version||"Nova") + " · Admin";
-  $("overviewState").textContent = "به‌روز";
-  $("overviewLive").innerHTML =
-    `<div class="item"><b>Telegram API</b><small>${fmtNum(r.telegramCalls)} فراخوانی</small></div>`+
-    `<div class="item"><b>D1</b><small>${fmtNum(r.d1Queries)} خواندن · ${fmtNum(r.d1Writes)} نوشتن</small></div>`+
-    `<div class="item"><b>تسک‌های سنگین</b><small>${fmtNum(r.heavyTasks)} فعال</small></div>`+
-    `<div class="item"><b>قفل‌ها</b><small>AI: ${fmtNum(r.activeAiLocks)} · Update: ${fmtNum(r.activeUpdateLocks)}</small></div>`+
-    `<div class="item"><b>محدودیت نرخ</b><small>${fmtNum(r.rateLimits)} برخورد</small></div>`;
-  $("overviewUsage").innerHTML =
-    `<div class="item"><b>پیام‌ها</b><small>${fmtNum(u.msgsToday)} امروز · ${fmtNum(u.totalMsgs)} کل</small></div>`+
-    `<div class="item"><b>تصاویر</b><small>${fmtNum(u.imgsToday)} تولید · ${fmtNum(u.editsToday)} ویرایش</small></div>`+
-    `<div class="item"><b>جستجوها</b><small>${fmtNum(u.searchesToday)} امروز</small></div>`;
+/* هر تب پس از یک لود موفق تا TAB_TTL تازه شمرده می‌شود؛ رفت‌وبرگشت بین تب‌ها
+   دیگر همان داده را دوباره از سرور نمی‌گیرد و دکمه‌ی ↻ راه صریح تازه‌سازی است.
+   لود ناموفق ثبت نمی‌شود تا بازدید بعدی واقعاً تلاش دوباره باشد. */
+const TAB_TTL_MS = 25000;
+const tabLoaded = Object.create(null);
+function invalidateTab(tab){ delete tabLoaded[tab]; }
+async function loadTab(tab, force){
+  if(!force && tabLoaded[tab] && Date.now()-tabLoaded[tab] < TAB_TTL_MS) return;
+  let ok = false;
+  try{
+    if(tab==="overview")  ok = await loadOverview();
+    else if(tab==="users")     ok = await loadUsers(true);
+    else if(tab==="broadcast") ok = await loadBroadcast();
+    else if(tab==="groups")    ok = await loadGroups();
+    else if(tab==="webapps")   ok = await loadWebApps();
+    else if(tab==="media")     ok = await loadMedia();
+    else if(tab==="requests")  ok = await loadRequests();
+    else if(tab==="logs")      ok = await loadLogs();
+    else if(tab==="keys")      ok = await loadKeys();
+    else if(tab==="business")  ok = await loadBusiness();
+    // دو درخواست مستقل: سری‌بودن‌شان فقط تأخیر را دو برابر می‌کرد.
+    else if(tab==="system")    ok = (await Promise.all([loadSystem(), loadConfig()])).every(Boolean);
+    else ok = true;
+  }catch(e){
+    if(e && e.kind!=="abort" && e.name!=="AbortError") toast(e.message, "err");
+    ok = false;
+  }
+  if(ok) tabLoaded[tab] = Date.now(); else invalidateTab(tab);
+}
+
+/* ── داشبورد ───────────────────────────────────────────────────────────
+   Three containers are filled from one request, so this loader manages their
+   states together instead of going through section(). The old version set the
+   tag to "در حال بارگذاری…" and never cleared it on failure, which is exactly
+   the "stuck loading forever" symptom: a failed poll was indistinguishable
+   from a slow one. */
+function overviewTag(text, cls){
+  const el = $("overviewState");
+  el.textContent = text;
+  el.className = "tag" + (cls ? " "+cls : "");
+}
+async function loadOverview(opts){
+  const els = [$("metrics"), $("overviewLive"), $("overviewUsage")];
+  const populated = els.every(el=> el.children.length>0 && !el.querySelector(".state.err"));
+  // یک تازه‌سازی پس‌زمینه روی صفحه‌ی پرشده نباید اسکلتون را چشمک بزند.
+  const soft = !!(opts && opts.quiet) && populated;
+  if(!soft){
+    overviewTag("در حال بارگذاری…","loading");
+    els.forEach(el=>{ el.innerHTML = skeleton(3); el.setAttribute("aria-busy","true"); });
+  }
+  try{
+    const d = await api("/api/admin/overview");
+    const u = d.users||{}, r = d.runtime||{};
+    const cards = [
+      ["کاربران", fmtNum(u.total)], ["VIP", fmtNum(u.vip)], ["مسدود", fmtNum(u.blocked)],
+      ["فعال امروز", fmtNum(u.activeToday)], ["پیام امروز", fmtNum(u.msgsToday)],
+      ["خطاها", fmtNum(r.errors)], ["میانگین پاسخ", fmtNum(r.avgLatencyMs)+"ms"], ["قفل AI", fmtNum(r.activeAiLocks)],
+    ];
+    $("metrics").innerHTML = cards.map(c=>`<div class="metric"><span>${esc(c[0])}</span><b>${c[1]}</b></div>`).join("");
+    $("version").textContent = (d.version||"Nova") + " · Admin";
+    $("overviewLive").innerHTML =
+      `<div class="item"><b>Telegram API</b><small>${fmtNum(r.telegramCalls)} فراخوانی</small></div>`+
+      `<div class="item"><b>D1</b><small>${fmtNum(r.d1Queries)} خواندن · ${fmtNum(r.d1Writes)} نوشتن</small></div>`+
+      `<div class="item"><b>تسک‌های سنگین</b><small>${fmtNum(r.heavyTasks)} فعال</small></div>`+
+      `<div class="item"><b>قفل‌ها</b><small>AI: ${fmtNum(r.activeAiLocks)} · Update: ${fmtNum(r.activeUpdateLocks)}</small></div>`+
+      `<div class="item"><b>محدودیت نرخ</b><small>${fmtNum(r.rateLimits)} برخورد</small></div>`;
+    $("overviewUsage").innerHTML =
+      `<div class="item"><b>پیام‌ها</b><small>${fmtNum(u.msgsToday)} امروز · ${fmtNum(u.totalMsgs)} کل</small></div>`+
+      `<div class="item"><b>تصاویر</b><small>${fmtNum(u.imgsToday)} تولید · ${fmtNum(u.editsToday)} ویرایش</small></div>`+
+      `<div class="item"><b>جستجوها</b><small>${fmtNum(u.searchesToday)} امروز</small></div>`;
+    overviewTag("به‌روز","ok");
+    return true;
+  }catch(e){
+    if(e && e.kind==="abort") return false;
+    if(soft){
+      // اتصال لحظه‌ای قطع شده: داده‌ی خوب روی صفحه می‌ماند و فقط «کهنه» می‌شود.
+      overviewTag("داده‌ی کهنه","stale");
+      return false;
+    }
+    overviewTag("بارگذاری نشد","err");
+    $("metrics").innerHTML = "";
+    $("overviewUsage").innerHTML = "";
+    $("overviewLive").innerHTML = errorState(e, true);
+    const btn = $("overviewLive").querySelector("[data-retry]");
+    if(btn) btn.onclick = ()=> loadOverview();
+    return false;
+  }finally{
+    els.forEach(el=> el.removeAttribute("aria-busy"));
+  }
 }
 
 /* ── کاربران ─────────────────────────────────────────────────────────── */
@@ -353,23 +1093,36 @@ async function loadUsers(reset){
   if(users.abort) users.abort.abort();
   users.abort = new AbortController();
   const seq = ++users.seq;
-  $("userRows").innerHTML = '<tr><td colspan="7" class="status">در حال بارگذاری…</td></tr>';
+  const rows = $("userRows");
+  rows.innerHTML = '<tr><td colspan="7">'+skeleton(4)+'</td></tr>';
+  rows.setAttribute("aria-busy","true");
   let url = "/api/admin/users?limit=20&sort="+encodeURIComponent(users.sort);
   if(users.q) url += "&q="+encodeURIComponent(users.q);
   if(users.cursor) url += "&cursor="+encodeURIComponent(users.cursor);
   try{
     const d = await api(url, { signal: users.abort.signal });
-    if(seq !== users.seq) return;                       // پاسخ کهنه را نادیده بگیر
+    if(seq !== users.seq) return false;                  // پاسخ کهنه را نادیده بگیر
     const list = d.users||[];
     users.nextCursor = d.nextCursor||null; users.hasNext = !!d.hasNext;
-    $("userRows").innerHTML = list.length ? list.map(rowHtml).join("")
-      : '<tr><td colspan="7" class="status">کاربری یافت نشد.</td></tr>';
+    rows.innerHTML = list.length ? list.map(rowHtml).join("")
+      : '<tr><td colspan="7">'+emptyState(users.q?"🔍":"👤", users.q?"نتیجه‌ای نداشت":"کاربری ثبت نشده",
+          users.q?"جستجوی «"+esc(users.q)+"» چیزی پیدا نکرد.":"به‌محض اولین پیام، کاربر اینجا ظاهر می‌شود.")+'</td></tr>';
     $("nextBtn").disabled = !users.hasNext;
     $("prevBtn").disabled = users.history.length===0;
     $("firstBtn").disabled = users.page===1;
     $("pageState").textContent = "صفحه " + fmtNum(users.page);
     document.querySelectorAll("#userRows [data-user]").forEach(b=> b.onclick = ()=> selectUser(Number(b.dataset.user)));
-  }catch(e){ if(e.name!=="AbortError"){ $("userRows").innerHTML='<tr><td colspan="7" class="status">خطا در بارگذاری</td></tr>'; throw e; } }
+    return true;
+  }catch(e){
+    if(e && (e.kind==="abort" || e.name==="AbortError")) return false;
+    // خطا با دکمه‌ی تلاش دوباره جای «خطا در بارگذاری»ِ بی‌راه‌حل قبلی را می‌گیرد.
+    rows.innerHTML = '<tr><td colspan="7">'+errorState(e, true)+'</td></tr>';
+    const btn = rows.querySelector("[data-retry]");
+    if(btn) btn.onclick = ()=> loadUsers(false);
+    return false;
+  }finally{
+    if(seq === users.seq) rows.removeAttribute("aria-busy");
+  }
 }
 function rowHtml(u){
   const risk = Number(u.riskScore||0);
@@ -383,13 +1136,20 @@ function rowHtml(u){
     `<td><span class="${rc}">${risk}/100</span></td><td>${esc(fmt(u.lastSeen||st.firstUsed))}</td></tr>`;
 }
 async function selectUser(id){
-  $("detail").innerHTML = '<div class="status">در حال بارگذاری…</div>';
+  const el = $("detail");
+  el.innerHTML = skeleton(3);
+  el.setAttribute("aria-busy","true");
   try{
     const d = await api("/api/admin/users/"+id);
     users.selected = { id, user:d.user, details:d.details||{} };
     renderDetail();
     loadUserMemory(id);
-  }catch(e){ $("detail").innerHTML='<div class="status">خطا در بارگذاری کاربر</div>'; toast(e.message,"err"); }
+  }catch(e){
+    if(e && e.kind==="abort") return;
+    el.innerHTML = errorState(e, true);
+    const btn = el.querySelector("[data-retry]");
+    if(btn) btn.onclick = ()=> selectUser(id);
+  }finally{ el.removeAttribute("aria-busy"); }
 }
 function renderDetail(){
   const u = users.selected.user, d = users.selected.details||{};
@@ -405,6 +1165,7 @@ function renderDetail(){
         <div style="min-width:0"><h2 style="margin:0;font-size:17px">${esc(u.firstName||"Unknown")}</h2>
         <div class="mono">${u.userId}${u.userName?(" · @"+esc(u.userName)):""}</div></div>
       </div>
+      ${d.sessionMissing?'<div class="pill" style="margin-bottom:8px">ℹ️ سشن ذخیره‌شده‌ای موجود نیست — این اعداد از رکورد پایگاه‌داده‌اند، نه از حافظه‌ی گفتگو.</div>':""}
       <div class="kv">
         <div><span>زبان</span><b>${esc(u.language||"fa")}</b></div>
         <div><span>Persona</span><b>${esc(u.personaId||"nova")}</b></div>
@@ -454,7 +1215,7 @@ function renderDetail(){
         <button class="primary" data-act="notes" style="margin-top:8px;width:100%">💾 ذخیره یادداشت</button>
       </div>
 
-      <div class="section"><h3>حافظه و یادآورها</h3><div id="memoryBox" class="status">در حال بارگذاری…</div></div>
+      <div class="section"><h3>حافظه و یادآورها</h3><div id="memoryBox"></div></div>
 
       <div class="section"><h3>تاریخچه گفتگو</h3>
         <button id="histBtn" style="width:100%">📜 نمایش تاریخچه</button>
@@ -465,8 +1226,8 @@ function renderDetail(){
   $("histBtn").onclick = ()=> loadHistory(users.selected.id);
 }
 async function loadUserMemory(id){
-  const box = $("memoryBox"); if(!box) return;
-  try{
+  const box = $("memoryBox"); if(!box) return false;
+  return await section(box, async ()=>{
     const d = await api("/api/admin/users/"+id+"/memory");
     const m = d.memory||{}; let html = "";
     const chips = (label, arr) => (arr && arr.length) ? `<div style="margin-bottom:7px"><b style="font-size:12px">${label}</b><div class="chips">${arr.slice(0,40).map(x=>`<span class="chip">${esc(x)}</span>`).join("")}</div></div>` : "";
@@ -480,7 +1241,7 @@ async function loadUserMemory(id){
         m.relationshipGraph.slice(0,25).map(e=>`<div class="mono" style="margin-top:3px">${esc(e.subject)} —[${esc(e.relation)}]→ ${esc(e.object)}</div>`).join("")+`</div>`;
     }
     if(m.lastProfileUpdate) html += `<div class="mono">آخرین به‌روزرسانی پروفایل: ${esc(fmt(m.lastProfileUpdate))}</div>`;
-    if(!html) html = "<i style='color:var(--muted)'>حافظه‌ای ثبت نشده.</i>";
+    if(!html) html = emptyState("🧠","حافظه‌ای ثبت نشده","پس از چند گفتگو، پروفایل بلندمدت ساخته می‌شود.");
     if(d.reminders && d.reminders.length){
       html += `<hr><b style="font-size:12px">یادآورهای فعال (${fmtNum(d.reminders.length)}):</b>` +
         d.reminders.map(r=>`<div class="item-row" style="margin-top:6px"><small>⏰ ${esc(r.message)}<br>${esc(fmt(r.dueAt))}</small>`+
@@ -488,26 +1249,27 @@ async function loadUserMemory(id){
     }
     box.innerHTML = html;
     box.querySelectorAll("[data-remid]").forEach(b=> b.onclick = async()=>{
+      b.disabled = true;
       try{
         await api("/api/admin/users/"+id+"/action", { method:"POST", body:{ action:"reminder_cancel", value:b.dataset.remid } });
         toast("یادآور لغو شد","ok"); loadUserMemory(id);
-      }catch(e){ toast(e.message,"err"); }
+      }catch(e){ b.disabled = false; toast(e.message,"err"); }
     });
-  }catch(e){ box.innerHTML = "<i style='color:var(--muted)'>خطا در بارگذاری حافظه</i>"; }
+  }, { rows:2 });
 }
 async function loadHistory(id){
   const box = $("histBox");
-  box.innerHTML = '<div class="status">در حال بارگذاری…</div>';
-  try{
+  return await section(box, async ()=>{
     const d = await api("/api/admin/users/"+id+"/history?limit=40");
     const turns = d.turns||[];
-    if(!turns.length){ box.innerHTML = '<div class="status">تاریخچه‌ای نیست.</div>'; return; }
+    if(!turns.length){ box.innerHTML = emptyState("💬","تاریخچه‌ای نیست","این کاربر هنوز گفتگویی با ربات نداشته."); return; }
     box.innerHTML = `<div class="pill">موتور: ${esc(d.engine)} · ${fmtNum(d.totalTurns)} تِرن</div>`+
       `<div class="chat" style="margin-top:8px">`+
       turns.map(t=>`<div class="msg ${t.role==="user"?"user":"model"}">${esc(t.text)}`+
         (t.timestamp?`<time>${esc(fmt(t.timestamp))}</time>`:"")+`</div>`).join("")+`</div>`;
-  }catch(e){ box.innerHTML = '<div class="status">خطا در بارگذاری تاریخچه</div>'; }
+  }, { rows:3 });
 }
+let actionBusy = false;
 async function doAction(act){
   if(!users.selected) return;
   const id = users.selected.id, u = users.selected.user;
@@ -548,21 +1310,30 @@ async function doAction(act){
   const body = { action: act };
   if(value !== undefined) body.value = value;
   if(limitType) body.limitType = limitType;
+  // بدون این گارد، دوبار کلیک سریع روی «VIP کن» دو درخواست متناقض می‌فرستد و
+  // نتیجه به ترتیب رسیدن پاسخ‌ها بستگی پیدا می‌کند.
+  if(actionBusy) { toast("درخواست قبلی هنوز تمام نشده","err"); return; }
+  actionBusy = true;
+  document.querySelectorAll("#detail [data-act]").forEach(b=> b.disabled = true);
   try{
     await api("/api/admin/users/"+id+"/action", { method:"POST", body });
     toast("انجام شد ✓","ok");
+    invalidateTab("users");                       // فهرست باید در بازدید بعدی تازه شود
     await selectUser(id);
     loadUsers().catch(()=>{});
-  }catch(e){ toast("خطا: "+e.message,"err"); }
+  }catch(e){
+    toast("خطا: "+e.message,"err");
+    document.querySelectorAll("#detail [data-act]").forEach(b=> b.disabled = false);
+  }finally{ actionBusy = false; }
 }
 
 /* ── برادکست و پیام مستقیم ───────────────────────────────────────────── */
-async function loadBroadcast(){
+async function loadBroadcast(opts){
   const box = $("bcStatus");
-  try{
+  return await section(box, async ()=>{
     const d = await api("/api/admin/broadcast");
     const j = d.job;
-    if(!j){ box.innerHTML = '<div class="status">موردی در جریان نیست.</div>'; return; }
+    if(!j){ box.innerHTML = emptyState("📭","ارسالی در جریان نیست","یک پیام همگانی بفرست تا وضعیتش این‌جا دیده شود."); return; }
     const active = j.status==="pending" || j.status==="running";
     box.innerHTML =
       `<div class="item"><b>${esc(j.status)} · ${j.percent}%</b>`+
@@ -573,10 +1344,11 @@ async function loadBroadcast(){
       (active?`<button class="danger" id="bcCancel" style="width:100%">🛑 لغو ارسال</button>`:"");
     if(active) $("bcCancel").onclick = async()=>{
       if(!await confirmAction("لغو ارسال","ارسال همگانی متوقف شود؟")) return;
-      try{ await api("/api/admin/broadcast/cancel",{method:"POST"}); toast("لغو شد","ok"); loadBroadcast(); }
-      catch(e){ toast(e.message,"err"); }
+      const b = $("bcCancel"); if(b) b.disabled = true;
+      try{ await api("/api/admin/broadcast/cancel",{method:"POST"}); toast("لغو شد","ok"); await loadBroadcast(); }
+      catch(e){ if(b) b.disabled = false; toast(e.message,"err"); }
     };
-  }catch(e){ box.innerHTML = '<div class="status">خطا در خواندن وضعیت</div>'; }
+  }, { quiet: !!(opts && opts.quiet), rows:2 });
 }
 async function sendBroadcast(){
   const msg = $("bcMessage").value.trim();
@@ -589,7 +1361,8 @@ async function sendBroadcast(){
     const d = await api("/api/admin/broadcast", { method:"POST", body:{ message:msg, audience:aud }, timeoutMs:20000 });
     $("bcMessage").value = ""; updateBcCount();
     toast("ارسال شروع شد: "+fmtNum(d.total)+" گیرنده","ok");
-    loadBroadcast();
+    invalidateTab("broadcast");
+    await loadBroadcast();
   }catch(e){ toast("خطا: "+e.message,"err"); }
   finally{ btn.disabled = false; }
 }
@@ -609,24 +1382,30 @@ async function sendDM(){
 
 /* ── گروه‌ها ─────────────────────────────────────────────────────────── */
 async function loadGroups(){
-  const d = await api("/api/admin/groups");
-  const gs = d.groups||[];
-  $("groupsList").innerHTML = gs.length ? gs.map(g=>
-    `<div class="item"><div class="item-row"><div style="min-width:0">`+
-    `<b>${esc(g.title||"گروه")} ${g.vipStatus?'<span class="tag vip">VIP</span>':""}</b>`+
-    `<small>${g.chatId} · ${esc(g.type||"")}${g.username?" · @"+esc(g.username):""}`+
-    `${g.memberCount?" · "+fmtNum(g.memberCount)+" عضو":""}<br>آخرین فعالیت: ${esc(fmt(g.lastActivity))}</small>`+
-    `</div><div class="item-actions">`+
-    `<button class="sm" data-gvip="${g.chatId}" data-val="${g.vipStatus?0:1}">${g.vipStatus?"حذف VIP":"VIP"}</button>`+
-    `<button class="sm ghost" data-gcfg="${g.chatId}">تنظیمات</button>`+
-    `</div></div></div>`).join("") : '<div class="status">گروهی ثبت نشده.</div>';
-  $("groupsList").querySelectorAll("[data-gvip]").forEach(b=> b.onclick = async()=>{
-    try{
-      await api("/api/admin/groups/"+b.dataset.gvip+"/action",{method:"POST",body:{action:"vip",value:b.dataset.val==="1"}});
-      toast("وضعیت VIP گروه تغییر کرد","ok"); loadGroups();
-    }catch(e){ toast(e.message,"err"); }
-  });
-  $("groupsList").querySelectorAll("[data-gcfg]").forEach(b=> b.onclick = ()=> groupConfig(Number(b.dataset.gcfg)));
+  const list = $("groupsList");
+  return await section(list, async ()=>{
+    const d = await api("/api/admin/groups");
+    const gs = d.groups||[];
+    list.innerHTML = gs.length ? gs.map(g=>
+      `<div class="item"><div class="item-row"><div style="min-width:0">`+
+      `<b>${esc(g.title||"گروه")} ${g.vipStatus?'<span class="tag vip">VIP</span>':""}</b>`+
+      `<small>${g.chatId} · ${esc(g.type||"")}${g.username?" · @"+esc(g.username):""}`+
+      `${g.memberCount?" · "+fmtNum(g.memberCount)+" عضو":""}<br>آخرین فعالیت: ${esc(fmt(g.lastActivity))}</small>`+
+      `</div><div class="item-actions">`+
+      `<button class="sm" data-gvip="${g.chatId}" data-val="${g.vipStatus?0:1}">${g.vipStatus?"حذف VIP":"VIP"}</button>`+
+      `<button class="sm ghost" data-gcfg="${g.chatId}">تنظیمات</button>`+
+      `</div></div></div>`).join("") : emptyState("💬","گروهی ثبت نشده","وقتی ربات به گروهی اضافه شود این‌جا فهرست می‌شود.");
+    list.querySelectorAll("[data-gvip]").forEach(b=> b.onclick = async()=>{
+      b.disabled = true;
+      try{
+        await api("/api/admin/groups/"+b.dataset.gvip+"/action",{method:"POST",body:{action:"vip",value:b.dataset.val==="1"}});
+        toast("وضعیت VIP گروه تغییر کرد","ok");
+        invalidateTab("groups");
+        await loadGroups();
+      }catch(e){ b.disabled = false; toast(e.message,"err"); }
+    });
+    list.querySelectorAll("[data-gcfg]").forEach(b=> b.onclick = ()=> groupConfig(Number(b.dataset.gcfg)));
+  }, { rows:3 });
 }
 async function groupConfig(chatId){
   try{
@@ -642,119 +1421,228 @@ async function groupConfig(chatId){
 
 /* ── وب‌اپ‌ها ────────────────────────────────────────────────────────── */
 async function loadWebApps(){
-  const d = await api("/api/admin/webapps");
-  const as = d.webapps||[];
-  $("appsList").innerHTML = as.length ? as.map(a=>{
-    const url = location.origin + "/app/" + encodeURIComponent(a.name);
-    return `<div class="item"><div class="item-row"><div style="min-width:0">`+
-    `<b>${esc(a.name||"app")}</b>`+
-    `<small><a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a><br>`+
-    `${esc(fmt(a.createdAt))} · ${fmtNum(a.viewCount)} بازدید · ${kb(a.size)} · ${esc(a.createdByName||"")}</small>`+
-    `</div><div class="item-actions"><button class="sm danger" data-appdel="${esc(a.name)}">حذف</button></div>`+
-    `</div></div>`;
-  }).join("") : '<div class="status">وب‌اپی ثبت نشده.</div>';
-  $("appsList").querySelectorAll("[data-appdel]").forEach(b=> b.onclick = async()=>{
-    const n = b.dataset.appdel;
-    if(!await confirmAction("حذف وب‌اپ","وب‌اپ «"+n+"» برای همیشه حذف شود؟")) return;
-    try{ await api("/api/admin/webapps/"+encodeURIComponent(n),{method:"DELETE"}); toast("حذف شد","ok"); loadWebApps(); }
-    catch(e){ toast(e.message,"err"); }
-  });
+  const list = $("appsList");
+  return await section(list, async ()=>{
+    const d = await api("/api/admin/webapps");
+    const as = d.webapps||[];
+    // سرور حداکثر ۴۰ کلید را می‌خواند؛ اگر به سقف خورده باشد باید صریح گفته شود،
+    // نه این‌که فهرست بریده به‌عنوان فهرست کامل نمایش داده شود.
+    const cap = d.capped ? `<div class="pill">فقط ${fmtNum(as.length)} مورد اخیر نمایش داده می‌شود (سقف فهرست‌گیری).</div>` : "";
+    list.innerHTML = cap + (as.length ? as.map(a=>{
+      const url = location.origin + "/app/" + encodeURIComponent(a.name);
+      return `<div class="item"><div class="item-row"><div style="min-width:0">`+
+      `<b>${esc(a.name||"app")}</b>`+
+      `<small><a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a><br>`+
+      `${esc(fmt(a.createdAt))} · ${fmtNum(a.viewCount)} بازدید · ${kb(a.size)} · ${esc(a.createdByName||"")}</small>`+
+      `</div><div class="item-actions"><button class="sm danger" data-appdel="${esc(a.name)}">حذف</button></div>`+
+      `</div></div>`;
+    }).join("") : emptyState("🌐","وب‌اپی ساخته نشده","اپ‌ها و بازی‌های ساخته‌شده این‌جا فهرست می‌شوند."));
+    list.querySelectorAll("[data-appdel]").forEach(b=> b.onclick = async()=>{
+      const n = b.dataset.appdel;
+      if(!await confirmAction("حذف وب‌اپ","وب‌اپ «"+n+"» برای همیشه حذف شود؟")) return;
+      b.disabled = true;
+      try{
+        await api("/api/admin/webapps/"+encodeURIComponent(n),{method:"DELETE"});
+        toast("حذف شد","ok");
+        invalidateTab("webapps");
+        await loadWebApps();
+      }catch(e){ b.disabled = false; toast(e.message,"err"); }
+    });
+  }, { rows:3 });
 }
 
-/* ── رسانه ───────────────────────────────────────────────────────────── */
-async function loadMedia(){
+/* ── رسانه ─────────────────────────────────────────────────────────────
+   Previews are the stored objects themselves — there is no thumbnail pipeline
+   and generating one would mean re-encoding media the Worker should not be
+   loading into memory at all. So every card is lazy (`loading="lazy"`,
+   `preload="none"`): nothing below the fold transfers a byte until the admin
+   scrolls to it, and one page is 24 items rather than the old silent 200. */
+const media = { offset:0, limit:24, total:0, hasMore:false, kind:"media", seq:0 };
+function mediaCard(m){
+  const kind = String(m.kind||"").toLowerCase();
+  const url  = m.url ? String(m.url) : "";
+  const id   = String(m.id||"media");
+  const meta = `${esc(fmt(m.createdAt))} · ${kb(m.size)}${m.source?" · "+esc(m.source):""}`;
+  let thumb;
+  if(url && (kind==="image" || kind==="gif")){
+    thumb = `<img src="${esc(url)}" alt="${esc(id)}" loading="lazy" decoding="async">`;
+  }else if(url && kind==="voice"){
+    thumb = `<div class="ph pad"><span class="phlabel">🎙 ویس</span>`+
+            `<audio controls preload="none" src="${esc(url)}"></audio></div>`;
+  }else if(url && kind==="video"){
+    thumb = `<video controls preload="none" playsinline src="${esc(url)}"></video>`;
+  }else{
+    // فایل‌های بدون پیش‌نمایش (سند، فرمت ناشناخته، یا رسانه‌ی منقضی‌شده)
+    thumb = `<div class="ph"><span class="phlabel">${url?"📄 "+esc(kind||"فایل"):"⌛ در دسترس نیست"}</span></div>`;
+  }
+  return `<div class="mcard"><div class="mthumb">${thumb}</div>`+
+    `<div class="meta"><b title="${esc(id)}">${esc(id)}</b><small>${meta}</small>`+
+    (m.prompt?`<small style="opacity:.7">${esc(String(m.prompt).slice(0,90))}</small>`:"")+
+    `<div class="row">`+
+    (url?`<a class="linkbtn" href="${esc(url)}" target="_blank" rel="noopener">باز کردن</a>`:"")+
+    `<button class="sm danger" data-mdel="${esc(id)}">حذف</button></div></div></div>`;
+}
+async function loadMedia(opts){
   const kind = $("mediaKind").value;
-  const d = await api("/api/admin/"+(kind==="assets"?"assets":"media"));
-  const items = kind==="assets" ? (d.assets||[]) : (d.media||[]);
-  $("mediaList").innerHTML =
-    `<div class="item"><b>${fmtNum(d.total)} آیتم</b><small>${mb(d.totalBytes)}</small></div>` +
-    (items.length ? items.map(m=>
-      `<div class="item"><div class="item-row"><div style="min-width:0">`+
-      `<b>${esc(m.id||"media")}</b><small>${esc(m.createdByName||"")} · ${kb(m.size)} · ${esc(fmt(m.createdAt))}`+
-      `${m.kind?" · "+esc(m.kind):""}${m.source?" · "+esc(m.source):""}`+
-      `${m.prompt?"<br>"+esc(String(m.prompt).slice(0,120)):""}</small></div>`+
-      `<div class="item-actions">`+
-      (m.url?`<a class="sm" href="${esc(m.url)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;padding:0 10px;border:1px solid var(--border);border-radius:9px;min-height:34px">باز</a>`:"")+
-      `<button class="sm danger" data-mdel="${esc(m.id)}">حذف</button></div>`+
-      `</div></div>`).join("") : '<div class="status">موردی نیست.</div>');
-  $("mediaList").querySelectorAll("[data-mdel]").forEach(b=> b.onclick = async()=>{
-    if(!await confirmAction("حذف رسانه","آیتم «"+b.dataset.mdel+"» حذف شود؟")) return;
-    try{ await api("/api/admin/media/"+encodeURIComponent(b.dataset.mdel),{method:"DELETE"}); toast("حذف شد","ok"); loadMedia(); }
-    catch(e){ toast(e.message,"err"); }
-  });
+  // تغییر نوع رسانه صفحه‌بندی را از صفر شروع می‌کند، وگرنه offsetِ فهرست قبلی
+  // روی فهرست جدید اعمال می‌شد و پنجره‌ی خالی نشان می‌داد.
+  if(kind !== media.kind){ media.kind = kind; media.offset = 0; }
+  if(opts && opts.offset !== undefined) media.offset = Math.max(0, opts.offset);
+  const list = $("mediaList");
+  return await section(list, async ()=>{
+    // دو کلیک سریع روی «بعدی» دو درخواست هم‌زمان می‌سازد؛ بدون این توکن ممکن است
+    // پاسخ قدیمی‌تر آخر برسد و صفحه‌ی اشتباه رندر شود.
+    const seq = ++media.seq;
+    const q = "?limit="+media.limit+"&offset="+media.offset;
+    const d = await api("/api/admin/"+(kind==="assets"?"assets":"media")+q);
+    if(seq !== media.seq) return;
+    const items = d.items || (kind==="assets" ? (d.assets||[]) : (d.media||[]));
+    media.total = Number(d.total||items.length);
+    media.hasMore = !!d.hasMore;
+    // اگر آیتم‌ها حذف شده باشند ممکن است offset از انتهای فهرست عبور کرده باشد.
+    if(!items.length && media.offset > 0 && media.total > 0){
+      media.offset = Math.max(0, media.total - media.limit);
+      return await loadMedia({ offset: media.offset });
+    }
+    const backend = d.backend==="r2" ? "R2 object storage" : "D1 (kv_store)";
+    $("mediaBar").innerHTML =
+      `<span class="pill">${fmtNum(media.total)} آیتم · ${mb(d.totalBytes)}</span>`+
+      `<span class="pill">ذخیره‌سازی: ${esc(backend)}</span>`+
+      (d.retentionDays?`<span class="pill">نگه‌داری: ${fmtNum(d.retentionDays)} روز</span>`:"");
+    list.innerHTML = items.length
+      ? `<div class="mgrid">`+items.map(mediaCard).join("")+`</div>`
+      : emptyState("🖼️","رسانه‌ای نیست","تصاویر تولیدشده و آپلودها این‌جا دیده می‌شوند.");
+    const pager = $("mediaPager");
+    const showPager = media.offset>0 || media.hasMore;
+    pager.hidden = !showPager;
+    if(showPager){
+      const from = media.total ? media.offset+1 : 0;
+      const to = media.offset + items.length;
+      $("mediaPageState").textContent = fmtNum(from)+"–"+fmtNum(to)+" از "+fmtNum(media.total);
+      $("mediaPrev").disabled = media.offset<=0;
+      $("mediaNext").disabled = !media.hasMore;
+    }
+    list.querySelectorAll("[data-mdel]").forEach(b=> b.onclick = async()=>{
+      if(!await confirmAction("حذف رسانه","آیتم «"+b.dataset.mdel+"» حذف شود؟")) return;
+      b.disabled = true;
+      try{
+        await api("/api/admin/media/"+encodeURIComponent(b.dataset.mdel),{method:"DELETE"});
+        toast("حذف شد","ok");
+        invalidateTab("media");
+        await loadMedia();
+      }catch(e){ b.disabled = false; toast(e.message,"err"); }
+    });
+  }, { rows:3 });
 }
 
 /* ── درخواست‌ها / لاگ‌ها / کلیدها ─────────────────────────────────────── */
 async function loadRequests(){
+  const list = $("requestList");
   const q = ($("reqSearch").value||"").trim();
-  $("requestList").innerHTML = '<div class="status">در حال بارگذاری…</div>';
-  const d = await api("/api/admin/requests?q="+encodeURIComponent(q));
-  const rs = d.requests||[];
-  $("requestList").innerHTML = rs.length ? rs.map(r=>
-    `<div class="item"><b class="${r.ok?"good-text":"bad-text"}">${esc(r.kind)} · ${r.ok?"✅":"❌"} · ${Math.round(r.durationMs||0)}ms</b>`+
-    `<small>${esc(r.reqId)} · کاربر ${esc(r.userId)} · ${esc(fmt(r.ts))}</small>`+
-    (r.error?`<small class="bad-text" style="margin-top:5px">${esc(r.error)}</small>`:"")+`</div>`).join("")
-    : '<div class="status">موردی نیست.</div>';
+  return await section(list, async ()=>{
+    const d = await api("/api/admin/requests?q="+encodeURIComponent(q));
+    const rs = d.requests||[];
+    list.innerHTML = rs.length ? rs.map(r=>
+      `<div class="item"><b class="${r.ok?"good-text":"bad-text"}">${esc(r.kind)} · ${r.ok?"✅":"❌"} · ${Math.round(r.durationMs||0)}ms</b>`+
+      `<small>${esc(r.reqId)} · کاربر ${esc(r.userId)} · ${esc(fmt(r.ts))}</small>`+
+      (r.error?`<small class="bad-text" style="margin-top:5px">${esc(r.error)}</small>`:"")+`</div>`).join("")
+      : emptyState("📨", q?"درخواستی با این فیلتر نیست":"درخواستی ثبت نشده",
+          q?"فیلتر را خالی کن یا شناسه‌ی دیگری را جستجو کن.":"پس از فعالیت کاربران، تشخیص‌های درخواست این‌جا می‌آید.");
+  }, { rows:4 });
 }
 async function loadLogs(){
+  const list = $("logsList");
   const lim = $("logLimit").value, lvl = $("logLevel").value;
-  $("logsList").innerHTML = '<div class="status">در حال بارگذاری…</div>';
-  const d = await api("/api/admin/logs?limit="+encodeURIComponent(lim));
-  let ls = d.logs||[];
-  if(lvl) ls = ls.filter(l=> String(l.level||"info")===lvl);
-  $("logsList").innerHTML = ls.length ? ls.map(l=>{
-    const cls = l.level==="error"?"bad-text":l.level==="warn"?"risk-med":"good-text";
-    return `<div class="item"><div class="item-row"><b class="${cls}">${esc(String(l.level||"info").toUpperCase())}</b>`+
-      `<small style="flex:0 0 auto">${esc(fmt(l.timestamp))}</small></div>`+
-      `<small style="margin-top:5px;color:var(--text)">${esc(l.message||"")}</small></div>`;
-  }).join("") : '<div class="status">لاگی با این فیلتر نیست.</div>';
+  return await section(list, async ()=>{
+    const d = await api("/api/admin/logs?limit="+encodeURIComponent(lim));
+    let ls = d.logs||[];
+    if(lvl) ls = ls.filter(l=> String(l.level||"info")===lvl);
+    list.innerHTML = ls.length ? ls.map(l=>{
+      const cls = l.level==="error"?"bad-text":l.level==="warn"?"risk-med":"good-text";
+      return `<div class="item"><div class="item-row"><b class="${cls}">${esc(String(l.level||"info").toUpperCase())}</b>`+
+        `<small style="flex:0 0 auto">${esc(fmt(l.timestamp))}</small></div>`+
+        `<small style="margin-top:5px;color:var(--text)">${esc(l.message||"")}</small></div>`;
+    }).join("") : emptyState("📜","لاگی با این فیلتر نیست","سطح یا تعداد را تغییر بده.");
+  }, { rows:4 });
 }
 async function loadKeys(){
-  const d = await api("/api/admin/keys");
-  const ks = d.keys||[];
-  const live = ks.filter(k=>!k.disabled).length;
-  $("keysList").innerHTML =
-    `<div class="item"><b>مدل چت: ${esc(d.model)}</b><small>مدل کد: ${esc(d.codeModel)}<br>`+
-    `${fmtNum(live)} از ${fmtNum(ks.length)} کلید فعال</small></div>` +
-    (ks.length ? ks.map(k=>
-      `<div class="item"><b>کلید ${fmtNum(k.index)} — ${esc(k.masked)}</b>`+
-      `<small class="${k.disabled?"bad-text":"good-text"}">${k.disabled?"🔴 غیرفعال (سهمیه/احراز)":"🟢 فعال"}`+
-      `${k.disabledUntil?" · تا "+esc(fmt(k.disabledUntil)):""}</small></div>`).join("")
-      : '<div class="status">کلیدی تنظیم نشده.</div>');
+  const list = $("keysList");
+  return await section(list, async ()=>{
+    const d = await api("/api/admin/keys");
+    const ks = d.keys||[];
+    const live = ks.filter(k=>!k.disabled).length;
+    // «تنظیم نشده» با «خالی» یکی نیست: اولی یعنی استقرار ناقص است.
+    if(!d.configured){
+      list.innerHTML = unavailableState("کلید Gemini تنظیم نشده",
+        "بدون کلید، پاسخ‌دهی هوش مصنوعی کار نمی‌کند. با wrangler secret put GEMINI_API_KEY اضافه کن.");
+      return;
+    }
+    list.innerHTML =
+      `<div class="item"><b>مدل چت: ${esc(d.model)}</b><small>مدل کد: ${esc(d.codeModel)}<br>`+
+      `${fmtNum(live)} از ${fmtNum(ks.length)} کلید فعال</small></div>` +
+      ks.map(k=>
+        `<div class="item"><b>کلید ${fmtNum(k.index)} — ${esc(k.masked)}</b>`+
+        `<small class="${k.disabled?"bad-text":"good-text"}">${k.disabled?"🔴 غیرفعال (سهمیه/احراز)":"🟢 فعال"}`+
+        `${k.disabledUntil?" · تا "+esc(fmt(k.disabledUntil)):""}</small></div>`).join("");
+  }, { rows:2 });
 }
 
 /* ── بیزینس / سیستم / تنظیمات ────────────────────────────────────────── */
 let bizEnabled = false;
 async function loadBusiness(){
-  const d = await api("/api/admin/business");
-  bizEnabled = !!d.enabled;
-  $("bizState").textContent = "پاسخ خودکار Business: " + (bizEnabled?"روشن ✅":"خاموش ❌");
+  const el = $("bizState");
+  el.textContent = "در حال بارگذاری…";
+  try{
+    const d = await api("/api/admin/business");
+    bizEnabled = !!d.enabled;
+    el.textContent = "پاسخ خودکار Business: " + (bizEnabled?"روشن ✅":"خاموش ❌");
+    return true;
+  }catch(e){
+    if(e && e.kind==="abort") return false;
+    // قبلاً روی «در حال بارگذاری…» می‌ماند و کلید تغییر وضعیت با مقدار نامعلوم
+    // قابل زدن بود؛ حالا خطا صریح است و دکمه غیرفعال می‌شود.
+    el.textContent = "وضعیت Business خوانده نشد — " + e.message;
+    const btn = $("businessToggle"); if(btn) btn.disabled = true;
+    return false;
+  }
 }
 async function toggleBusiness(){
+  const btn = $("businessToggle"); if(btn) btn.disabled = true;
   try{
     await api("/api/admin/business",{method:"POST",body:{enabled:!bizEnabled}});
     await loadBusiness(); toast("وضعیت Business تغییر کرد","ok");
   }catch(e){ toast(e.message,"err"); }
+  finally{ if(btn) btn.disabled = false; }
 }
 let maintenance = false;
 async function loadSystem(){
-  const d = await api("/api/admin/system");
-  maintenance = !!d.maintenance;
-  $("maintState").textContent = "حالت تعمیر: " + (maintenance?"روشن ⚠️":"خاموش ✅");
-  const m = d.metrics||{}, l = d.locks||{};
-  $("systemList").innerHTML =
-    `<div class="item"><b>${esc(d.version)}</b><small>قفل AI: ${fmtNum(l.ai)} · قفل آپدیت: ${fmtNum(l.updates)}</small></div>`+
-    `<div class="item"><b>خطاها</b><small>${fmtNum(m.errors)}</small></div>`+
-    `<div class="item"><b>فراخوانی تلگرام</b><small>${fmtNum(m.tgCalls)}</small></div>`+
-    `<div class="item"><b>D1</b><small>${fmtNum(m.d1Queries)} خواندن · ${fmtNum(m.d1Writes)} نوشتن</small></div>`+
-    `<div class="item"><b>محدودیت نرخ</b><small>${fmtNum(m.rateLimits)}</small></div>`;
+  const list = $("systemList");
+  $("maintState").textContent = "در حال بارگذاری…";
+  const ok = await section(list, async ()=>{
+    const d = await api("/api/admin/system");
+    maintenance = !!d.maintenance;
+    $("maintState").textContent = "حالت تعمیر: " + (maintenance?"روشن ⚠️":"خاموش ✅");
+    const m = d.metrics||{}, l = d.locks||{};
+    list.innerHTML =
+      `<div class="item"><b>${esc(d.version)}</b><small>قفل AI: ${fmtNum(l.ai)} · قفل آپدیت: ${fmtNum(l.updates)}</small></div>`+
+      `<div class="item"><b>خطاها</b><small>${fmtNum(m.errors)}</small></div>`+
+      `<div class="item"><b>فراخوانی تلگرام</b><small>${fmtNum(m.tgCalls)}</small></div>`+
+      `<div class="item"><b>D1</b><small>${fmtNum(m.d1Queries)} خواندن · ${fmtNum(m.d1Writes)} نوشتن</small></div>`+
+      `<div class="item"><b>محدودیت نرخ</b><small>${fmtNum(m.rateLimits)}</small></div>`;
+  }, { rows:3 });
+  // وضعیت تعمیر ناخوانده = کلید نباید بدون دانستن حالت فعلی زده شود.
+  const btn = $("maintToggle");
+  if(!ok) $("maintState").textContent = "حالت تعمیر: نامشخص (خواندن ناموفق)";
+  if(btn) btn.disabled = !ok;
+  return ok;
 }
 async function toggleMaintenance(){
   if(!await confirmAction("حالت تعمیر", maintenance?"حالت تعمیر خاموش شود؟":"با روشن شدن، ربات به کاربران عادی پاسخ نمی‌دهد. ادامه؟")) return;
+  const btn = $("maintToggle"); if(btn) btn.disabled = true;
   try{
     await api("/api/admin/maintenance",{method:"POST",body:{enabled:!maintenance}});
     await loadSystem(); toast("حالت تعمیر تغییر کرد","ok");
-  }catch(e){ toast(e.message,"err"); }
+  }catch(e){ toast(e.message,"err"); if(btn) btn.disabled = false; }
 }
 const CFG_FIELDS = [
   ["message_limit","سقف پیام (عادی)"], ["image_limit","سقف تصویر (عادی)"],
@@ -764,7 +1652,7 @@ const CFG_FIELDS = [
 ];
 async function loadConfig(){
   const body = $("cfgBody");
-  try{
+  return await section(body, async ()=>{
     const d = await api("/api/admin/config");
     const c = d.config||{}, r = d.runtime||{};
     body.innerHTML =
@@ -782,7 +1670,7 @@ async function loadConfig(){
       `<textarea class="cfgf" data-key="system_prompt" maxlength="12000" style="min-height:110px">${esc(c.system_prompt||"")}</textarea>`+
       `<button class="primary" id="cfgSave" style="width:100%;margin-top:11px">💾 ذخیره تنظیمات</button>`;
     $("cfgSave").onclick = saveConfig;
-  }catch(e){ body.innerHTML = '<div class="status">خطا در بارگذاری تنظیمات</div>'; }
+  }, { rows:4 });
 }
 async function saveConfig(){
   const changes = [];
@@ -801,7 +1689,8 @@ async function saveConfig(){
   try{
     const d = await api("/api/admin/config",{method:"POST",body:{changes}});
     toast(fmtNum((d.applied||[]).length)+" تغییر اعمال شد ✓","ok");
-    loadConfig();
+    invalidateTab("system");
+    await loadConfig();
   }catch(e){ toast("خطا: "+e.message,"err"); }
   finally{ btn.disabled = false; }
 }
@@ -809,14 +1698,24 @@ async function saveConfig(){
 /* ── راه‌اندازی ──────────────────────────────────────────────────────── */
 let personaCache = [];
 function bindStatic(){
-  $("refreshBtn").onclick = ()=> loadTab(state.tab);
+  // ↻ صریحاً تازه‌سازی اجباری است، وگرنه کش تب جلوی درخواست را می‌گیرد.
+  $("refreshBtn").onclick = ()=> loadTab(state.tab, true);
   $("closeBtn").onclick   = ()=>{ try{ tg.close(); }catch(e){} };
-  $("hamburger").onclick  = ()=> $("drawer").classList.add("open");
+  $("hamburger").onclick  = openDrawer;
   $("drawerBackdrop").onclick = closeDrawer;
+  $("drawerClose").onclick = closeDrawer;
 
-  $("searchBtn").onclick = ()=>{ users.q = ($("search").value||"").trim(); loadUsers(true).catch(()=>{}); };
-  $("clearBtn").onclick  = ()=>{ $("search").value=""; users.q=""; loadUsers(true).catch(()=>{}); };
-  $("sort").onchange     = e =>{ users.sort = e.target.value; loadUsers(true).catch(()=>{}); };
+  // بنر انقضای نشست: «تلاش دوباره» تب فعلی را دوباره می‌خواند (اگر ادمین پنل را
+  // از /admin تازه باز کرده باشد، همان initData جدید کار می‌کند).
+  $("authReload").onclick = async()=>{
+    $("authBanner").classList.remove("show");
+    await loadTab(state.tab, true);
+  };
+  $("authDismiss").onclick = ()=> $("authBanner").classList.remove("show");
+
+  $("searchBtn").onclick = ()=>{ users.q = ($("search").value||"").trim(); invalidateTab("users"); loadUsers(true).catch(()=>{}); };
+  $("clearBtn").onclick  = ()=>{ $("search").value=""; users.q=""; invalidateTab("users"); loadUsers(true).catch(()=>{}); };
+  $("sort").onchange     = e =>{ users.sort = e.target.value; invalidateTab("users"); loadUsers(true).catch(()=>{}); };
   $("search").addEventListener("keydown", e=>{ if(e.key==="Enter") $("searchBtn").click(); });
   $("firstBtn").onclick = ()=> loadUsers(true).catch(()=>{});
   $("prevBtn").onclick  = ()=>{ users.cursor = users.history.pop() ?? null; users.page = Math.max(1, users.page-1); loadUsers().catch(()=>{}); };
@@ -827,31 +1726,80 @@ function bindStatic(){
   $("bcMessage").addEventListener("input", updateBcCount);
   $("dmSend").onclick    = sendDM;
 
-  $("groupsLoad").onclick = ()=> loadGroups().catch(e=>toast(e.message,"err"));
-  $("appsLoad").onclick   = ()=> loadWebApps().catch(e=>toast(e.message,"err"));
-  $("mediaLoad").onclick  = ()=> loadMedia().catch(e=>toast(e.message,"err"));
-  $("mediaKind").onchange = ()=> loadMedia().catch(e=>toast(e.message,"err"));
-  $("reqLoad").onclick    = ()=> loadRequests().catch(e=>toast(e.message,"err"));
+  // دکمه‌های «بارگذاری» هر تب = تازه‌سازی اجباری همان بخش.
+  $("groupsLoad").onclick = ()=>{ invalidateTab("groups"); loadGroups(); };
+  $("appsLoad").onclick   = ()=>{ invalidateTab("webapps"); loadWebApps(); };
+  $("mediaLoad").onclick  = ()=>{ invalidateTab("media"); loadMedia(); };
+  $("mediaKind").onchange = ()=>{ invalidateTab("media"); loadMedia({ offset:0 }); };
+  $("mediaPrev").onclick  = ()=> loadMedia({ offset: Math.max(0, media.offset - media.limit) });
+  $("mediaNext").onclick  = ()=>{ if(media.hasMore) loadMedia({ offset: media.offset + media.limit }); };
+  $("reqLoad").onclick    = ()=>{ invalidateTab("requests"); loadRequests(); };
   $("reqSearch").addEventListener("keydown", e=>{ if(e.key==="Enter") $("reqLoad").click(); });
-  $("logsLoad").onclick   = ()=> loadLogs().catch(e=>toast(e.message,"err"));
-  $("logLevel").onchange  = ()=> loadLogs().catch(()=>{});
-  $("keysLoad").onclick   = ()=> loadKeys().catch(e=>toast(e.message,"err"));
-  $("systemLoad").onclick = ()=> loadSystem().catch(e=>toast(e.message,"err"));
+  $("logsLoad").onclick   = ()=>{ invalidateTab("logs"); loadLogs(); };
+  $("logLevel").onchange  = ()=> loadLogs();
+  $("keysLoad").onclick   = ()=>{ invalidateTab("keys"); loadKeys(); };
+  $("systemLoad").onclick = ()=>{ invalidateTab("system"); loadSystem(); };
   $("cfgLoad").onclick    = ()=> loadConfig();
   $("businessToggle").onclick = toggleBusiness;
   $("maintToggle").onclick    = toggleMaintenance;
 
   $("modal").addEventListener("click", e=>{ if(e.target===$("modal")) $("modalCancel").click(); });
+
+  // Escape closes the topmost layer: modal first, then the drawer.
+  document.addEventListener("keydown", e=>{
+    if(e.key!=="Escape") return;
+    if($("modal").classList.contains("open")){ $("modalCancel").click(); return; }
+    if($("drawer").classList.contains("open")) closeDrawer();
+  });
+
+  // Keep focus inside an open modal so keyboard users cannot tab out of it.
+  $("modal").addEventListener("keydown", e=>{
+    if(e.key!=="Tab") return;
+    const focusables = $("modal").querySelectorAll('button:not(:disabled),input,select,textarea,[href]');
+    if(!focusables.length) return;
+    const first = focusables[0], last = focusables[focusables.length-1];
+    if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+  });
 }
 async function init(){
   buildNav(); bindStatic(); updateBcCount();
-  try{ const p = await api("/api/admin/personas"); personaCache = p.personas||[]; }catch(e){}
+  // The persona list is only needed when the admin opens the persona picker, so
+  // routing no longer waits a whole round-trip for it before drawing anything.
+  api("/api/admin/personas").then(p=>{ personaCache = p.personas||[]; }).catch(()=>{});
   routeFromHash();
-  // تازه‌سازی سبک: فقط وقتی تب داشبورد باز و صفحه مرئی است.
-  setInterval(()=>{
-    if(state.tab==="overview" && !document.hidden) loadOverview().catch(()=>{});
-    if(state.tab==="broadcast" && !document.hidden) loadBroadcast().catch(()=>{});
-  }, 15000);
+
+  // Live refresh, but only for tabs that actually change on their own, only
+  // while the document is visible, and never overlapping a previous poll.
+  // The timer is torn down when hidden instead of firing into a background tab.
+  let pollTimer = null, polling = false;
+  // quiet:true — a poll refreshes in place; it must not blank a populated panel
+  // into skeletons every 15s, nor replace good data with an error on one blip.
+  const POLL_TABS = {
+    overview: () => loadOverview({ quiet:true }),
+    broadcast: () => loadBroadcast({ quiet:true }),
+  };
+  async function poll(){
+    if(polling || document.hidden || authDead) return;
+    const fn = POLL_TABS[state.tab];
+    if(!fn) return;
+    polling = true;
+    try{ await fn(); }catch(e){}
+    finally{ polling = false; }
+  }
+  function startPolling(){
+    if(pollTimer) return;
+    pollTimer = setInterval(poll, 15000);
+  }
+  function stopPolling(){
+    if(!pollTimer) return;
+    clearInterval(pollTimer); pollTimer = null;
+  }
+  document.addEventListener("visibilitychange", ()=>{
+    if(document.hidden) stopPolling();
+    else { startPolling(); poll(); }
+  });
+  startPolling();
 }
 init();
 })();

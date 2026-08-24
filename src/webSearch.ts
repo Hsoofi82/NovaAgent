@@ -1,25 +1,4 @@
-/**
- * ƝØVΛ — Advanced AI Agent Platform for Telegram
- * Copyright (C) 2026 Hsoofi82
- *
- * SPDX-License-Identifier: AGPL-3.0-or-later
- *
- * This file is part of Nova (https://github.com/Hsoofi82/NovaAgent).
- *
- * Nova is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option)
- * any later version.
- *
- * Nova is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
- * more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with Nova. If not, see <https://www.gnu.org/licenses/>.
- */
-/** Safe, deterministic primitives shared by fast search and deep research. */
+/* Shared deterministic search primitives. */
 
 export interface WebSearchItem {
   title: string;
@@ -79,14 +58,56 @@ function dedupeKey(link: string): string {
   }
 }
 
-/** Domains that usually add noise instead of useful results. */
-const JUNK_DOMAIN_PATTERNS = [
-  /^ad\.|ads?\.|track\.|analytics\.|doubleclick|googlesyndication|facebook\.com\/tr|youtube\.com\/redirect/i,
-  /(^|\.)(search\.yahoo|bing\.com|google\.com\/search|duckduckgo\.com\/\?|yandex\.com\/search)/i,
+/**
+ * Domains that usually add noise instead of useful results.
+ *
+ * These are matched against the parsed hostname / path, NOT the raw URL. The
+ * previous version tested one regex against the whole link, where only the first
+ * alternative was anchored: `ads?\.` therefore matched the substring "ad." that
+ * appears inside ordinary paths, so real results like `/download.zip`,
+ * `/upload.php`, `/thread.html` and `/soundtrack.html` were silently discarded as
+ * ad traffic (verified). The same laxness cut the other way for the second
+ * pattern: `(^|\.)bing\.com` never matched `https://bing.com/search` because the
+ * character before the host is "/", so bare search-engine links slipped through
+ * while their `www.` variants were filtered.
+ */
+const JUNK_HOST_LABELS = new Set(["ad", "ads", "adserver", "track", "tracking", "analytics"]);
+const JUNK_HOST_PATTERNS = [
+  /(^|\.)doubleclick\.net$/i,
+  /(^|\.)googlesyndication\.com$/i,
+  /(^|\.)(search\.yahoo|bing|duckduckgo|yandex|baidu)\.com$/i,
+  /(^|\.)yahoo\.com$/i,
+];
+/** Search-result pages of other engines: junk only for these host+path pairs. */
+const JUNK_HOST_PATHS: Array<[RegExp, RegExp]> = [
+  [/(^|\.)google\.[a-z.]+$/i, /^\/(search|url)\b/i],
+  [/(^|\.)facebook\.com$/i, /^\/tr\b/i],
+  [/(^|\.)youtube\.com$/i, /^\/redirect\b/i],
 ];
 
 function isJunkLink(link: string): boolean {
-  return JUNK_DOMAIN_PATTERNS.some(p => p.test(link));
+  let host: string;
+  let path: string;
+  let search: string;
+  try {
+    const url = new URL(link);
+    host = url.hostname.toLowerCase();
+    path = url.pathname;
+    search = url.search;
+  } catch {
+    return false;
+  }
+  const labels = host.split(".");
+  // Only the leading label counts: "ads.example.com" is an ad host, while
+  // "example.com/ads" is a normal page about advertising.
+  if (JUNK_HOST_LABELS.has(labels[0])) return true;
+  if (JUNK_HOST_PATTERNS.some(p => p.test(host))) return true;
+  for (const [hostRe, pathRe] of JUNK_HOST_PATHS) {
+    if (hostRe.test(host) && pathRe.test(path)) return true;
+  }
+  // duckduckgo.com/?q=… is a result page even though its path is just "/".
+  if (/(^|\.)duckduckgo\.com$/i.test(host) && /[?&]q=/.test(search)) return true;
+  return false;
 }
 
 /** Normalize text for similarity checks. */
@@ -112,13 +133,17 @@ function scoreItem(item: WebSearchItem): number {
 }
 
 /** Word overlap used to remove near-duplicates. */
-function overlapRatio(a: string, b: string): number {
-  const wa = new Set(normalizeForCompare(a).split(" ").filter(w => w.length > 2));
-  const wb = new Set(normalizeForCompare(b).split(" ").filter(w => w.length > 2));
+function tokenSet(s: string): Set<string> {
+  return new Set(normalizeForCompare(s).split(" ").filter(w => w.length > 2));
+}
+
+function overlapOf(wa: Set<string>, wb: Set<string>): number {
   if (!wa.size || !wb.size) return 0;
   let common = 0;
-  for (const w of wa) if (wb.has(w)) common++;
-  return common / Math.min(wa.size, wb.size);
+  // Iterate the smaller set: the ratio denominator is min(|a|,|b|) either way.
+  const [small, large] = wa.size <= wb.size ? [wa, wb] : [wb, wa];
+  for (const w of small) if (large.has(w)) common++;
+  return common / small.size;
 }
 
 /**
@@ -132,15 +157,22 @@ export function rankSearchItems(raw: unknown, limit = WEB_SEARCH_MAX_RESULTS): W
   const items = normalizeSearchItems(raw, Math.max(limit, WEB_SEARCH_MAX_RESULTS) * 3);
   if (!items.length) return [];
 
+  const cap = Math.max(1, Math.min(limit, WEB_SEARCH_MAX_RESULTS));
   const best: WebSearchItem[] = [];
+  // Token sets of the kept items, parallel to `best`. The near-duplicate check is
+  // O(kept) per candidate and used to re-run normalizeForCompare (a Unicode
+  // property-escape regex over up to 840 chars) on BOTH sides of every pair —
+  // ~600 redundant normalizations per search on a 10ms CPU budget. Each item is
+  // now tokenized exactly once.
+  const bestTokens: Array<{ title: Set<string>; snippet: Set<string> }> = [];
   const seenUrls = new Set<string>();
-  const seenDomains = new Map<string, number>(); // hostname -> index in best
+  const seenDomains = new Map<string, number>(); // hostname -> count kept
   const SEEN_DOMAIN_LIMIT = 3; // حداکثر چند نتیجه از یک دامنه
 
   // اول همه را امتیازدهی و مرتب کن
   const scored = items
+    .filter(item => !isJunkLink(item.link))
     .map(item => ({ item, score: scoreItem(item) }))
-    .filter(({ item }) => !isJunkLink(item.link))
     .sort((a, b) => b.score - a.score);
 
   for (const { item } of scored) {
@@ -152,16 +184,23 @@ export function rankSearchItems(raw: unknown, limit = WEB_SEARCH_MAX_RESULTS): W
     const host = hostnameOf(url);
     const hostCount = seenDomains.get(host) ?? 0;
     if (hostCount >= SEEN_DOMAIN_LIMIT) continue;
-    seenDomains.set(host, hostCount + 1);
 
-    const dup = best.some(existing =>
-      overlapRatio(existing.title, item.title) > 0.85 ||
-      (existing.snippet && item.snippet && overlapRatio(existing.snippet, item.snippet) > 0.8)
+    const titleTokens = tokenSet(item.title);
+    const snippetTokens = item.snippet ? tokenSet(item.snippet) : new Set<string>();
+    const dup = bestTokens.some(existing =>
+      overlapOf(existing.title, titleTokens) > 0.85 ||
+      (existing.snippet.size > 0 && snippetTokens.size > 0 &&
+        overlapOf(existing.snippet, snippetTokens) > 0.8)
     );
     if (dup) continue;
 
+    // Only charge the domain quota for a result we actually keep. Previously the
+    // counter was incremented before the near-duplicate test, so a rejected
+    // duplicate still consumed one of the three slots that domain was allowed.
+    seenDomains.set(host, hostCount + 1);
     best.push(item);
-    if (best.length >= Math.max(1, Math.min(limit, WEB_SEARCH_MAX_RESULTS))) break;
+    bestTokens.push({ title: titleTokens, snippet: snippetTokens });
+    if (best.length >= cap) break;
   }
 
   return best;

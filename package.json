@@ -1,38 +1,18 @@
 {
-  "name": "nova-agent",
-  "version": "0.9.49",
-  "description": "ƝØVΛ — Advanced AI Agent Platform for Telegram, built on Cloudflare Workers (Gemini agent, function calling, memory, media, web apps, Mini App).",
-  "license": "AGPL-3.0-or-later",
+  "name": "ƝØVΛᵅᵍᵉⁿᵗ",
+  "version": "1.0.0",
+  "description": "Nova AI Telegram Bot on Cloudflare Workers",
   "private": true,
   "type": "module",
-  "keywords": [
-    "telegram-bot",
-    "ai-agent",
-    "gemini",
-    "cloudflare-workers",
-    "typescript",
-    "function-calling",
-    "telegram-mini-app"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Hsoofi82/NovaAgent.git"
-  },
-  "homepage": "https://github.com/Hsoofi82/NovaAgent#readme",
-  "bugs": {
-    "url": "https://github.com/Hsoofi82/NovaAgent/issues"
-  },
-  "author": "Hsoofi82 (https://t.me/Hacker1382)",
-  "engines": {
-    "node": ">=18"
-  },
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
-    "test": "node tests/source-regression.mjs",
+    "test": "node --test tests/regression.test.mjs tests/core.test.mjs && npm run test:engines",
     "type-check": "tsc --noEmit",
-    "cf-types": "wrangler types"
+    "validate": "npm run type-check && npm test && wrangler deploy --dry-run --outdir=.wrangler/dry",
+    "cf-types": "wrangler types",
+    "test:engines": "node --experimental-loader ./tests/ts-resolve.mjs --test tests/engines.test.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260730.1",

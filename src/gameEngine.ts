@@ -1,27 +1,12 @@
-/**
- * ƝØVΛ — Advanced AI Agent Platform for Telegram
- * Copyright (C) 2026 Hsoofi82
- *
- * SPDX-License-Identifier: AGPL-3.0-or-later
- *
- * This file is part of Nova (https://github.com/Hsoofi82/NovaAgent).
- *
- * Nova is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option)
- * any later version.
- *
- * Nova is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
- * more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with Nova. If not, see <https://www.gnu.org/licenses/>.
- */
 import { buildUniversalDesignSkills } from "./designSkills";
+import {
+  detectGameDesignIntent,
+  isLightSetting,
+  serializeRuntimeTheme,
+  type GameDesignIntent,
+} from "./gameDesign";
 
-export const NOVA_GAME_ENGINE_VERSION = "0.2.0 (Adaptive Orientation)";
+export const NOVA_GAME_ENGINE_VERSION = "0.3.0 (Design Intent)";
 export const NOVA_GAME_ENGINE_NAME = "Nova Game Engine";
 
 export type GameOrientation = "portrait" | "landscape" | "auto";
@@ -41,60 +26,160 @@ const NOVA_GE_RUNTIME = String.raw`
   const hit = (a, b) => a.x < b.x + (b.w || b.width || 0) && a.x + (a.w || a.width || 0) > b.x && a.y < b.y + (b.h || b.height || 0) && a.y + (a.h || a.height || 0) > b.y;
   const dist = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
 
-  // Simple Synthesized Audio FX (Web Audio API - No external assets needed)
+  // ── Themed audio ────────────────────────────────────────────────────────
+  // This used to be four hardcoded chiptune blips (jump/hit/coin/laser), so a
+  // horror game's damage sound was bit-identical to an arcade shooter's. Now a
+  // tone spec per event is modulated by the theme's audio character: the same
+  // game.sound("hit") is a filtered sub-bass thud in a horror game, a crunchy
+  // detuned saw in an industrial one and a bright square in a retro arcade one.
   let audioCtx = null;
-  function playBeep(type) {
+
+  const TONES = {
+    jump:      { wave: "sine",     from: 150, to: 600,  dur: 0.15, gain: 0.30, slide: "exp" },
+    hit:       { wave: "sawtooth", from: 120, to: 30,   dur: 0.25, gain: 0.40, slide: "lin" },
+    coin:      { wave: "sine",     from: 587, to: 880,  dur: 0.25, gain: 0.25, slide: "step" },
+    laser:     { wave: "triangle", from: 800, to: 100,  dur: 0.12, gain: 0.30, slide: "exp" },
+    select:    { wave: "square",   from: 420, to: 620,  dur: 0.07, gain: 0.18, slide: "step" },
+    step:      { wave: "triangle", from: 90,  to: 70,   dur: 0.08, gain: 0.16, slide: "lin" },
+    thud:      { wave: "sine",     from: 70,  to: 40,   dur: 0.35, gain: 0.45, slide: "exp" },
+    alarm:     { wave: "square",   from: 660, to: 440,  dur: 0.45, gain: 0.28, slide: "step" },
+    whoosh:    { wave: "sawtooth", from: 300, to: 900,  dur: 0.22, gain: 0.14, slide: "exp" },
+    heartbeat: { wave: "sine",     from: 60,  to: 45,   dur: 0.20, gain: 0.50, slide: "exp" },
+    win:       { wave: "triangle", from: 523, to: 1046, dur: 0.45, gain: 0.30, slide: "step" },
+    lose:      { wave: "sawtooth", from: 320, to: 80,   dur: 0.60, gain: 0.32, slide: "exp" }
+  };
+
+  // Generated code invents its own event names; map the common ones instead of
+  // silently playing nothing (the old code just fell through four if-branches).
+  const TONE_ALIAS = {
+    up: "jump", flap: "jump", bounce: "jump",
+    explosion: "hit", damage: "hit", hurt: "hit", hurt2: "hit", break: "hit",
+    score: "coin", pickup: "coin", collect: "coin", point: "coin", match: "coin",
+    shoot: "laser", fire: "laser", shot: "laser",
+    click: "select", tap: "select", menu: "select", move: "select", place: "select",
+    footstep: "step", walk: "step",
+    land: "thud", crash: "thud", drop: "thud", impact: "thud",
+    warning: "alarm", danger: "alarm", spotted: "alarm",
+    dash: "whoosh", swing: "whoosh", slide: "whoosh",
+    pulse: "heartbeat", beat: "heartbeat",
+    success: "win", victory: "win", levelup: "win", solved: "win",
+    fail: "lose", gameover: "lose", death: "lose", defeat: "lose"
+  };
+
+  const CHARACTERS = {
+    chiptune:   { wave: null,       pitch: 1.00, dur: 1.00, gain: 1.00, cut: 0,    detune: 0 },
+    sub:        { wave: "sine",     pitch: 0.45, dur: 1.90, gain: 1.05, cut: 420,  detune: -14 },
+    industrial: { wave: "sawtooth", pitch: 0.80, dur: 1.25, gain: 0.95, cut: 1400, detune: 24 },
+    soft:       { wave: "sine",     pitch: 1.00, dur: 1.15, gain: 0.62, cut: 2200, detune: 0 },
+    orchestral: { wave: "triangle", pitch: 0.75, dur: 1.60, gain: 0.90, cut: 3000, detune: 7 },
+    lofi:       { wave: "triangle", pitch: 0.90, dur: 1.30, gain: 0.75, cut: 1100, detune: 16 }
+  };
+
+  function rampTo(param, slide, target, now, dur) {
+    if (slide === "exp") param.exponentialRampToValueAtTime(target, now + dur);
+    else if (slide === "lin") param.linearRampToValueAtTime(target, now + dur);
+    else param.setValueAtTime(target, now + dur * 0.35);
+  }
+
+  function playBeep(type, character) {
     try {
+      const key = String(type || "").toLowerCase();
+      const spec = TONES[key] || TONES[TONE_ALIAS[key]] || null;
+      if (!spec) return;
+      const ch = CHARACTERS[String(character || "chiptune")] || CHARACTERS.chiptune;
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === "suspended") audioCtx.resume();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      const now = audioCtx.currentTime;
 
-      if (type === "jump" || type === "up") {
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(150, now);
-        osc.frequency.exponentialRampToValueAtTime(600, now + 0.15);
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
-        osc.start(now); osc.stop(now + 0.15);
-      } else if (type === "hit" || type === "explosion") {
-        osc.type = "sawtooth";
-        osc.frequency.setValueAtTime(120, now);
-        osc.frequency.linearRampToValueAtTime(30, now + 0.25);
-        gain.gain.setValueAtTime(0.4, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
-        osc.start(now); osc.stop(now + 0.25);
-      } else if (type === "coin" || type === "score") {
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(587.33, now);
-        osc.frequency.setValueAtTime(880, now + 0.08);
-        gain.gain.setValueAtTime(0.25, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
-        osc.start(now); osc.stop(now + 0.25);
-      } else if (type === "laser" || type === "shoot") {
-        osc.type = "triangle";
-        osc.frequency.setValueAtTime(800, now);
-        osc.frequency.exponentialRampToValueAtTime(100, now + 0.12);
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
-        osc.start(now); osc.stop(now + 0.12);
+      const now = audioCtx.currentTime;
+      const dur = Math.max(0.03, spec.dur * ch.dur);
+      const from = Math.max(20, spec.from * ch.pitch);
+      const to = Math.max(20, spec.to * ch.pitch);
+
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(Math.min(0.6, spec.gain * ch.gain), now);
+      gain.gain.linearRampToValueAtTime(0.0001, now + dur);
+
+      // The lowpass is what makes "sub" sound muffled and dreadful rather than
+      // merely lower — without it every character was the same timbre.
+      let tail = gain;
+      if (ch.cut > 0 && typeof audioCtx.createBiquadFilter === "function") {
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(ch.cut, now);
+        gain.connect(filter);
+        tail = filter;
+      }
+      tail.connect(audioCtx.destination);
+
+      const osc = audioCtx.createOscillator();
+      osc.type = ch.wave || spec.wave;
+      osc.frequency.setValueAtTime(from, now);
+      rampTo(osc.frequency, spec.slide, to, now, dur);
+      osc.connect(gain);
+      osc.start(now); osc.stop(now + dur);
+
+      if (ch.detune !== 0) {
+        const osc2 = audioCtx.createOscillator();
+        osc2.type = osc.type;
+        osc2.detune.setValueAtTime(ch.detune, now);
+        osc2.frequency.setValueAtTime(from, now);
+        rampTo(osc2.frequency, spec.slide, to, now, dur);
+        osc2.connect(gain);
+        osc2.start(now); osc2.stop(now + dur);
       }
     } catch (e) {}
   }
 
+  // Neutral defaults for code that boots NovaGE outside the generated shell.
+  // The shell always injects window.NOVA_THEME, so in practice the design
+  // intent wins; this only keeps a bare init() from throwing.
+  const THEME_FALLBACK = {
+    canvas: "#0e1116", ink: "#f5f7fa", muted: "#93a0b4", primary: "#4f8cff",
+    accent: "#ffc857", danger: "#ff5c5c", shapeA: "#4f8cff", shapeB: "#ffc857",
+    particle: "#ffffff", font: "ui-sans-serif, system-ui, sans-serif",
+    audio: "chiptune", density: 2
+  };
+
+  // The single live game instance. Generated code (or a hot reload) can call
+  // NovaGE.init() more than once; without tearing the previous instance down its
+  // listeners stayed attached and its rAF loop kept running against a dead
+  // canvas, so input went to the wrong game and each call leaked a full set.
+  let activeGame = null;
+
   function init(options) {
+    if (activeGame && typeof activeGame.destroy === "function") {
+      try { activeGame.destroy(); } catch (e) {}
+      activeGame = null;
+    }
     const canvas = document.getElementById("nova-canvas");
     if (!canvas) throw new Error("Nova canvas missing");
     const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) throw new Error("Canvas 2D unavailable");
 
+    // ── Theme ────────────────────────────────────────────────────────────
+    // Every drawing default used to be a hardcoded neon literal, so any
+    // uncoloured draw call pulled the same purple/cyan arcade look into every
+    // game regardless of genre. Defaults now come from the design intent, which
+    // the shell injects as window.NOVA_THEME, and generated code can read the
+    // whole set through game.palette.
+    const themeSrc = (options && options.theme) || global.NOVA_THEME || {};
+    const palette = {};
+    for (const fk in THEME_FALLBACK) palette[fk] = THEME_FALLBACK[fk];
+    for (const tk in themeSrc) { if (themeSrc[tk]) palette[tk] = themeSrc[tk]; }
+    const audioCharacter = String(palette.audio || "chiptune");
+    const burstDensity = Math.max(1, Math.min(4, Number(palette.density) || 2));
+
     // ── Adaptive orientation ─────────────────────────────────────────────
     // landscape: 16:9 wide playfield · portrait: 9:16 tall playfield ·
     // auto: follows the device's current orientation and reacts to rotation.
-    const requestedOrientation = String((options && options.orientation) || "auto").toLowerCase();
+    // Only three values are meaningful. Anything else (a typo, or a value the
+    // model invented) previously became the live orientation string, so
+    // game.view.orientation reported e.g. "sideways" and every
+    // an orientation === "portrait" branch silently took the landscape path.
+    const rawOrientation = String((options && options.orientation) || "auto").toLowerCase();
+    const requestedOrientation = (rawOrientation === "portrait" || rawOrientation === "landscape")
+      ? rawOrientation
+      : "auto";
     const isPortraitNow = () => window.innerHeight > window.innerWidth;
     let orientation = requestedOrientation === "auto"
       ? (isPortraitNow() ? "portrait" : "landscape")
@@ -153,32 +238,40 @@ const NOVA_GE_RUNTIME = String.raw`
       keys, pressed, pointer,
       state: Object.create(null),
       clamp, hit, dist,
-      sound: playBeep,
+      /** Live design-intent colours. Prefer these over literal hex values. */
+      palette,
+      /** Audio character in force (chiptune | sub | industrial | soft | orchestral | lofi). */
+      audio: audioCharacter,
+      sound(type, character) { playBeep(type, character || audioCharacter); },
+      /** Canvas font string in the theme's family — game.font(28, "bold"). */
+      font(size, weight) { return (weight || "bold") + " " + (Number(size) || 24) + "px " + palette.font; },
       random(min, max) { return min + Math.random() * (max - min); },
       randomChoice(arr) { return arr[Math.floor(Math.random() * arr.length)]; },
       key(name) { return !!keys[String(name).toLowerCase()]; },
       justPressed(name) { return pressed.has(String(name).toLowerCase()); },
-      clear(color) { ctx.fillStyle = color || "#07111f"; ctx.fillRect(0, 0, width, height); },
-      text(text, x, y, size, color, align) {
+      clear(color) { ctx.fillStyle = color || palette.canvas; ctx.fillRect(0, 0, width, height); },
+      text(text, x, y, size, color, align, weight) {
         ctx.save();
-        ctx.fillStyle = color || "#f8fafc";
-        ctx.font = "bold " + (size || 24) + "px ui-sans-serif, system-ui, sans-serif";
+        ctx.fillStyle = color || palette.ink;
+        ctx.font = (weight || "bold") + " " + (size || 24) + "px " + palette.font;
         ctx.textAlign = align || "center";
         ctx.textBaseline = "middle";
         ctx.fillText(String(text), x, y);
         ctx.restore();
       },
       rect(x, y, w, h, color, radius) {
-        ctx.save(); ctx.fillStyle = color || "#7c3aed";
+        ctx.save(); ctx.fillStyle = color || palette.shapeA;
         const r = Math.max(0, Math.min(radius || 0, Math.min(w, h) / 2));
         ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill(); ctx.restore();
       },
       circle(x, y, radius, color) {
-        ctx.save(); ctx.fillStyle = color || "#22d3ee";
+        ctx.save(); ctx.fillStyle = color || palette.shapeB;
         ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
       },
       burst(x, y, color, count) {
-        const num = count || 12;
+        // Particle count follows the mood's density (a dread game gets a sparse
+        // puff, a playful one a wide spray) instead of a fixed 12 everywhere.
+        const num = count || Math.round(6 * burstDensity);
         for (let i = 0; i < num; i++) {
           const angle = Math.random() * Math.PI * 2;
           const speed = Math.random() * 150 + 50;
@@ -188,7 +281,7 @@ const NOVA_GE_RUNTIME = String.raw`
             vy: Math.sin(angle) * speed,
             life: 1,
             decay: Math.random() * 2 + 1.5,
-            color: color || "#38bdf8",
+            color: color || palette.particle,
             size: Math.random() * 4 + 2
           });
         }
@@ -226,7 +319,8 @@ const NOVA_GE_RUNTIME = String.raw`
       /** Switch orientation at runtime (e.g. device rotation). Swaps logical dims. */
       setOrientation(next) {
         const o = String(next || "auto").toLowerCase();
-        const target = o === "auto" ? (isPortraitNow() ? "portrait" : "landscape") : o;
+        const valid = o === "portrait" || o === "landscape" ? o : "auto";
+        const target = valid === "auto" ? (isPortraitNow() ? "portrait" : "landscape") : valid;
         if (target === orientation) return game;
         orientation = target;
         setCanvasSize(orientation === "portrait" ? Math.min(width, height) || 540 : Math.max(width, height) || 960,
@@ -238,7 +332,10 @@ const NOVA_GE_RUNTIME = String.raw`
 
     function frame(now) {
       if (!running) return;
-      const dt = clamp((now - last) / 1000, 0, 0.05); last = now;
+      // A tab that was backgrounded can deliver a huge first delta; clamping to
+      // 50ms keeps physics stable instead of teleporting entities across the map.
+      const dt = clamp((Number(now) - last) / 1000, 0, 0.05);
+      last = Number(now);
       try {
         if (current && typeof current.update === "function") current.update(game, dt);
         if (current) current.render(game, ctx);
@@ -275,6 +372,20 @@ const NOVA_GE_RUNTIME = String.raw`
       pointer.y = clamp((event.clientY - rect.top) * height / rect.height, 0, height);
     }
 
+    // ── Listener bookkeeping ──────────────────────────────────────────────
+    // Every listener is registered through on() so game.destroy() can remove
+    // all of them. Without this, calling NovaGE.init() twice — which happens on
+    // hot-reload, on a "play again" flow that re-boots the game, or simply if the
+    // generated code calls init() more than once — left the previous set attached
+    // forever: input fired into a dead game object, resize handlers multiplied,
+    // and every generation leaked another full set.
+    const bound = [];
+    function on(target, type, fn, opts) {
+      if (!target || typeof target.addEventListener !== "function") return;
+      target.addEventListener(type, fn, opts);
+      bound.push({ target: target, type: type, fn: fn, opts: opts });
+    }
+
     // ── Rotation / resize handling: keeps the playfield in sync with the screen ──
     function handleResize() {
       clearTimeout(resizeTimer);
@@ -289,32 +400,82 @@ const NOVA_GE_RUNTIME = String.raw`
         if (current && typeof current.onResize === "function") current.onResize(game, game.view);
       }, 120);
     }
-    addEventListener("resize", handleResize, { passive: true });
-    if (typeof window.screen?.orientation?.addEventListener === "function") {
-      window.screen.orientation.addEventListener("change", handleResize);
+    on(window, "resize", handleResize, { passive: true });
+    if (window.screen && window.screen.orientation) {
+      on(window.screen.orientation, "change", handleResize);
     }
-    addEventListener("orientationchange", handleResize, { passive: true });
+    on(window, "orientationchange", handleResize, { passive: true });
 
-    addEventListener("keydown", event => {
-      const key = event.key.toLowerCase();
-      if (!keys[key]) pressed.add(key); keys[key] = true;
-      if (["arrowup","arrowdown","arrowleft","arrowright"," "].includes(key)) event.preventDefault();
+    on(window, "keydown", function (event) {
+      const key = String(event.key || "").toLowerCase();
+      if (!keys[key]) pressed.add(key);
+      keys[key] = true;
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key)) event.preventDefault();
     }, { passive: false });
-    addEventListener("keyup", event => { keys[event.key.toLowerCase()] = false; });
-    canvas.addEventListener("pointerdown", event => {
+    on(window, "keyup", function (event) { keys[String(event.key || "").toLowerCase()] = false; });
+
+    on(canvas, "pointerdown", function (event) {
       mapPointer(event);
       pointer.down = true;
       pointer.tapped = true;
-      canvas.setPointerCapture(event.pointerId);
+      // Older/edge browsers can throw here (invalid pointer id, detached node).
+      try { canvas.setPointerCapture(event.pointerId); } catch (e) {}
     });
-    canvas.addEventListener("pointermove", mapPointer);
-    canvas.addEventListener("pointerup", event => { mapPointer(event); pointer.down = false; });
-    canvas.addEventListener("contextmenu", event => event.preventDefault());
-    document.addEventListener("visibilitychange", () => { if (document.hidden) Object.keys(keys).forEach(k => { keys[k] = false; }); });
+    on(canvas, "pointermove", mapPointer);
+    on(canvas, "pointerup", function (event) { mapPointer(event); pointer.down = false; });
+    // Without pointercancel/leave the pointer stays logically "down" forever when
+    // the gesture is interrupted (notification, scroll takeover, touch leaving
+    // the canvas) — the player's character kept moving on its own.
+    on(canvas, "pointercancel", function () { pointer.down = false; });
+    on(canvas, "pointerleave", function () { pointer.down = false; });
+    on(canvas, "contextmenu", function (event) { event.preventDefault(); });
+
+    on(document, "visibilitychange", function () {
+      if (!document.hidden) return;
+      // Clear held keys AND the pointer, otherwise returning to the tab resumes
+      // with phantom input still applied.
+      for (const k of Object.keys(keys)) keys[k] = false;
+      pressed.clear();
+      pointer.down = false;
+      pointer.tapped = false;
+    });
+
+    /** Detach every listener, stop the loop, and release the audio context. */
+    game.destroy = function destroy() {
+      running = false;
+      cancelAnimationFrame(raf);
+      clearTimeout(resizeTimer);
+      for (const b of bound) {
+        try { b.target.removeEventListener(b.type, b.fn, b.opts); } catch (e) {}
+      }
+      bound.length = 0;
+      particles.length = 0;
+      scenes.clear();
+      current = null;
+      try { if (audioCtx && typeof audioCtx.close === "function") audioCtx.close(); } catch (e) {}
+      audioCtx = null;
+      if (activeGame === game) activeGame = null;
+      return game;
+    };
+
+    activeGame = game;
     return game;
   }
 
-  global.NovaGE = Object.freeze({ init, clamp, hit, dist });
+  global.NovaGE = Object.freeze({
+    init: init,
+    clamp: clamp,
+    hit: hit,
+    dist: dist,
+    /** Tear down the live instance (listeners, loop, audio). Safe to call twice. */
+    destroy: function () {
+      if (activeGame && typeof activeGame.destroy === "function") {
+        try { activeGame.destroy(); } catch (e) {}
+      }
+      activeGame = null;
+    },
+    get current() { return activeGame; }
+  });
 })(window);
 `;
 
@@ -337,43 +498,107 @@ function safeTitle(value: string): string {
   return value.replace(/[<>"']/g, "").slice(0, 80) || "Nova Game";
 }
 
+/**
+ * Wrap generated gameplay code in a self-contained playable document.
+ *
+ * The shell used to be a single hardcoded look — one purple/cyan token set, one
+ * radial+linear gradient, one 18px radius, one system font stack and the literal
+ * hint "Touch / WASD / Keys" — which is most of the reason a horror game and a
+ * candy puzzle arrived looking like the same neon arcade cabinet. Every visual
+ * decision here now comes from the design intent, so the differentiation is
+ * deterministic instead of depending on the model remembering to vary it.
+ *
+ * Pass `concept` (the user's own description) or a pre-computed `intent`; with
+ * neither, the title is used, and failing that a neutral arcade look applies.
+ */
 export function wrapGameHtml(
   gameCode: string,
-  opts: { title?: string; rtl?: boolean; orientation?: GameOrientation } = {},
+  opts: {
+    title?: string;
+    rtl?: boolean;
+    orientation?: GameOrientation;
+    concept?: string;
+    intent?: GameDesignIntent;
+  } = {},
 ): string {
   const title = safeTitle(opts.title || "Nova Game");
   const code = stripFences(gameCode);
-  const dir = opts.rtl ? "rtl" : "ltr";
-  const lang = opts.rtl ? "fa" : "en";
+  const rtl = !!opts.rtl;
+  const dir = rtl ? "rtl" : "ltr";
+  const lang = rtl ? "fa" : "en";
   const orientation: GameOrientation = opts.orientation ?? "auto";
   // Initial aspect for the CSS layout; "auto" defaults to landscape until the
   // runtime measures the device and flips the --nova-ar variable itself.
   const initialAspect = orientation === "portrait" ? "9/16" : "16/9";
   const dataOrientation = orientation;
+
+  const intent = opts.intent ?? detectGameDesignIntent(opts.concept || opts.title || "");
+  const p = intent.palette;
+  const type = intent.typography;
+  const chrome = intent.chrome;
+  const light = isLightSetting(intent.setting);
+  const hint = rtl ? intent.hint.fa : intent.hint.en;
+  // The runtime reads this instead of its hardcoded draw colours. Injected as a
+  // global so generated code cannot forget to pass it to NovaGE.init().
+  const theme = serializeRuntimeTheme(intent);
+
   return `<!doctype html>
 <html lang="${lang}" dir="${dir}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#070b18">
+<meta name="theme-color" content="${p.bg}">
 <title>${title}</title>
 <style>
-:root{--bg:#050816;--surface:#0d1630;--surface-2:#16213f;--text:#f8fafc;--muted:#a9b8d4;--primary:#8b5cf6;--accent:#22d3ee;--danger:#fb7185;--border:rgba(255,255,255,.14);--shadow:0 24px 80px rgba(0,0,0,.45);--nova-ar:${initialAspect}}
-*{box-sizing:border-box}html,body{width:100%;min-height:100%;margin:0;background:radial-gradient(circle at 20% 0,#162451 0,transparent 40%),linear-gradient(145deg,var(--bg),#090d1f);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+:root{--bg:${p.bg};--surface:${p.surface};--surface-2:${p.surfaceAlt};--text:${p.text};--muted:${p.muted};--border:${p.border};--primary:${p.primary};--accent:${p.accent};--danger:${p.danger};--radius:${chrome.radius};--shadow:${chrome.shadow};--display:${type.display};--body:${type.body};--nova-ar:${initialAspect}}
+*{box-sizing:border-box}
+html,body{width:100%;min-height:100%;margin:0;background:${chrome.backdrop};background-attachment:fixed;color:var(--text);font-family:var(--body);overflow:hidden}
 body{min-height:100dvh;display:grid;place-items:center;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
-.game-shell{width:min(1000px,100%);display:grid;gap:8px}.game-header{display:flex;align-items:center;justify-content:space-between;padding:0 6px}.game-title{font-size:1.1rem;font-weight:800;letter-spacing:.01em;color:var(--accent)}.game-hint{color:var(--muted);font-size:.8rem}
-.canvas-frame{position:relative;border:1px solid var(--border);border-radius:18px;overflow:hidden;background:#07111f;box-shadow:var(--shadow)}
-canvas{display:block;width:100%;height:auto;max-height:calc(100dvh - 70px);aspect-ratio:var(--nova-ar,16/9);touch-action:none;outline:none}
-.error{position:absolute;inset:auto 16px 16px;padding:12px;border-radius:10px;background:rgba(225,29,72,.95);color:#fff;font-size:.85rem}
-/* Portrait gets a narrower, taller frame so the playfield stays large on phones. */
-@media(max-width:640px){body{padding:0}.game-shell{gap:0}.canvas-frame{border-radius:0;border:0}canvas{max-height:calc(100dvh - 38px)}}
+.shell{width:min(1000px,100%);display:grid;gap:10px}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 6px}
+.title{margin:0;font-family:var(--display);font-size:clamp(1rem,2.6vw,1.35rem);font-weight:${type.weight};letter-spacing:${type.tracking};text-transform:${type.transform};color:var(--accent)}
+.hint{margin:0;color:var(--muted);font-size:.78rem;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tick{display:none}
+.stage{position:relative;border:${chrome.border};border-radius:var(--radius);overflow:hidden;background:${p.canvas};box-shadow:var(--shadow)}
+canvas{display:block;width:100%;height:auto;max-height:calc(100dvh - 76px);aspect-ratio:var(--nova-ar,16/9);touch-action:none;outline:none}
+.veil{position:absolute;inset:0;pointer-events:none;${chrome.overlay ? `background:${chrome.overlay}` : "display:none"}}
+.error{position:absolute;inset:auto 16px 16px;padding:12px;border-radius:8px;background:var(--danger);color:#fff;font-family:ui-monospace,monospace;font-size:.8rem;line-height:1.5;z-index:3}
+
+/* ── Frame identities: the same markup reads as six different machines ── */
+.shell[data-frame="vignette"] .title{font-size:.9rem;color:var(--muted);letter-spacing:.3em}
+.shell[data-frame="vignette"] .hint{opacity:.55}
+.shell[data-frame="vignette"] .stage{box-shadow:0 0 0 1px rgba(255,255,255,.05)}
+
+.shell[data-frame="crt"] .bar{border:2px solid var(--border);border-radius:4px;padding:6px 10px;background:var(--surface)}
+.shell[data-frame="crt"] .stage{border:6px solid var(--surface-2);box-shadow:inset 0 0 40px rgba(0,0,0,.65),0 0 0 2px var(--border)}
+.shell[data-frame="crt"] canvas{image-rendering:pixelated}
+
+.shell[data-frame="panel"] .tick{display:block;width:26px;height:2px;background:var(--accent);box-shadow:0 6px 0 var(--primary)}
+.shell[data-frame="panel"] .title{flex:1}
+.shell[data-frame="panel"] .stage{clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);border-color:var(--accent)}
+.shell[data-frame="panel"] .bar{border-bottom:1px solid var(--border);padding-bottom:8px}
+
+.shell[data-frame="parchment"] .bar{flex-direction:column;gap:4px;text-align:center;border-top:2px solid var(--border);border-bottom:2px solid var(--border);padding:8px 0}
+.shell[data-frame="parchment"] .title{color:var(--primary)}
+.shell[data-frame="parchment"] .stage{border-width:2px;box-shadow:${light ? "0 10px 30px rgba(60,45,25,.18)" : "var(--shadow)"}}
+
+.shell[data-frame="arcade"] .title{font-size:clamp(1.1rem,3.4vw,1.7rem);color:var(--primary)}
+.shell[data-frame="arcade"] .hint{background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:5px 12px;color:var(--muted)}
+.shell[data-frame="arcade"] .stage{border-width:2px}
+
+.shell[data-frame="clean"] .title{color:var(--text)}
+.shell[data-frame="clean"] .stage{box-shadow:${light ? "0 14px 40px rgba(24,24,27,.10)" : "var(--shadow)"}}
+
+@media(prefers-reduced-motion:reduce){.veil{opacity:.4}}
+@media(max-width:640px){body{padding:0}.shell{gap:0}.bar{padding:6px 10px}.stage{border-radius:0;border-left:0;border-right:0}canvas{max-height:calc(100dvh - 44px)}.shell[data-frame="crt"] .stage{border-width:3px}}
 </style>
 </head>
 <body>
-<main class="game-shell">
-<header class="game-header"><div class="game-title">${title}</div><div class="game-hint">Touch / WASD / Keys</div></header>
-<section class="canvas-frame"><canvas id="nova-canvas" tabindex="0" data-orientation="${dataOrientation}"></canvas><div id="nova-error" class="error" hidden></div></section>
+<main class="shell" data-frame="${chrome.frame}">
+<header class="bar"><span class="tick" aria-hidden="true"></span><h1 class="title">${title}</h1><p class="hint">${hint}</p></header>
+<section class="stage"><canvas id="nova-canvas" tabindex="0" data-orientation="${dataOrientation}"></canvas><div class="veil" aria-hidden="true"></div><div id="nova-error" class="error" hidden></div></section>
 </main>
+<script>window.NOVA_THEME=${theme};</script>
 <script>${NOVA_GE_RUNTIME}</script>
 <script>
 try {
@@ -387,15 +612,45 @@ ${code}
 </html>`;
 }
 
+/**
+ * Build the game generator's system instruction.
+ *
+ * The old version mandated one arcade template for every concept — "Must define
+ * 3 scenes: menu, play, gameover", a high-score menu and "Tap / Space to
+ * Restart" — so a turn-based strategy game, a narrative horror piece and a match-3
+ * puzzle were all pushed into the same shape and the same presentation. The
+ * contract that actually matters (a "menu" scene, a "play" scene, and
+ * `game.start("menu")` — what `isGameComplete` and the runtime require) is kept;
+ * everything above it is now driven by the design intent.
+ */
 export function buildGameEnginePrompt(
   deviceTarget: "desktop" | "mobile" | "auto" = "auto",
   orientation: GameOrientation = "auto",
+  direction: "rtl" | "ltr" | "auto" = "auto",
+  intent?: GameDesignIntent,
 ): string {
   const orientationRule = orientation === "portrait"
     ? "PORTRAIT MODE: the playfield is 9:16 (tall/vertical). Design for portrait phones — keep the HUD at the top, controls near the thumb, and vertical flow."
     : orientation === "landscape"
       ? "LANDSCAPE MODE: the playfield is 16:9 (wide/horizontal). Design for desktop/landscape screens — wide view, HUD in the corners."
       : "ADAPTIVE MODE: support BOTH portrait (9:16) and landscape (16:9). Read game.view.orientation / game.view.isPortrait at runtime, keep HUD anchored with margins, and recenter dynamic elements in scene.onResize(game, view).";
+
+  const design = intent ?? detectGameDesignIntent("");
+  const scenes = design.scenes;
+  const sceneList = scenes.map(name => `"${name}"`).join(", ");
+  const endScenes = scenes.slice(2);
+  const p = design.palette;
+
+  // designSkills was imported here but never called — the game surface rules
+  // ("readable HUD, obvious controls, responsive canvas, start/pause/retry")
+  // never reached the model. Wired in below, now with a genre-specific rule.
+  const designSkills = buildUniversalDesignSkills(
+    direction,
+    "game",
+    `this is a ${design.mood} ${design.genre} game in a ${design.setting} setting. The HUD is ${design.chrome.hud}. `
+    + `Match the genre's conventions, not a generic arcade layout — ${design.presentation[0]}`,
+  );
+
   return `You are Nova Game Engine Turbo, a fast, expert 2D HTML5 game developer.
 Output ONLY runnable JavaScript code. Do not output markdown, HTML, backticks, or explanations.
 
@@ -403,23 +658,53 @@ BUILT-IN API SPECIFICATION (NovaGE):
 - const game = NovaGE.init({ orientation: "auto" }); // or "portrait" / "landscape"
 - game.scene("name", { enter(game, payload), update(game, dt), render(game, ctx), exit(game), onResize(game, view) });
 - game.go("name", payload), game.start("menu");
-- game.clear(color), game.text(str, x, y, size, color, align), game.rect(x, y, w, h, color, radius), game.circle(x, y, r, color);
-- game.burst(x, y, color, count) -> spawns particle explosion automatically!
-- game.sound("jump" | "hit" | "coin" | "laser") -> plays 8-bit sound effects instantly!
+- game.clear(color), game.text(str, x, y, size, color, align, weight), game.rect(x, y, w, h, color, radius), game.circle(x, y, r, color);
+- game.palette -> THE THEME. Fields: canvas, ink, muted, primary, accent, danger, shapeA, shapeB, particle. Every colour argument above is OPTIONAL and defaults to the matching palette entry.
+- game.font(size, weight) -> themed canvas font string for direct ctx.font use.
+- game.burst(x, y, color, count) -> spawns a particle explosion automatically (count defaults to the theme's density).
+- game.sound(name) -> synthesised SFX in the theme's audio character. Names: jump, hit, coin, laser, select, step, thud, alarm, whoosh, heartbeat, win, lose (plus aliases like explosion, score, shoot, click, land, danger, dash, success, fail).
 - game.keys, game.key("arrowleft"|"a"|" " etc), game.justPressed("key");
 - game.pointer (fields: .x, .y, .down, .tapped);
 - RESPONSIVE DIMENSIONS: ALWAYS use game.view.width / game.view.height (or game.width / game.height) for layout math, centers and spawn bounds — never hard-code 960/540. game.view also has .aspect, .orientation, .isPortrait.
 - game.clamp(v, min, max), game.hit(boxA, boxB), game.dist(x1, y1, x2, y2), game.random(min, max), game.randomChoice(array);
 
+🎨 DESIGN INTENT — this game is NOT a generic arcade game. Build to this brief:
+- Genre: ${design.genre.toUpperCase()} · Mood: ${design.mood.toUpperCase()} · Setting: ${design.setting.toUpperCase()} · Camera: ${design.camera.toUpperCase()}
+- Core loop: ${design.loop}.
+- Palette is ALREADY themed (${isLightSetting(design.setting) ? "LIGHT background, dark ink" : "dark background, light ink"}). Read colours from game.palette — canvas ${p.canvas}, ink ${p.ink}, primary ${p.primary}, accent ${p.accent}, danger ${p.danger}. Do NOT invent a new palette and do NOT hardcode hex values for the base look; use game.palette.* so the page shell and the canvas agree.
+- Motion: ${design.motion.transition}. On impact: ${design.motion.impact}.
+- Audio character is ${design.audio}; call game.sound() with at least three DIFFERENT event names so the soundscape is not one repeated blip.
+${design.presentation.map(rule => `- ${rule}`).join("\n")}
+
 REQUIRED CONTRACT (Keep code concise, playable & fast):
-1. Must define 3 scenes: "menu", "play", "gameover". End code with: game.start("menu");
-2. "menu" scene: draw title, high score, and a start button. On pointer.tapped or space -> game.go("play").
-3. "play" scene: reset all variables in enter(). Support keyboard + pointer/touch dragging (Target: ${deviceTarget}).
-   Use delta-time (dt) for movements. Use game.burst() and game.sound() on events.
-4. "gameover" scene: show score and "Tap / Space to Restart" -> game.go("play").
+1. Define these scenes: ${sceneList}. End the code with: game.start("menu");  ("menu" and "play" are mandatory — the engine boots from "menu".)
+2. "menu" scene: state the game's identity and its one-sentence goal in the genre's own voice, plus how to begin. On pointer.tapped or space -> game.go("play"). Only show a high score if a score is actually the point of this genre.
+3. "play" scene: reset ALL gameplay variables in enter() — never rely on values left over from a previous round, or a restart will inherit the old score/positions. Support keyboard + pointer/touch (Target: ${deviceTarget.toUpperCase()}).
+   Use delta-time (dt) for every movement and timer. Use game.burst() and game.sound() on events.
+4. ${endScenes.length
+    ? `End states: ${endScenes.map(name => `"${name}"`).join(" and ")}. Present each one the way this genre would — a result summary, a defeat beat, a solved board — not a generic "GAME OVER" card. Offer a clear way back to "play" or "menu".`
+    : `End state: return to "menu" with the run's outcome shown.`}
 5. ${orientationRule}
 6. RESIZE: implement an optional onResize(game, view) hook (e.g. recenter the player, recompute spawn bounds, reflow HUD). The engine calls it automatically when the page resizes or the device rotates.
-7. Write 100% complete, bug-free gameplay logic. Do NOT access window/document or external libraries.`;
+7. Write 100% complete, bug-free gameplay logic. Do NOT access window/document or external libraries.
+
+PERFORMANCE RULES (the loop runs 60x/second — allocation here causes stutter):
+8. Allocate NOTHING per frame: no object/array literals, no closures, no .map/.filter/.slice inside update() or render(). Pre-allocate pools in enter() and reuse entries.
+9. Remove dead entities by swapping with the last element and popping, or by iterating backwards with splice — never rebuild the array each frame.
+10. Cap entity counts (bullets, enemies, particles) so a long session cannot grow unbounded.
+11. Keep per-frame work O(n) — avoid nested loops over all entities where a simple bounds/grid check suffices.
+
+GAME FEEL:
+12. Give the player immediate feedback on every input (visual + game.sound()).
+13. Make the difficulty ramp readable and gradual; never spike instantly.
+14. Show the player's current state (score, lives, resource, progress) in the form this genre uses — a meter, a panel, a scoreboard or a quiet counter.
+
+🚫 ANTI-SAMENESS RULES (these are the most common failure):
+15. Do NOT default to a neon purple/cyan space-arcade look. The palette above is the game's identity; a ${design.setting} game must read as ${design.setting}.
+16. Do NOT draw every entity as an identical rounded rectangle. Vary silhouette by role (the player, the threat, the reward and the terrain must be distinguishable at a glance).
+17. Do NOT render a flat single-colour background. Build the environment the ${design.camera} camera implies — layers, ground, grid, lanes or a board — using palette tones.
+
+${designSkills}`;
 }
 
 export function isGameComplete(code: string): boolean {
