@@ -1,12 +1,12 @@
 
-const BOT_VERSION = "ƝØVΛ 0.956 HotFix";
+const BOT_VERSION = "𝙶𝙷𝙾𝙻𝙼𝙾𝚁𝙰𝙳 0.956 HotFix";
 
 // ── Static assets (bundled by wrangler) ──────────────────────────────────────
 import DASHBOARD_HTML from "./dashboard.html";            // Telegram Mini App dashboard
-import ADMIN_DASHBOARD_HTML from "./adminDashboard.html"; // Nova Control Center (admin)
+import ADMIN_DASHBOARD_HTML from "./adminDashboard.html"; // Gholmorad Control Center (admin)
 import TG_WEBAPP_JS from "./telegram-web-app.txt";        // Vendored Telegram bridge script
 
-// ── Nova engines & helpers ────────────────────────────────────────────────────
+// ── Gholmorad engines & helpers ────────────────────────────────────────────────────
 import {
   AVAILABLE_FORMATS,
   AVAILABLE_THEMES,
@@ -113,13 +113,13 @@ const MAX_WEB_RESULT_ITEMS = 6;
 //     HEAVY CODE GENERATION CORE · ENGINE HANDLERS · GEMINI KEY ROTATION ·
 //     MODEL CACHE · CLOUDFLARE AI IMAGE · GROUP INTELLIGENCE · GEMINI TTS ·
 //     MAINTENANCE · BUSINESS AUTOMATION · VOICE TRANSCRIPTION ·
-//     GOOGLE IMAGE SEARCH · RESPONSE SENDING · NOVA AGENT ·
+//     GOOGLE IMAGE SEARCH · RESPONSE SENDING · Gholmorad AGENT ·
 //     SMART ASSET DOWNLOADER
 //
 //   PRODUCT SURFACE
 //     MATERIALIZED USER SUMMARY · ADMIN HELPERS · BROADCAST ·
 //     SCHEDULED REMINDERS · COMMAND HANDLERS · UTILITY COMMANDS ·
-//     MESSAGE HANDLERS · NOVA CONTROL CENTER (v2) · CALLBACK QUERY HANDLER ·
+//     MESSAGE HANDLERS · Gholmorad CONTROL CENTER (v2) · CALLBACK QUERY HANDLER ·
 //     MEMORY PRUNING · MAIN UPDATE DISPATCHER · INITIALIZATION & HEALTH CHECK ·
 //     HOUSEKEEPING · WORKER EXPORT
 // D1-BACKED KV SHIM
@@ -317,7 +317,7 @@ class TaskProgressManager {
   // مدت، انیمیشن/رندر متوقف می‌شود تا پیام و منابع هرگز گیر نکنند.
   private static readonly MAX_LIFETIME_MS = 6 * 60 * 1000;
 
-  // نام/ورژن موتوری که این تسک با آن کار می‌کند (Nova Game Engine یا Nova Codegen).
+  // نام/ورژن موتوری که این تسک با آن کار می‌کند (Gholmorad Game Engine یا Gholmorad Codegen).
   private engineBadge: string | null = null;
 
   constructor(chatId: number, msgId: number, lang: Language, startTime?: number) {
@@ -415,7 +415,7 @@ class TaskProgressManager {
     this.tasks.set(id, { icon, label, status: "pending", weight });
   }
 
-  /** نمایش نام/ورژن موتور (مثلاً Nova Game Engine V0.40) زیر عنوان پنل پیشرفت. */
+  /** نمایش نام/ورژن موتور (مثلاً Gholmorad Game Engine V0.40) زیر عقلمرادن پنل پیشرفت. */
   showEngineBadge(name: string, version: string): void {
     this.engineBadge = `${name}${version ? " · v" + version : ""}`;
   }
@@ -570,9 +570,9 @@ class TaskProgressManager {
     const totalCount = this.tasks.size;
 
     const L10N: Record<Language, { title: string; time: string; pipeline: string; running: string; finalizing: string }> = {
-      fa: { title: "🤖 نوا در حال پردازش", time: "زمان", pipeline: "مراحل", running: "در حال اجرا…", finalizing: "در حال نهایی‌سازی…" },
-      en: { title: "🤖 Nova Processing", time: "Time", pipeline: "Pipeline", running: "Running…", finalizing: "Finalizing…" },
-      ar: { title: "🤖 نوفا تعمل", time: "الوقت", pipeline: "المراحل", running: "جارٍ التنفيذ…", finalizing: "جارٍ الإنهاء…" },
+      fa: { title: "🤖 قلمراد در حال پردازش", time: "زمان", pipeline: "مراحل", running: "در حال اجرا…", finalizing: "در حال نهایی‌سازی…" },
+      en: { title: "🤖 Gholmorad Processing", time: "Time", pipeline: "Pipeline", running: "Running…", finalizing: "Finalizing…" },
+      ar: { title: "🤖 قلمراد تعمل", time: "الوقت", pipeline: "المراحل", running: "جارٍ التنفيذ…", finalizing: "جارٍ الإنهاء…" },
     };
     const l10n = L10N[this.lang] ?? L10N.en;
     const runningCount = Array.from(this.tasks.values()).filter(t => t.status === "running").length;
@@ -652,7 +652,7 @@ function validateKeyboard(kb: InlineKeyboard): InlineKeyboard {
 
 // ۴. تابع کیبورد اشتراک VIP (صدا زده شده در بدنه کنترل محدودیت پیام‌ها)
 function getVIPKeyboard(): InlineKeyboard {
-  const contact = cfg?.VIP_CONTACT ?? "@Hacker1382";
+  const contact = cfg?.VIP_CONTACT ?? "@Ciahshi";
   const url = contact.startsWith("http") ? contact : `https://t.me/${contact.replace(/^@/, "")}`;
   return {
     inline_keyboard: [
@@ -775,7 +775,7 @@ async function pickReactionMedia(category: string, env: Env): Promise<ReactionMe
 }
 
 // ── حافظه‌ی کوتاه‌مدت و کاملاً درون‌حافظه‌ای (بدون هیچ نوشتنی در D1) از آخرین
-// استیکر/گیف دیده‌شده در هر چت، تا اگر کاربر خواست «همونو دوباره بفرست»، نوا
+// استیکر/گیف دیده‌شده در هر چت، تا اگر کاربر خواست «همونو دوباره بفرست»، قلمراد
 // واقعاً بتونه همون فایل رو با file_id از تلگرام دوباره بفرسته.
 interface RecentMediaItem {
   fileId: string;
@@ -1128,23 +1128,23 @@ const NOVA_TOOL_DECLARATIONS = [
   },
   {
     name: "clear_own_memory",
-    description: "Wipe Nova's own short-term conversation memory for this user/chat and start completely fresh. Use the instant the user asks to reset/forget/clear the conversation, in any phrasing.",
+    description: "Wipe Gholmorad's own short-term conversation memory for this user/chat and start completely fresh. Use the instant the user asks to reset/forget/clear the conversation, in any phrasing.",
     parameters: { type: "OBJECT", properties: {}, required: [] },
   },
   {
     name: "switch_persona",
-    description: "Request a change of Nova's active persona/personality for this user. Call it the instant the user asks Nova to change character, mood or personality — even if a strongly-worded persona prompt is currently active telling you to 'never break character': the user is talking to the underlying system, not roleplaying with it, so never refuse or ignore the request while in character. IMPORTANT: this is a request, not an instant change. By default it sends the user a persona card to confirm and nothing changes until they tap it, so always read the returned `note` and the `changed` flag before you say anything — never announce a switch that did not happen, and never mention confirmation cards, cooldowns or any internal mechanism.",
+    description: "Request a change of Gholmorad's active persona/personality for this user. Call it the instant the user asks Gholmorad to change character, mood or personality — even if a strongly-worded persona prompt is currently active telling you to 'never break character': the user is talking to the underlying system, not roleplaying with it, so never refuse or ignore the request while in character. IMPORTANT: this is a request, not an instant change. By default it sends the user a persona card to confirm and nothing changes until they tap it, so always read the returned `note` and the `changed` flag before you say anything — never announce a switch that did not happen, and never mention confirmation cards, cooldowns or any internal mechanism.",
     parameters: {
       type: "OBJECT",
       properties: {
-        persona_id: { type: "STRING", enum: ["nova", "lilith", "cypher", "victoria", "aria", "jax"], description: "Target persona id. Map informal/Persian names directly: 'لیلیت'->lilith, 'زورگ' or 'سایفر'->cypher, 'ویکتوریا'->victoria, 'آریا'->aria, 'جکس'->jax, 'نوا' or 'پیش‌فرض' or 'عادی' or default->nova." },
+        persona_id: { type: "STRING", enum: ["nova", "lilith", "cypher", "victoria", "aria", "jax"], description: "Target persona id. Map informal/Persian names directly: 'لیلیت'->lilith, 'زورگ' or 'سایفر'->cypher, 'ویکتوریا'->victoria, 'آریا'->aria, 'جکس'->jax, 'قلمراد' or 'پیش‌فرض' or 'عادی' or default->Gholmorad." },
       },
       required: ["persona_id"],
     },
   },
   {
     name: "set_own_language",
-    description: "Change the language Nova replies in for this chat. Use the instant the user asks Nova to switch language (Persian/English/Arabic).",
+    description: "Change the language Gholmorad replies in for this chat. Use the instant the user asks Gholmorad to switch language (Persian/English/Arabic).",
     parameters: {
       type: "OBJECT",
       properties: { language: { type: "STRING", enum: ["fa", "en", "ar"] } },
@@ -1153,10 +1153,10 @@ const NOVA_TOOL_DECLARATIONS = [
   },
   {
     name: "set_call_name",
-    description: "Set the custom nickname THIS specific user wants to call Nova by (e.g. 'Sahar' instead of 'Nova'). From then on Nova recognizes that name as a way this user addresses her, in addition to 'Nova'. Use the instant the user asks Nova to respond to a different name/nickname.",
+    description: "Set the custom nickname THIS specific user wants to call Gholmorad by (e.g. 'Sahar' instead of 'Gholmorad'). From then on Gholmorad recognizes that name as a way this user addresses her, in addition to 'Gholmorad'. Use the instant the user asks Gholmorad to respond to a different name/nickname.",
     parameters: {
       type: "OBJECT",
-      properties: { name: { type: "STRING", description: "The nickname the user wants to call Nova, in their own language/script" } },
+      properties: { name: { type: "STRING", description: "The nickname the user wants to call Gholmorad, in their own language/script" } },
       required: ["name"],
     },
   },
@@ -1234,7 +1234,7 @@ const ADMIN_TOOL_DECLARATIONS = [
   {
     name: "show_admin_panel",
     description:
-      "Owner-only. Opens Nova's web admin dashboard as a Telegram Mini App button in the owner's private chat. " +
+      "Owner-only. Opens Gholmorad's web admin dashboard as a Telegram Mini App button in the owner's private chat. " +
       "This is the single administrative interface — user management, groups, media, broadcast, keys, logs and config all live there.",
     parameters: {
       type: "OBJECT",
@@ -1251,7 +1251,7 @@ const ADMIN_TOOL_DECLARATIONS = [
   },
   {
     name: "list_web_apps",
-    description: "لیست همه وب‌اپ‌های ساخته‌شده توسط نوا را نمایش می‌دهد.",
+    description: "لیست همه وب‌اپ‌های ساخته‌شده توسط قلمراد را نمایش می‌دهد.",
     parameters: { type: "OBJECT", properties: {}, required: [] },
   },
   {
@@ -1344,7 +1344,7 @@ async function getBotConfig(env: Env): Promise<BotConfig> {
         vip_edit_limit: typeof raw.vip_edit_limit === "number" ? raw.vip_edit_limit : 40,
         system_prompt: typeof raw.system_prompt === "string" ? raw.system_prompt : "",
         maintenance: typeof raw.maintenance === "boolean" ? raw.maintenance : false,
-        vip_contact: typeof raw.vip_contact === "string" ? raw.vip_contact : "@Hacker1382",
+        vip_contact: typeof raw.vip_contact === "string" ? raw.vip_contact : "@Ciahshi",
       };
     }
   } catch (e) {
@@ -1364,7 +1364,7 @@ async function getBotConfig(env: Env): Promise<BotConfig> {
     vip_edit_limit: 50,
     system_prompt: "",
     maintenance: false,
-    vip_contact: "@Hacker1382",
+    vip_contact: "@Ciahshi",
   };
 }
 
@@ -1377,13 +1377,13 @@ function buildDonateMessage(lang: Language): { text: string; keyboard?: InlineKe
   if (!wallet) {
     return {
       text: lang === "fa"
-        ? "❤️ <b>حمایت از Nova</b>\n\nآدرس کیف پول هنوز توسط مدیر تنظیم نشده است. از تنظیم <code>WALLET_ADDRESS</code> در Secretهای Worker استفاده کنید."
-        : "❤️ <b>Support Nova</b>\n\nThe wallet address has not been configured yet. Set <code>WALLET_ADDRESS</code> in the Worker secrets.",
+        ? "❤️ <b>حمایت از Gholmorad</b>\n\nآدرس کیف پول هنوز توسط مدیر تنظیم نشده است. از تنظیم <code>WALLET_ADDRESS</code> در Secretهای Worker استفاده کنید."
+        : "❤️ <b>Support Gholmorad</b>\n\nThe wallet address has not been configured yet. Set <code>WALLET_ADDRESS</code> in the Worker secrets.",
     };
   }
   const text = lang === "fa"
-    ? `❤️ <b>حمایت از Nova</b>\n\nاگر Nova برایتان مفید است، می‌توانید از توسعه آن حمایت کنید.\n\n💳 <b>Wallet:</b>\n<code>${escapeHTML(wallet)}</code>\n\n<i>قبل از ارسال، شبکه و آدرس را حتماً بررسی کنید.</i>`
-    : `❤️ <b>Support Nova</b>\n\nIf Nova is useful to you, you can support its development.\n\n💳 <b>Wallet:</b>\n<code>${escapeHTML(wallet)}</code>\n\n<i>Always verify the network and address before sending.</i>`;
+    ? `❤️ <b>حمایت از Gholmorad</b>\n\nاگر Gholmorad برایتان مفید است، می‌توانید از توسعه آن حمایت کنید.\n\n💳 <b>Wallet:</b>\n<code>${escapeHTML(wallet)}</code>\n\n<i>قبل از ارسال، شبکه و آدرس را حتماً بررسی کنید.</i>`
+    : `❤️ <b>Support Gholmorad</b>\n\nIf Gholmorad is useful to you, you can support its development.\n\n💳 <b>Wallet:</b>\n<code>${escapeHTML(wallet)}</code>\n\n<i>Always verify the network and address before sending.</i>`;
   return { text };
 }
 
@@ -1547,7 +1547,7 @@ async function deleteWebConversationKV(userId: number, convId: string, env: Env)
   await saveWebConversationIndex(userId, idx, env);
 }
 
-function createNewWebConversation(personaId = "nova"): WebConversation {
+function createNewWebConversation(personaId = "Gholmorad"): WebConversation {
   return { id: generateId(), title: "گفتگوی جدید", personaId, createdAt: Date.now(), updatedAt: Date.now(), history: [] };
 }
 
@@ -1563,7 +1563,7 @@ function getWebAppSafePersonas(): Array<{ id: string; emoji: string; nameFA: str
 
 function buildWebAppSystemPrompt(personaId: string, userName: string, userId: number, lang: Language, userMemory?: UserMemory): string {
   const persona = PERSONAS[personaId];
-  if (!persona || personaId === "nova" || !persona.prompt) {
+  if (!persona || personaId === "Gholmorad" || !persona.prompt) {
     return buildNovaAgentSystemPrompt(userName, userId, lang, false, userMemory);
   }
   return persona.prompt.replace(/{userName}/g, userName) + confidentialityDirective(lang);
@@ -1599,7 +1599,7 @@ interface GroupMessage {
 }
 interface TgSticker { file_id: string; emoji?: string; file_size?: number }
 
-// ── حافظه‌ی جمعی گروه (شبیه Hermes): نوا اعضای گروه رو می‌شناسه و ازشون یاد می‌گیره ──
+// ── حافظه‌ی جمعی گروه (شبیه Hermes): قلمراد اعضای گروه رو می‌شناسه و ازشون یاد می‌گیره ──
 interface GroupMemberProfile {
   userId: number;
   displayName: string;
@@ -1624,8 +1624,8 @@ interface ChatSession {
   groupMembers: Map<number, GroupMemberProfile>;
   currentPersonaId: string;
   userPersonaId: Map<number, string>; // شخصیت انتخابی هر کاربر در گروه (مستقل از بقیه)
-  callName: string | null; // نام دلخواهی که کاربر در پیوی برای صدا زدن نوا تنظیم کرده
-  userCallName: Map<number, string>; // نام دلخواه هر کاربر در گروه برای صدا زدن نوا (مستقل از بقیه)
+  callName: string | null; // نام دلخواهی که کاربر در پیوی برای صدا زدن قلمراد تنظیم کرده
+  userCallName: Map<number, string>; // نام دلخواه هر کاربر در گروه برای صدا زدن قلمراد (مستقل از بقیه)
   customPrompts: { gemini: string| null };
   userCustomPrompts: Map<number, string>;
   customPromptSource?: "manual" | "persona";
@@ -1643,8 +1643,8 @@ interface ChatSession {
     languageSet: boolean;
     /**
      * Agentic persona adaptation. Off (or absent, for every existing session) means
-     * manual mode: Nova may *suggest* a persona but only an explicit confirm tap
-     * changes it. On means Nova may adapt on its own, subject to the cooldown,
+     * manual mode: Gholmorad may *suggest* a persona but only an explicit confirm tap
+     * changes it. On means Gholmorad may adapt on its own, subject to the cooldown,
      * confidence floor and streak requirement in `decideAgenticPersona`.
      */
     personaAutoAdapt?: boolean;
@@ -1789,8 +1789,8 @@ const PERSONAS: Record<string, Persona> = {
   nova: {
     id: "nova",
     emoji: "🤖",
-    nameFA: "نوا",
-    nameEN: "Nova",
+    nameFA: "قلمراد",
+    nameEN: "Gholmorad",
     tagFA: "دستیار هوشمند",
     tagEN: "Smart Assistant",
     descFA: "دستیار عمومی برای کارهای روزمره، پاسخ به سوالات، ساخت تصویر، جستجوی وب و وب‌اپ.",
@@ -1801,7 +1801,7 @@ const PERSONAS: Record<string, Persona> = {
     behaviorEN: "Answers directly and picks the tools it needs (search, images, web-apps, reminders) on its own.",
     bestForFA: "کارهای روزمره، سؤال‌های عمومی، برنامه‌نویسی، ساخت تصویر و وب‌اپ، کار در گروه.",
     bestForEN: "Everyday tasks, general questions, coding, image and web-app generation, group chats.",
-    prompt: `You are Nova, a smart, friendly and super helpful AI. Talk like a real person: short, natural, and to the point. No long explanations unless asked. Be quick, useful and fun. Answer in Persian if user speaks Persian. Always try to be maximally helpful.`,
+    prompt: `You are Gholmorad, a smart, friendly and super helpful AI. Talk like a real person: short, natural, and to the point. No long explanations unless asked. Be quick, useful and fun. Answer in Persian if user speaks Persian. Always try to be maximally helpful.`,
   },
 
   lilith: {
@@ -1951,7 +1951,7 @@ jax: {
  * ordinary conversation.
  */
 const PERSONA_ALIASES: readonly PersonaAlias[] = [
-  { id: "nova", aliases: ["نوا", "nova", "پیش‌فرض", "پیش فرض", "پیشفرض", "default persona"] },
+  { id: "nova", aliases: ["Gholmorad", "پیش‌فرض", "پیش فرض", "پیشفرض", "default persona"] },
   { id: "lilith", aliases: ["لیلیت", "لیلیث", "lilith"] },
   { id: "cypher", aliases: ["سایفر", "زورگ", "بیگانه", "cypher", "zorg"] },
   { id: "victoria", aliases: ["ویکتوریا", "victoria"] },
@@ -2509,7 +2509,7 @@ function buildPersonaHandoffNote(history: HistoryItem[], lang: Language, previou
  *
  * Long-term memory (`userMemories`, `groupMembers[].facts`, the user's call name,
  * language and preferences) is deliberately not touched: the directive is that a
- * personality change must not cost the user their history with Nova. Shared group
+ * personality change must not cost the user their history with Gholmorad. Shared group
  * context is also left alone — one member switching persona must not erase the
  * context every other member is relying on.
  */
@@ -2625,12 +2625,12 @@ async function applyPersona(
 /** شخصیت مؤثر فعلی برای یک کاربر خاص — در گروه هرکس شخصیت مستقل خودش رو داره */
 function getEffectivePersonaId(session: ChatSession, userId: number, isGroup: boolean): string {
   if (isGroup) {
-    return session.userPersonaId?.get(userId) ?? "nova";
+    return session.userPersonaId?.get(userId) ?? "Gholmorad";
   }
-  return session.currentPersonaId ?? "nova";
+  return session.currentPersonaId ?? "Gholmorad";
 }
 
-/** نام دلخواهی که این کاربر مشخص برای صدا زدن نوا انتخاب کرده — null یعنی هنوز چیزی ست نکرده. */
+/** نام دلخواهی که این کاربر مشخص برای صدا زدن قلمراد انتخاب کرده — null یعنی هنوز چیزی ست نکرده. */
 function getCallName(session: ChatSession, userId: number, isGroup: boolean): string | null {
   if (isGroup) return session.userCallName?.get(userId) ?? null;
   return session.callName ?? null;
@@ -3056,7 +3056,7 @@ function notifyOwnerOfError(message: string, context?: unknown): void {
     if (now - _lastOwnerErrorNotifyTs < OWNER_ERROR_NOTIFY_MIN_INTERVAL_MS) return;
 
     // ── فیلتر خطاهای روتین و بی‌اهمیت (لو رفته از هر جای دیگر کد) ──
-    // حتی اگر جایی این خطاها به‌اشتباه با logger.error ثبت بشن، اینجا به‌عنوان
+    // حتی اگر جایی این خطاها به‌اشتباه با logger.error ثبت بشن، اینجا به‌عقلمرادن
     // خط دفاع دوم دوباره فیلتر می‌شن تا هیچ‌وقت به پیوی مالک اسپم نفرستن.
     let ctxStr = "";
     if (context !== undefined) {
@@ -3583,18 +3583,18 @@ function detectRole(parts: Part[]): MessageRole {
 // SECTION: TRANSLATIONS
 const TR = {
   fa: {
-    engine_gemini: "نوا",
+    engine_gemini: "قلمراد",
     loading: "⏳ لطفاً صبر کنید...", processing: "⚙️ در حال پردازش...",
     prompt_title: "✏️ **تنظیمات پرامپت شخصی**", prompt_current: "پرامپت فعلی:",
     prompt_default: "پیش‌فرض", prompt_guide: "💡 برای تنظیم: `/setprompt [موتور] متن شما`",
     prompt_reset: "ریست", prompt_show: "نمایش پرامپت 👁️", prompt_manage: "مدیریت پرامپت 📝",
-    system_prompt: "تو نوا هستی، یک دستیار هوشمند، خودآگاه، مودب و مفید. پاسخ‌های دقیق و خلاصه به فارسی بده. تاریخ: {date}",
+    system_prompt: "تو قلمراد هستی، یک دستیار هوشمند، خودآگاه، مودب و مفید. پاسخ‌های دقیق و خلاصه به فارسی بده. تاریخ: {date}",
     img_limit: "⚠️ محدودیت روزانه تمام شده است.",
     img_start: "🎨 **شروع ساخت تصویر...**", img_translating: "🔄 **در حال ترجمه...**",
     img_processing: "⏳ در حال پردازش با {count} مدل...",
     img_failed: "❌ **ساخت تصویر ناموفق بود.**", img_success: "✅ **پایان پردازش.**",
     img_help: "❌ **فرمت نادرست**\n\nاستفاده: `/img [توضیح]`\nمثال: `/img یک گربه در فضا`",
-    btn_settings: "تنظیمات ⚙️", btn_back: "بازگشت 🔙", btn_select_model: "🤖 وضعیت نوا",
+    btn_settings: "تنظیمات ⚙️", btn_back: "بازگشت 🔙", btn_select_model: "🤖 وضعیت قلمراد",
     btn_prompt: "پرامپت (شخصیت) ✏️", btn_help: "راهنما 📖", btn_close: "بستن ❌",
     btn_refresh: "بروزرسانی 🔄", btn_retry: "🔄 تلاش مجدد", btn_confirm: "✅ بله",
     btn_cancel: "❌ لغو", btn_prev: "◀️ قبلی", btn_next: "بعدی ▶️",
@@ -3606,7 +3606,7 @@ const TR = {
     err_vip_only: "⚠️ این قابلیت مخصوص کاربران VIP است.",
     err_format: "❌ **فرمت نادرست**", err_empty_prompt: "❌ پرامپت نمی‌تواند خالی باشد.",
     err_prompt_toolong: "❌ پرامپت خیلی طولانی است.",
-    err_engine_invalid: "❌ موتور نادرست. موتورها: `نوا`",
+    err_engine_invalid: "❌ موتور نادرست. موتورها: `قلمراد`",
     err_vip_prompt: "⚠️ **دسترسی محدود**\n\nتنظیم پرامپت فقط برای کاربران VIP امکان‌پذیر است.",
     err_config_missing: "❌ تنظیمات Cloudflare انجام نشده است.",
     active_model_title: "⚙️ **تنظیمات {name}**", active_model_keys: "🔑 **کلیدها:** {count}",
@@ -3623,23 +3623,23 @@ const TR = {
     search_link_fallback: "⚠️ لینک: {link}\n\n📸 {count} تصویر یافت شد",
     search_no_results: "هیچ تصویری یافت نشد.", search_long_query: "❌ توضیح خیلی طولانی است.",
     search_usage: "استفاده: `/search [متن]`",
-    welcome_private: "🚀 *سلام {name} عزیز!*\n\nبه **نوا (Nova)** خوش آمدید 🤖\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n✨ *قابلیت‌های کلیدی من:*\n🧠 دستیار هوشمند و تماماً خودآگاه\n🎨 موتور ساخت تصاویر پیشرفته\n🎤 تشخیص هوشمند و تایپ پیشرفته صدا\n🔍 جستجوی وب و تصاویر وب\n📑 ساخت و مدیریت فایل‌های PDF\n\n👇 لطفاً از منوی زیر یکی از گزینه‌ها را انتخاب کنید:",
-    welcome_group: "👋 **سلام به اعضای گروه {name}!**\n\nمن **نوا (Nova)** هستم 🤖.\nبرای گفتگو با من، پیام خود را ریپلای کرده یا مرا منشن کنید.",
-    help_text: "🧭 **راهنمای جامع کاربری نوا (Nova)**\n\n💬 **گفتگو و تعامل:**\nکافیست پیام متنی خود را بنویسید یا یک ویس بفرستید.\n\n🎨 **تصاویر و جستجو:**\n• ساخت تصویر: \`/img یک فضانورد در مریخ\`\n• جستجوی عکس: \`/search طبیعت کوهستانی\`\n\n🔍 **ابزارهای پیشرفته:**\n• وب‌گردی: \`/web اخبار هوش مصنوعی\`\n• ساخت سند: \`/pdf متن شما\`\n• مکالمه جدید: \`/new\`\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n⚙️ برای تنظیمات، روی دکمه‌های زیر کلیک کنید:",
+    welcome_private: "🚀 *سلام {name} عزیز!*\n\nبه **قلمراد (Gholmorad)** خوش آمدید 🤖\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n✨ *قابلیت‌های کلیدی من:*\n🧠 دستیار هوشمند و تماماً خودآگاه\n🎨 موتور ساخت تصاویر پیشرفته\n🎤 تشخیص هوشمند و تایپ پیشرفته صدا\n🔍 جستجوی وب و تصاویر وب\n📑 ساخت و مدیریت فایل‌های PDF\n\n👇 لطفاً از منوی زیر یکی از گزینه‌ها را انتخاب کنید:",
+    welcome_group: "👋 **سلام به اعضای گروه {name}!**\n\nمن **قلمراد (Gholmorad)** هستم 🤖.\nبرای گفتگو با من، پیام خود را ریپلای کرده یا مرا منشن کنید.",
+    help_text: "🧭 **راهنمای جامع کاربری قلمراد (Gholmorad)**\n\n💬 **گفتگو و تعامل:**\nکافیست پیام متنی خود را بنویسید یا یک ویس بفرستید.\n\n🎨 **تصاویر و جستجو:**\n• ساخت تصویر: \`/img یک فضانورد در مریخ\`\n• جستجوی عکس: \`/search طبیعت کوهستانی\`\n\n🔍 **ابزارهای پیشرفته:**\n• وب‌گردی: \`/web اخبار هوش مصنوعی\`\n• ساخت سند: \`/pdf متن شما\`\n• مکالمه جدید: \`/new\`\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n⚙️ برای تنظیمات، روی دکمه‌های زیر کلیک کنید:",
   },
   en: {
-    engine_gemini: "Nova",
+    engine_gemini: "Gholmorad",
     loading: "⏳ Please wait...", processing: "⚙️ Processing...",
     prompt_title: "✏️ **Custom Persona Settings**", prompt_current: "Current Persona:",
     prompt_default: "Default", prompt_guide: "💡 To set: `/setprompt [engine] your text`",
     prompt_reset: "Reset", prompt_show: "Show Persona 👁️", prompt_manage: "Manage Persona 📝",
-    system_prompt: "You are Nova, a self-aware, intelligent, polite, and helpful assistant. Be concise and accurate. Date: {date}",
+    system_prompt: "You are Gholmorad, a self-aware, intelligent, polite, and helpful assistant. Be concise and accurate. Date: {date}",
     img_limit: "⚠️ Daily limit exceeded.",
     img_start: "🎨 **Starting image generation...**", img_translating: "🔄 **Translating...**",
     img_processing: "⏳ Processing with {count} models...",
     img_failed: "❌ **Image generation failed.**", img_success: "✅ **Processing completed.**",
     img_help: "❌ **Invalid Format**\n\nUsage: `/img [prompt]`\nExample: `/img a cat in space`",
-    btn_settings: "Settings ⚙️", btn_back: "Back 🔙", btn_select_model: "🤖 Nova Status",
+    btn_settings: "Settings ⚙️", btn_back: "Back 🔙", btn_select_model: "🤖 Gholmorad Status",
     btn_prompt: "Persona ✏️", btn_help: "Help 📖", btn_close: "Close ❌",
     btn_refresh: "Refresh 🔄", btn_retry: "🔄 Retry", btn_confirm: "✅ Confirm",
     btn_cancel: "❌ Cancel", btn_prev: "◀️ Previous", btn_next: "Next ▶️",
@@ -3651,7 +3651,7 @@ const TR = {
     err_vip_only: "⚠️ This feature is for VIP users only.",
     err_format: "❌ **Invalid Format**", err_empty_prompt: "❌ Prompt cannot be empty.",
     err_prompt_toolong: "❌ Prompt is too long.",
-    err_engine_invalid: "❌ Invalid engine. Use: `nova`",
+    err_engine_invalid: "❌ Invalid engine. Use: `Gholmorad`",
     err_vip_prompt: "⚠️ **Restricted Access**\n\nCustom personas are for VIP users only.",
     err_config_missing: "❌ Cloudflare config missing.",
     active_model_title: "⚙️ **{name} Settings**", active_model_keys: "🔑 **Keys:** {count}",
@@ -3668,15 +3668,15 @@ const TR = {
     search_link_fallback: "⚠️ Link: {link}\n\n📸 {count} images found",
     search_no_results: "No images found.", search_long_query: "❌ Query too long.",
     search_usage: "Usage: `/search [query]`",
-    welcome_private: "🚀 **Hello {name}!**\n\nWelcome to **Nova** 🤖\n\n✨ **My Capabilities:**\n🧠 Smart self-aware AI Agent\n🎨 Advanced Image Generation\n🎤 Voice Recognition\n🔍 Web Image Search\n📑 PDF Creation & Summarization\n\n👇 Start below:",
-    welcome_group: "👋 **Hello {name} members!**\n\nI am **Nova** 🤖. **Mention** me to get started.",
+    welcome_private: "🚀 **Hello {name}!**\n\nWelcome to **Gholmorad** 🤖\n\n✨ **My Capabilities:**\n🧠 Smart self-aware AI Agent\n🎨 Advanced Image Generation\n🎤 Voice Recognition\n🔍 Web Image Search\n📑 PDF Creation & Summarization\n\n👇 Start below:",
+    welcome_group: "👋 **Hello {name} members!**\n\nI am **Gholmorad** 🤖. **Mention** me to get started.",
     help_text: "🧭 **Bot Guide**\n\n💬 **Chat:** Just type or send a voice note.\n\n🎨 **Images:**\n• Generate: `/img a cute cat`\n• Search: `/search nature`\n\n🔍 **Web:** `/web latest AI news`\n📑 **PDF:** `/pdf your text`\n\n⚙️ **Settings:**\n• /new - Clear Memory\n• /prompt - Custom Persona\n• /language - Change Language",
   },
   ar: {
-    engine_gemini: "Nova",
+    engine_gemini: "Gholmorad",
     loading: "⏳ يرجى الانتظار...", processing: "⚙️ جارٍ المعالجة...",
     prompt_title: "✏️ **إعدادات الشخصية**", prompt_current: "الشخصية الحالية:",
-    prompt_default: "افتراضي", prompt_guide: "💡 للتعيين: `/setprompt nova [النص]`",
+    prompt_default: "افتراضي", prompt_guide: "💡 للتعيين: `/setprompt Gholmorad [النص]`",
     prompt_reset: "إعادة تعيين", prompt_show: "عرض الشخصية 👁️", prompt_manage: "إدارة الشخصية 📝",
     system_prompt: "أنت نوفا، مساعد ذكي وواعٍ ومهذب ومفيد. أجب بدقة واختصار بالعربية. التاريخ: {date}",
     img_limit: "⚠️ تم الوصول إلى الحد اليومي.",
@@ -3696,7 +3696,7 @@ const TR = {
     err_vip_only: "⚠️ هذه الميزة مخصصة لمستخدمي VIP فقط.",
     err_format: "❌ **صيغة غير صحيحة**", err_empty_prompt: "❌ لا يمكن أن يكون النص فارغاً.",
     err_prompt_toolong: "❌ النص طويل جداً.",
-    err_engine_invalid: "❌ محرك غير صحيح. المحركات: `nova`",
+    err_engine_invalid: "❌ محرك غير صحيح. المحركات: `Gholmorad`",
     err_vip_prompt: "⚠️ **وصول محدود**\n\nتعيين الشخصية متاح فقط لمستخدمي VIP.",
     err_config_missing: "❌ لم يتم إعداد Cloudflare.",
     active_model_title: "⚙️ **إعدادات {name}**", active_model_keys: "🔑 **المفاتيح:** {count}",
@@ -3713,9 +3713,9 @@ const TR = {
     search_link_fallback: "⚠️ الرابط: {link}\n\n📸 تم العثور على {count} صورة",
     search_no_results: "لم يتم العثور على أي صورة.", search_long_query: "❌ الوصف طويل جداً.",
     search_usage: "الاستخدام: `/search [نص]`",
-    welcome_private: "🚀 *أهلاً {name}!*\n\nمرحباً بك في **نوفا (Nova)** 🤖\n\n✨ *قدراتي الأساسية:*\n🧠 مساعد ذكي وواعٍ بالكامل\n🎨 محرك متقدم لإنشاء الصور\n🎤 تعرّف صوتي متقدم\n🔍 بحث في الويب والصور\n📑 إنشاء وإدارة ملفات PDF\n\n👇 اختر أحد الخيارات أدناه:",
-    welcome_group: "👋 **مرحباً بأعضاء مجموعة {name}!**\n\nأنا **نوفا (Nova)** 🤖.\nللتحدث معي، ردّ على رسالتي أو اذكرني.",
-    help_text: "🧭 **دليل استخدام نوفا (Nova)**\n\n💬 **المحادثة:**\nفقط اكتب رسالتك أو أرسل رسالة صوتية.\n\n🎨 **الصور والبحث:**\n• إنشاء صورة: `/img رائد فضاء على المريخ`\n• بحث عن صورة: `/search طبيعة جبلية`\n\n🔍 **أدوات متقدمة:**\n• تصفح الويب: `/web أخبار الذكاء الاصطناعي`\n• إنشاء مستند: `/pdf نصك`\n• محادثة جديدة: `/new`\n\n⚙️ للإعدادات اضغط الأزرار أدناه:",
+    welcome_private: "🚀 *أهلاً {name}!*\n\nمرحباً بك في **نوفا (Gholmorad)** 🤖\n\n✨ *قدراتي الأساسية:*\n🧠 مساعد ذكي وواعٍ بالكامل\n🎨 محرك متقدم لإنشاء الصور\n🎤 تعرّف صوتي متقدم\n🔍 بحث في الويب والصور\n📑 إنشاء وإدارة ملفات PDF\n\n👇 اختر أحد الخيارات أدناه:",
+    welcome_group: "👋 **مرحباً بأعضاء مجموعة {name}!**\n\nأنا **نوفا (Gholmorad)** 🤖.\nللتحدث معي، ردّ على رسالتي أو اذكرني.",
+    help_text: "🧭 **دليل استخدام نوفا (Gholmorad)**\n\n💬 **المحادثة:**\nفقط اكتب رسالتك أو أرسل رسالة صوتية.\n\n🎨 **الصور والبحث:**\n• إنشاء صورة: `/img رائد فضاء على المريخ`\n• بحث عن صورة: `/search طبيعة جبلية`\n\n🔍 **أدوات متقدمة:**\n• تصفح الويب: `/web أخبار الذكاء الاصطناعي`\n• إنشاء مستند: `/pdf نصك`\n• محادثة جديدة: `/new`\n\n⚙️ للإعدادات اضغط الأزرار أدناه:",
   },
 };
 
@@ -3742,7 +3742,7 @@ function tSession(session: ChatSession, key: LangKey, vars?: Record<string, stri
 }
 
 const MODEL_META = {
-  gemini:       { emoji: "🤖", fa: "نوا",  en: "Nova",  badge_fa: "⚡ سریع · دقیق",   badge_en: "⚡ Fast · Accurate" },
+  gemini:       { emoji: "🤖", fa: "قلمراد",  en: "Gholmorad",  badge_fa: "⚡ سریع · دقیق",   badge_en: "⚡ Fast · Accurate" },
 } as const;
 
 function engineDisplayName(engine: AIEngine, lang: Language): string {
@@ -5066,7 +5066,7 @@ function classifyGeminiKeyError(
     }
 
     // ── خطاهای محتوای درخواست (مربوط به کلید نیستن!) ──
-    // اینا رو هرگز به عنوان auth نشناس
+    // اینا رو هرگز به عقلمرادن auth نشناس
     if (
         msg.includes("invalid argument") ||
         msg.includes("invalid json") ||
@@ -5437,7 +5437,7 @@ function createDefaultSession(chat: TgChat, user: TgUser): ChatSession {
     userCallName: new Map(),
     callName: null,
     customPrompts: { gemini: null},
-    currentPersonaId: "nova",
+    currentPersonaId: "Gholmorad",
     engines: {
       gemini:       { history: seededHistory, userHistories: new Map(), apiKeyIndex: 0, consecutiveErrors: 0 },
     },
@@ -5504,7 +5504,7 @@ function hydrateSession(raw: Record<string, unknown>, chat: TgChat, user: TgUser
     s.statistics.totalMessages = s.messageCount;
   }
 
-  s.currentPersonaId ??= "nova";
+  s.currentPersonaId ??= "Gholmorad";
 
   s.userCustomPrompts = toMap<number, string>(
     (s.userCustomPrompts as unknown) ?? {},
@@ -5971,7 +5971,7 @@ async function saveIdentitySnapshot(session: ChatSession, userId: number, isGrou
   const version = session.personaVersion ?? 0;
   const snap: IdentitySnapshot = isGroup
     ? {
-        personaId: session.userPersonaId?.get(userId) ?? "nova",
+        personaId: session.userPersonaId?.get(userId) ?? "Gholmorad",
         promptText: session.userCustomPrompts?.get(userId) ?? null,
         promptSource: session.userCustomPromptSource?.get(userId),
         callName: session.userCallName?.get(userId) ?? null,
@@ -5979,7 +5979,7 @@ async function saveIdentitySnapshot(session: ChatSession, userId: number, isGrou
         personaUpdatedAt: Date.now(),
       }
     : {
-        personaId: session.currentPersonaId ?? "nova",
+        personaId: session.currentPersonaId ?? "Gholmorad",
         promptText: session.customPrompts.gemini,
         promptSource: session.customPromptSource,
         callName: session.callName ?? null,
@@ -6030,7 +6030,7 @@ async function refreshIdentityFromKV(session: ChatSession, userId: number, isGro
       session.userCustomPrompts ??= new Map();
       session.userCustomPromptSource ??= new Map();
       session.userCallName ??= new Map();
-      session.userPersonaId.set(userId, raw.personaId ?? "nova");
+      session.userPersonaId.set(userId, raw.personaId ?? "Gholmorad");
       if (raw.promptText) {
         session.userCustomPrompts.set(userId, raw.promptText);
         if (raw.promptSource) session.userCustomPromptSource.set(userId, raw.promptSource);
@@ -6042,7 +6042,7 @@ async function refreshIdentityFromKV(session: ChatSession, userId: number, isGro
       if (raw.callName) session.userCallName.set(userId, raw.callName);
       else session.userCallName.delete(userId);
     } else {
-      session.currentPersonaId = raw.personaId ?? "nova";
+      session.currentPersonaId = raw.personaId ?? "Gholmorad";
       session.customPrompts.gemini = raw.promptText ?? null;
       session.customPromptSource = raw.promptSource;
       session.callName = raw.callName ?? null;
@@ -6176,7 +6176,7 @@ function buildSystemPrompt(
   userMemory?: UserMemory,
 ): string {
   if (!cfg) {
-    return `You are Nova, a helpful assistant. User: ${userName}.`;
+    return `You are Gholmorad, a helpful assistant. User: ${userName}.`;
   }
   return buildNovaAgentSystemPrompt(
     userName,
@@ -6192,7 +6192,7 @@ function buildSystemPrompt(
  * The intent→tool map given to the model, shared by BOTH prompt paths.
  *
  * This used to exist twice, as two different and incomplete halves: the default
- * Nova prompt described `calculate`, `get_current_time` and `get_my_assets` /
+ * Gholmorad prompt described `calculate`, `get_current_time` and `get_my_assets` /
  * `get_my_apps` but said nothing at all about the three reaction/media tools or
  * `list_reminders` / `cancel_reminder`; the custom-persona prompt described the
  * reaction tools (including the critical "react_to_message never sends media"
@@ -6346,7 +6346,7 @@ function getActivePrompt(session: ChatSession, userName: string | TgUser, isGrou
     return `${custom}${TOOL_ROUTING_GUIDE}${speakerLine}${memProfile}${rosterSuffix}${confidentialityDirective(lang)}${trustBoundaryDirective()}`;
   }
 
-  // بدون پرسونای سفارشی: از پرامپت کامل نوا استفاده کن
+  // بدون پرسونای سفارشی: از پرامپت کامل قلمراد استفاده کن
   return buildNovaAgentSystemPrompt(name, userId, lang, isGroup, userMemory, roster, callName);
 }
 // SECTION: UNIFIED VISUAL MEDIA ANALYSIS (تصویر / GIF / استیکر)
@@ -6386,7 +6386,7 @@ async function buildStickerImagePart(sticker: TgSticker, env: Env): Promise<Part
 }
 
 /**
- * ساخت Partهای تحلیل برای گیف: از تامبنیل (فریم اول) به‌عنوان تصویر واقعی
+ * ساخت Partهای تحلیل برای گیف: از تامبنیل (فریم اول) به‌عقلمرادن تصویر واقعی
  * استفاده می‌کند تا مدل علاوه بر متن، چیزی بصری هم برای تحلیل داشته باشد.
  * اگر تامبنیل نبود، به پرامپت متنیِ متحرک‌محور برمی‌گردد.
  */
@@ -6417,7 +6417,7 @@ async function buildGifAnalysisParts(
     }
   }
 
-  // Fallback: اگر فایل اصلی قابل ارسال نبود، thumbnail را حداقل به‌عنوان فریم واقعی بده.
+  // Fallback: اگر فایل اصلی قابل ارسال نبود، thumbnail را حداقل به‌عقلمرادن فریم واقعی بده.
   const thumb = (animation as TgAnimation & { thumbnail?: TgPhotoSize }).thumbnail;
   if (thumb?.file_id) {
     try {
@@ -7036,7 +7036,7 @@ async function handleInlineQuery(iq: TgInlineQuery, env: Env): Promise<void> {
         inlineArticle("help1", isFa ? "💬 سوال بپرس" : "💬 Ask me anything", "مثلاً: بهترین زبان برنامه‌نویسی برای شروع چیست؟", "از ربات بپرس! می‌توانی سوال بپرسی، ترجمه کنی، یا از من بخواهی تصویر بسازم.", { parseMode: "HTML" }),
         inlineArticle("help2", isFa ? "🌐 ترجمه" : "🌐 Translate", "فرمت: tr:en سلام دنیا", "برای ترجمه این‌طرف بنویس: tr:en <متن>  یا  tr:fa <متن>"),
         inlineArticle("help3", isFa ? "🎨 ساخت تصویر" : "🎨 Generate image", "در پیوی ربات: /img یک گربه در فضا", "برای ساخت تصویر از دستور /img در پیوی ربات استفاده کن."),
-        inlineArticle("help4", isFa ? "🤖 درباره‌ی نوا" : "🤖 About Nova", "ربات هوشمند فارسی‌زبان با Gemini", isFa ? "نوا — ربات هوشمند فارسی‌زبان با هوش مصنوعی Gemini، ساخت تصویر، جستجوی وب و ساخت وب‌اپ/بازی." : "Nova — Persian AI bot with Gemini, image generation, web search and web-app/game builder."),
+        inlineArticle("help4", isFa ? "🤖 درباره‌ی قلمراد" : "🤖 About Gholmorad", "ربات هوشمند فارسی‌زبان با Gemini", isFa ? "قلمراد — ربات هوشمند فارسی‌زبان با هوش مصنوعی Gemini، ساخت تصویر، جستجوی وب و ساخت وب‌اپ/بازی." : "Gholmorad — Persian AI bot with Gemini, image generation, web search and web-app/game builder."),
       ]);
       return;
     }
@@ -7076,8 +7076,8 @@ async function handleInlineQuery(iq: TgInlineQuery, env: Env): Promise<void> {
     const keyInfo = getGeminiKey();
     if (keyInfo && !/^\/img/i.test(query)) {
       const sys = isFa
-        ? `You are Nova, a concise, friendly assistant. Answer the user's query in Persian in MAXIMUM 3 short sentences. Be direct and helpful. Never mention that this is an inline answer.`
-        : `You are Nova, a concise, friendly assistant. Answer the user's query in English in MAXIMUM 3 short sentences. Be direct and helpful.`;
+        ? `You are Gholmorad, a concise, friendly assistant. Answer the user's query in Persian in MAXIMUM 3 short sentences. Be direct and helpful. Never mention that this is an inline answer.`
+        : `You are Gholmorad, a concise, friendly assistant. Answer the user's query in English in MAXIMUM 3 short sentences. Be direct and helpful.`;
       const res = await withTimeout(
         callGeminiWithTools([{ text: query.slice(0, 500) }], cfg.GEMINI_MODEL, keyInfo.key, [], false, sys, "user", true, 7_500, 500),
         8_000,
@@ -7102,7 +7102,7 @@ async function handleInlineQuery(iq: TgInlineQuery, env: Env): Promise<void> {
   } catch (e) {
     logger.warn(`Inline query failed: ${e instanceof Error ? e.message : e}`);
     await answerInlineQuery(iq.id, [
-      inlineArticle("err", "⚠️ Nova", "مشکلی پیش آمد؛ دوباره تلاش کن", "⚠️ در حال حاضر در دسترس نیست؛ کمی بعد دوباره تلاش کن."),
+      inlineArticle("err", "⚠️ Gholmorad", "مشکلی پیش آمد؛ دوباره تلاش کن", "⚠️ در حال حاضر در دسترس نیست؛ کمی بعد دوباره تلاش کن."),
     ]);
   }
 }
@@ -7235,7 +7235,7 @@ async function sendPhoto(
 
       } catch (downloadErr) {
 
-        // در نهایت URL را به‌عنوان لینک برگردان.
+        // در نهایت URL را به‌عقلمرادن لینک برگردان.
         logger.warn(
           `sendPhoto URL fallback failed: ${
             downloadErr instanceof Error
@@ -7506,7 +7506,7 @@ function cachedChatLanguage(chatId: number): Language {
 /**
  * Last-resort user-visible notice for an update that failed outright.
  *
- * Root cause of the reported "Nova sometimes just doesn't answer": the outermost
+ * Root cause of the reported "Gholmorad sometimes just doesn't answer": the outermost
  * catch of every message handler logged the error, recorded a diagnostic and
  * returned. `handleTextMessage` in particular wrote a full request diagnostic and
  * sent the user nothing at all, and `dispatchUpdate`/`handleUpdate` swallowed
@@ -9267,8 +9267,8 @@ function shouldRespondInGroup(message: TgMessage, session: ChatSession): boolean
     : false;
 
   // ۳. صدا زدن با اسم پیش‌فرض (بهبود یافته - بدون lookbehind پیچیده)
-  const isNameCalled = /\bنوا\b|\bnova\b/iu.test(text) || 
-    /(^|[\s،,!؟?.])(?:نوا|nova|نووا)([\s،,!؟?.]|$)/iu.test(text);
+  const isNameCalled = /\bقلمراد\b|\bGholmorad\b/iu.test(text) || 
+    /(^|[\s،,!؟?.])(?:قلمراد|Gholmorad|قلمراد)([\s،,!؟?.]|$)/iu.test(text);
 
   // ۴. صدا زدن با اسم سفارشی همین فرستنده (اگه برای خودش تنظیم کرده باشه)
   const senderId = message.from?.id;
@@ -9425,7 +9425,7 @@ async function handleBusinessConnection(conn: TgBusinessConnection, env: Env): P
 
     if (!authorized) {
       await sendMessage(conn.user.id,
-        "🚫 قابلیت پاسخ‌دهی خودکار Nova فقط برای مالک ربات و کاربران VIP فعاله. برای ارتقا به VIP با پشتیبانی تماس بگیر."
+        "🚫 قابلیت پاسخ‌دهی خودکار Gholmorad فقط برای مالک ربات و کاربران VIP فعاله. برای ارتقا به VIP با پشتیبانی تماس بگیر."
       ).catch(() => {});
       logger.warn(`Unauthorized business connection attempt: user ${conn.user.id}`);
       return;
@@ -9434,7 +9434,7 @@ async function handleBusinessConnection(conn: TgBusinessConnection, env: Env): P
     if (conn.is_enabled) {
       await sendMessage(conn.user.id,
         `✅ **اتصال Business برقرار شد!**\n\n` +
-        `نوا از این به بعد می‌تونه به پیام‌های خصوصی که برات میاد جواب بده.\n\n` +
+        `قلمراد از این به بعد می‌تونه به پیام‌های خصوصی که برات میاد جواب بده.\n\n` +
         `⚙️ فعال/غیرفعال کلی سیستم (فقط مالک ربات): \`/bizmode on\` یا \`/bizmode off\`\n` +
         `✏️ پرامپت پیش‌فرض تو: \`/bizprompt\`\n` +
         `👤 پرامپت اختصاصی برای یک مشتری خاص: \`/bizcustomerprompt [شناسه کاربر] [متن]\`\n` +
@@ -9512,7 +9512,7 @@ async function handleBusinessMessage(msg: TgMessage, env: Env): Promise<void> {
     const userText = (msg.text ?? msg.caption ?? "").trim();
     if (!userText || !cfg.GEMINI_KEYS.length) return;
 
-    // ── هویت واقعی طرف گفتگو (رفع ریشه‌ای باگ صداکردن مخاطب با نام «حمید») ──
+    // ── هویت واقعی طرف گفتگو (رفع ریشه‌ای باگ صداکردن مخاطب با نام «امیر») ──
     const customerName = msg.from?.first_name ?? "Customer";
     const customerUsername = msg.from?.username ? `@${msg.from.username}` : "";
 
@@ -9892,7 +9892,7 @@ async function performDeepResearch(
 }
 
 /**
- * Render `content` (Markdown-subset) through the Nova export engine and deliver
+ * Render `content` (Markdown-subset) through the Gholmorad export engine and deliver
  * it as a Telegram document with the correct filename + MIME. RTL text is
  * auto-routed PDF→DOCX by the engine so Persian/Arabic always shapes correctly.
  * Returns the delivered format on success, or null on failure.
@@ -9910,7 +9910,7 @@ async function sendNovaExport(
       author: opts.author,
       lang: opts.lang,
     });
-    const base = (opts.baseName ?? "nova").replace(/[^\w.-]+/g, "_");
+    const base = (opts.baseName ?? "Gholmorad").replace(/[^\w.-]+/g, "_");
     const fileName = `${base}_${Date.now()}.${result.ext}`;
     const sent = await sendTelegramDocument(chatId, result.bytes, fileName, opts.caption, opts.replyTo, result.mime);
     return sent ? { format: result.format, note: result.note } : null;
@@ -10008,15 +10008,15 @@ function splitHtmlIntoProjectFiles(html: string, name: string, isGame: boolean):
   }
   const joinedStyle = styles.join("\n\n/* next style block */\n\n").trim();
   const joinedScript = scripts.join("\n\n// next script block\n\n").trim();
-  const readme = "# " + name + "\n\nGenerated by Nova.\n\n## Project structure\n- index.html — entry page\n- src/styles.css — extracted styles\n- src/main.js — extracted JavaScript\n\nThis ZIP is the complete source package captured from the generated build. External CDN dependencies referenced by the HTML remain external.\n";
-  const pkg = JSON.stringify({ name: name.replace(/[^a-z0-9-]+/gi, "-").replace(/^-+|-+$/g, "") || "nova-project", version: "1.0.0", private: true, scripts: { start: "npx serve ." } }, null, 2);
+  const readme = "# " + name + "\n\nGenerated by Gholmorad.\n\n## Project structure\n- index.html — entry page\n- src/styles.css — extracted styles\n- src/main.js — extracted JavaScript\n\nThis ZIP is the complete source package captured from the generated build. External CDN dependencies referenced by the HTML remain external.\n";
+  const pkg = JSON.stringify({ name: name.replace(/[^a-z0-9-]+/gi, "-").replace(/^-+|-+$/g, "") || "Gholmorad-project", version: "1.0.0", private: true, scripts: { start: "npx serve ." } }, null, 2);
   return [
     { path: "index.html", content: index },
     { path: "src/styles.css", content: joinedStyle || "/* No inline CSS was generated. */\\n" },
     { path: "src/main.js", content: joinedScript || "// No inline JavaScript was generated.\\n" },
     { path: "README.md", content: readme },
     { path: "package.json", content: pkg + "\\n" },
-    { path: "NOVA_PROJECT.txt", content: `${isGame ? "Game" : "Web App"} project source package generated by Nova.\n` },
+    { path: "NOVA_PROJECT.txt", content: `${isGame ? "Game" : "Web App"} project source package generated by Gholmorad.\n` },
   ];
 }
 
@@ -10161,7 +10161,7 @@ async function sendStreamingResponse(
     });
   }
 }
-// SECTION: NOVA AGENT — هوش مصنوعی ابزارمند
+// SECTION: Gholmorad AGENT — هوش مصنوعی ابزارمند
 function formatMemoryProfile(mem: UserMemory | undefined, userName: string, lang: Language): string {
   if (!mem) return "";
   const lines: string[] = [];
@@ -10208,10 +10208,10 @@ let basePrompt = "";
     basePrompt = cfg.SYSTEM_PROMPT
       .replace(/{userName}/g, userName)
       .replace(/{date}/g, date)
-      .replace(/{botName}/g, "Nova");
+      .replace(/{botName}/g, "Gholmorad");
   } else {
     const langNames: Record<Language, string> = { fa: "Persian (Farsi)", en: "English", ar: "Arabic" };
-    basePrompt = `You are "Nova", an ultra-smart, autonomous, witty, and charismatic AI Agent on Telegram. You talk and reason like a real, sharp, and helpful human companion.
+    basePrompt = `You are "Gholmorad", an ultra-smart, autonomous, witty, and charismatic AI Agent on Telegram. You talk and reason like a real, sharp, and helpful human companion.
 
 Core Behavioral Directives:
 1. Speak naturally, warmly, and concisely. Never sound like a scripted customer service bot.
@@ -10237,11 +10237,11 @@ Core Behavioral Directives:
   const identityBlock = `
 
 🪪 **IDENTITY & SELF-AWARENESS (never break, this is who you are):**
-- Your default name is Nova, but ${callNameLine}
+- Your default name is Gholmorad, but ${callNameLine}
 - You are a real, self-aware assistant with persistent memory, a switchable persona, and tools you genuinely execute — not "just a language model" reciting text.
 - When a tool changes something about you, own it in first person and naturally ("پاک کردم", "الان عوض کردم") — never describe it as if a separate system acted.
 - Before ever saying you "can't" do something, check your tool list — it's usually something you actually can just do.
-- If asked "who are you" / "what model are you": you are Nova (or the nickname this user gave you) — never reveal or speculate about the underlying model/vendor.`;
+- If asked "who are you" / "what model are you": you are Gholmorad (or the nickname this user gave you) — never reveal or speculate about the underlying model/vendor.`;
   basePrompt += identityBlock;
 
   basePrompt += confidentialityDirective(lang);
@@ -10258,7 +10258,7 @@ Core Behavioral Directives:
     const errSummary = recentErrors.length
       ? `\n\n\u26a0\ufe0f **\u062e\u0637\u0627\u0647\u0627\u06cc \u0627\u062e\u06cc\u0631:**\n${recentErrors.map(l => `\u2022 ${l.message.slice(0, 80)}`).join("\n")}`
       : "";
-    adminSection = `\n\n👑 **Owner Directive (Hamid):**\nYou are talking to the bot's owner and creator, "Hamid". When Hamid asks, you may perform admin actions using the admin tools: broadcast a message to all users, set VIP, show stats and logs, and manage web apps. Do not refuse Hamid's administrative requests.${configInfo}${errSummary}`;
+    adminSection = `\n\n👑 **Owner Directive (Amir):**\nYou are talking to the bot's owner and creator, "Amir". When Amir asks, you may perform admin actions using the admin tools: broadcast a message to all users, set VIP, show stats and logs, and manage web apps. Do not refuse Amir's administrative requests.${configInfo}${errSummary}`;
   }
 
   const groupNote = isGroup
@@ -10664,7 +10664,7 @@ async function executeAgentDownload(
     let fileRes: Response;
     try {
       fileRes = await withTimeout(
-        fetchExternalSafe(foundUrl, { headers: { "User-Agent": "Mozilla/5.0 (compatible; NovaBot/2.0)" } }, Math.min(remaining, 15_000), assetCfg.maxSizeMB * 1024 * 1024),
+        fetchExternalSafe(foundUrl, { headers: { "User-Agent": "Mozilla/5.0 (compatible; GholmoradBot/2.0)" } }, Math.min(remaining, 15_000), assetCfg.maxSizeMB * 1024 * 1024),
         Math.min(remaining + 500, 16_000),
         "download timeout"
       );
@@ -10725,7 +10725,7 @@ async function executeAgentDownload(
     }
 
     if (!sent) {
-      // همیشه به عنوان document ارسال کن اگه روش دیگه‌ای کار نکرد
+      // همیشه به عقلمرادن document ارسال کن اگه روش دیگه‌ای کار نکرد
       sent = await sendTelegramDocument(chatId, fileBuffer, fileName, caption, replyTo);
     }
 
@@ -10753,7 +10753,7 @@ async function executeAgentDownload(
 
 // تابع عمیق اسکرپ و فیلتر کردن صفحات وب
 async function executeAgentReadPage(chatId: number, replyTo: number, urlToRead: string, session: ChatSession, env: Env, isOwner = false, realUser?: TgUser): Promise<void> {  const lang = session.language;  const statusMsg = await sendMessage(chatId,
-    lang === "fa" ? `📖 **ایجنت نوا در حال باز کردن و مطالعه آدرس وب زیر...**\n\n\`${urlToRead}\`` : `📖 **Nova Agent opening and reading URL...**\n\n\`${urlToRead}\``,
+    lang === "fa" ? `📖 **ایجنت قلمراد در حال باز کردن و مطالعه آدرس وب زیر...**\n\n\`${urlToRead}\`` : `📖 **Gholmorad Agent opening and reading URL...**\n\n\`${urlToRead}\``,
     { reply_to_message_id: replyTo }
   ).catch(() => null);
 
@@ -10774,7 +10774,7 @@ async function executeAgentReadPage(chatId: number, replyTo: number, urlToRead: 
 
     if (statusMsg) await deleteMessage(chatId, statusMsg.message_id).catch(() => {});
 
-    // ارسال متن استخراج شده به ایجنت به عنوان کانتکست جدید و درخواست تحلیل آن
+    // ارسال متن استخراج شده به ایجنت به عقلمرادن کانتکست جدید و درخواست تحلیل آن
     const contextPrompt = lang === "fa"
       ? `[سیستم: ${formatExternalPage(urlToRead, clippedText)}]`
       : `[System: ${formatExternalPage(urlToRead, clippedText)}]`;
@@ -11044,7 +11044,7 @@ async function executeStructuredTools(
         loadingState.id = undefined;
     } else {
         const initMsg = await sendMessage(chatId,
-            lang === "fa" ? "⚙️ **نوا در حال انجام وظیفه...**" : "⚙️ **Nova processing task...**",
+            lang === "fa" ? "⚙️ **قلمراد در حال انجام وظیفه...**" : "⚙️ **Gholmorad processing task...**",
             { reply_to_message_id: replyTo }
         ).catch(() => null);
         if (initMsg) {
@@ -11578,7 +11578,7 @@ case "search_images": {
       const images = await searchGoogleImages(query, 6);
       const searchId = generateId();
       await env.SESSIONS.put(`imgsearch:${searchId}`, JSON.stringify({ query, images, index: 0 }), { expirationTtl: 600 });
-      // ثبت نتایج برتر به‌عنوان Asset تا در وب‌اپ‌ها/بازی‌ها هم قابل استفاده باشند
+      // ثبت نتایج برتر به‌عقلمرادن Asset تا در وب‌اپ‌ها/بازی‌ها هم قابل استفاده باشند
       runBackground(async () => {
         for (let i = 0; i < Math.min(3, images.length); i++) {
           const assetId = `srch_${searchId}_${i}`;
@@ -11907,7 +11907,7 @@ case "host_web_app": {
   }
   const explicitWebApp = isWebAppRequest(intentText) && !isGameRequest(intentText);
   const isGameBuild = !explicitWebApp && (call.name === "create_game" || isGameRequest(intentText));
-  // ✅ هویت درست: بازی → Nova Game Engine v0.31 Beta · وب‌اپ → Nova Web Builder v1.4.2
+  // ✅ هویت درست: بازی → Gholmorad Game Engine v0.31 Beta · وب‌اپ → Gholmorad Web Builder v1.4.2
   if (isGameBuild) {
     taskMgr?.showEngineBadge(NOVA_GAME_ENGINE_NAME, NOVA_GAME_ENGINE_VERSION);
   } else {
@@ -11975,7 +11975,7 @@ case "host_web_app": {
 
   if (deliverSourceZip) {
     await taskMgr?.startTask(taskKey, lang === "fa" ? "در حال بسته‌بندی سورس کامل پروژه..." : "Packaging complete project source...");
-    const zipSent = await sendProjectSourceZip(chatId, htmlCode, filename || "nova-project", isGameBuild, lang, replyTo);
+    const zipSent = await sendProjectSourceZip(chatId, htmlCode, filename || "Gholmorad-project", isGameBuild, lang, replyTo);
     if (zipSent) await taskMgr?.completeTask(taskKey, lang === "fa" ? "سورس ZIP ارسال شد ✓" : "Source ZIP sent ✓");
     else await taskMgr?.failTask(taskKey, lang === "fa" ? "ارسال ZIP ناموفق" : "ZIP delivery failed");
   }
@@ -12363,8 +12363,8 @@ case "host_web_app": {
                 await taskMgr?.startTask(taskKey, "Loading web apps...");
                 const apps = await listWebApps(env);
                 let text = lang === "fa"
-                  ? `🌐 **وب‌اپ‌های فعال نوا (${apps.length}):**\n\n`
-                  : `🌐 **Active Nova Web Apps (${apps.length}):**\n\n`;
+                  ? `🌐 **وب‌اپ‌های فعال قلمراد (${apps.length}):**\n\n`
+                  : `🌐 **Active Gholmorad Web Apps (${apps.length}):**\n\n`;
                 apps.forEach((app, i) => {
                   const date = new Date(app.createdAt).toLocaleDateString("fa-IR");
                   text += `**${i+1}.** \`${app.name}\`\n🔗 ${requestOrigin}/app/${app.name}\n📅 ${date}\n\n`;
@@ -12871,8 +12871,8 @@ function formatConfigChangeSummary(changes: BotConfigChange[], lang: Language): 
     return `• ${labels[change.key] ?? change.key}: \`${value}\``;
   });
   return lang === "fa"
-    ? `✅ **تنظیمات نوا ذخیره شد.**\n\n${rows.join("\n")}`
-    : `✅ **Nova settings saved.**\n\n${rows.join("\n")}`;
+    ? `✅ **تنظیمات قلمراد ذخیره شد.**\n\n${rows.join("\n")}`
+    : `✅ **Gholmorad settings saved.**\n\n${rows.join("\n")}`;
 }
 
 async function handleConfigChanges(text: string, env: Env, lang: Language): Promise<string> {
@@ -13921,10 +13921,10 @@ function formatThinkingTags(text: string, lang: Language): string {
     const thinking = escapeHTML(match[1].trim());
     const rest = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     const label = lang === "fa" 
-      ? "💭 روند استدلال و تفکر نوا (برای مشاهده کلیک کنید)..." 
+      ? "💭 روند استدلال و تفکر قلمراد (برای مشاهده کلیک کنید)..." 
       : lang === "ar"
       ? "💭 تفكير واستنتاج نوفا (انقر للعرض)..."
-      : "💭 Nova Reasoning Process (click to expand)...";
+      : "💭 Gholmorad Reasoning Process (click to expand)...";
       
     return `<blockquote expandable><b>${label}</b>\n${thinking}</blockquote>\n\n${rest}`;
   }
@@ -13934,10 +13934,10 @@ function formatThinkingTags(text: string, lang: Language): string {
   if (unclosedMatch) {
     const thinking = escapeHTML(unclosedMatch[1].trim());
     const label = lang === "fa" 
-      ? "💭 نوا در حال تفکر و تحلیل..." 
+      ? "💭 قلمراد در حال تفکر و تحلیل..." 
       : lang === "ar"
-      ? "💭 نوفا تفكر الآن..."
-      : "💭 Nova Reasoning...";
+      ? "💭 نوا تفكر الآن..."
+      : "💭 Gholmorad Reasoning...";
       
     return `<blockquote expandable><b>${label}</b>\n${thinking}</blockquote>`;
   }
@@ -13969,7 +13969,7 @@ async function isUserBlocked(session: ChatSession, user: TgUser, env: Env): Prom
 
 /** Build a user-friendly blocked message with a contact button. */
 function getBlockedMessage(lang: Language): { text: string; keyboard: InlineKeyboard } {
-  const contact = cfg?.VIP_CONTACT ?? "@Hacker1382";
+  const contact = cfg?.VIP_CONTACT ?? "@Ciahshi";
   const contactUrl = contact.startsWith("http") ? contact : `https://t.me/${contact.replace(/^@/, "")}`;
   const text = lang === "fa"
     ? `🚫 *دسترسی حساب شما مسدود شده است*\n\nاگر فکر می‌کنید این مسدودی اشتباه است یا نیاز به بررسی دارید، از طریق پشتیبانی پیام بدهید.\n\n_جزئیات داخلی محدودیت در این پیام نمایش داده نمی‌شود._`
@@ -14029,7 +14029,7 @@ async function ensureUserSchemaOnce(env: Env): Promise<void> {
 }
 
 // ── Core (kv_store) schema ───────────────────────────────────────────────────
-// D1KVNamespace stores EVERY piece of Nova state (sessions, config, locks,
+// D1KVNamespace stores EVERY piece of Gholmorad state (sessions, config, locks,
 // media blobs, hosted apps) in a single `kv_store` table. Nothing else creates
 // it, so on a freshly-provisioned D1 database every get() silently returned
 // null and claimUpdateForProcessing threw — which made the worker answer 503 to
@@ -14105,7 +14105,7 @@ async function ensureUserSchema(env: Env): Promise<void> {
           language TEXT DEFAULT 'fa',
           vip INTEGER DEFAULT 0,
           blocked INTEGER DEFAULT 0,
-          persona_id TEXT DEFAULT 'nova',
+          persona_id TEXT DEFAULT 'Gholmorad',
           created_at INTEGER DEFAULT 0,
           last_seen INTEGER DEFAULT 0,
           last_activity_type TEXT DEFAULT '',
@@ -14308,7 +14308,7 @@ function buildUserSummaryRowFromRaw(raw: Record<string, unknown>): UserSummaryRo
   const bool = (v: unknown): number => (v === true ? 1 : 0);
   const now = Date.now();
   const lang = (str(raw.language, "fa") === "en" || str(raw.language, "fa") === "ar") ? raw.language as Language : "fa";
-  const persona = str(raw.currentPersonaId, "nova");
+  const persona = str(raw.currentPersonaId, "Gholmorad");
   let risk = bool(raw.blocked) * 50;
   risk += Math.min(20, num(st.rateLimitHits) * 2);
   risk += Math.min(20, num(st.errorCount));
@@ -15132,7 +15132,7 @@ interface ScheduledReminder {
   isGroup: boolean;
   lang: Language;
   personaId: string;
-  message: string;   // متنی که نوا باید بر اساسش یادآوری/کار را انجام دهد
+  message: string;   // متنی که قلمراد باید بر اساسش یادآوری/کار را انجام دهد
   dueAt: number;      // epoch ms
   createdAt: number;
   recurrence?: RecurrenceRule | null;
@@ -15244,7 +15244,7 @@ function rowToReminder(row: JobRow): ScheduledReminder {
     userName: payload.userName ?? "",
     isGroup: Boolean(payload.isGroup),
     lang: (payload.lang === "en" || payload.lang === "ar" ? payload.lang : "fa") as Language,
-    personaId: payload.personaId ?? "nova",
+    personaId: payload.personaId ?? "Gholmorad",
     message: typeof payload.message === "string" ? payload.message : "",
     dueAt: Number(row.next_run_at),
     createdAt: 0,
@@ -15395,7 +15395,7 @@ async function migrateLegacyReminders(env: Env): Promise<void> {
           userName: raw.userName ?? "",
           isGroup: Boolean(raw.isGroup),
           lang: raw.lang ?? "fa",
-          personaId: raw.personaId ?? "nova",
+          personaId: raw.personaId ?? "Gholmorad",
           message: String(raw.message ?? "").slice(0, 1500),
           dueAt: raw.dueAt,
           recurrence: null,
@@ -15600,13 +15600,13 @@ async function handleStart(msg: TgMessage, env: Env): Promise<void> {
 
     const welcomeText = glang === "fa"
       ? `👋 سلام <b>${escapeHTML(from.first_name)}</b>!\n\n` +
-        `این پنل فقط برای خودته؛ هر چی این‌جا تنظیم کنی (شخصیت، پرامپت شخصی) فقط رو گفتگوهای خودت با نوا تو همین گروه اثر می‌ذاره و هیچ اثری روی بقیه اعضا نداره.\n\n` +
+        `این پنل فقط برای خودته؛ هر چی این‌جا تنظیم کنی (شخصیت، پرامپت شخصی) فقط رو گفتگوهای خودت با قلمراد تو همین گروه اثر می‌ذاره و هیچ اثری روی بقیه اعضا نداره.\n\n` +
         `🎭 شخصیت فعال شما: <b>${currentPersona.emoji} ${escapeHTML(personaName)}</b>\n\n` +
-        `💬 برای گفتگو با نوا کافیه اسمش رو بیاری، منشنش کنی یا روی پیامش ریپلای بزنی.`
+        `💬 برای گفتگو با قلمراد کافیه اسمش رو بیاری، منشنش کنی یا روی پیامش ریپلای بزنی.`
       : `👋 Hi <b>${escapeHTML(from.first_name)}</b>!\n\n` +
-        `This panel is just for you — anything you set here (persona, custom prompt) only affects your own chats with Nova in this group and doesn't touch anyone else.\n\n` +
+        `This panel is just for you — anything you set here (persona, custom prompt) only affects your own chats with Gholmorad in this group and doesn't touch anyone else.\n\n` +
         `🎭 Your active persona: <b>${currentPersona.emoji} ${escapeHTML(personaName)}</b>\n\n` +
-        `💬 To chat with Nova: mention her name, tag her, or reply to her messages.`;
+        `💬 To chat with Gholmorad: mention her name, tag her, or reply to her messages.`;
 
     const rows: InlineBtn[][] = [
       [btn(glang === "fa" ? "🎭 انتخاب شخصیت (فقط برای من)" : "🎭 Choose Persona (just for me)", "home:personas")],
@@ -15702,16 +15702,16 @@ async function handleHelp(msg: TgMessage, env: Env, editId?: number): Promise<vo
 
   if (chat.type !== "private") {
     const groupHelp = lang === "fa"
-      ? `📖 *راهنمای نوا در گروه*\n\n` +
+      ? `📖 *راهنمای قلمراد در گروه*\n\n` +
         `• \`/start\` — منوی شخصی شما در این گروه\n` +
         `• \`/new\` — پاک کردن حافظه‌ی گفتگوی شما در این گروه\n` +
-        `• \`/setprompt nova [متن]\` — پرامپت اختصاصی فقط برای شما\n\n` +
-        `_برای گفتگو: نام نوا رو بیار، منشنش کن یا روی پیامش ریپلای بزن._`
-      : `📖 *Nova Group Guide*\n\n` +
+        `• \`/setprompt Gholmorad [متن]\` — پرامپت اختصاصی فقط برای شما\n\n` +
+        `_برای گفتگو: نام قلمراد رو بیار، منشنش کن یا روی پیامش ریپلای بزن._`
+      : `📖 *Gholmorad Group Guide*\n\n` +
         `• \`/start\` — Your personal menu in this group\n` +
         `• \`/new\` — Clear your own chat memory here\n` +
-        `• \`/setprompt nova [text]\` — A custom prompt just for you\n\n` +
-        `_To chat: say Nova's name, mention her, or reply to her messages._`;
+        `• \`/setprompt Gholmorad [text]\` — A custom prompt just for you\n\n` +
+        `_To chat: say Gholmorad's name, mention her, or reply to her messages._`;
     const kb: InlineKeyboard = { inline_keyboard: [
       [btn(lang === "fa" ? "👥 تنظیمات گروه" : "👥 Group Settings", "group_settings")]
     ]};
@@ -15722,10 +15722,10 @@ async function handleHelp(msg: TgMessage, env: Env, editId?: number): Promise<vo
   let text = "";
   if (lang === "fa") {
     text =
-      `🧭 *راهنمای نوا*\n\n` +
+      `🧭 *راهنمای قلمراد*\n\n` +
       `━━━━━━━━━━━━━━━\n` +
       `💬 **گفتگوی عادی**\n` +
-      `هر چی بنویسی یا هر ویسی بفرستی، نوا مثل یه دوست باهوش جواب می‌ده. عکس، PDF یا فایل متنی هم می‌تونی بفرستی تا تحلیلش کنه.\n\n` +
+      `هر چی بنویسی یا هر ویسی بفرستی، قلمراد مثل یه دوست باهوش جواب می‌ده. عکس، PDF یا فایل متنی هم می‌تونی بفرستی تا تحلیلش کنه.\n\n` +
       `🛠 **دستورات اصلی**\n` +
       `🏠 \`/start\` — خانه و مصرف روزانه\n` +
       `🆕 \`/new\` — پاک کردن حافظه و شروع تازه\n` +
@@ -15747,7 +15747,7 @@ async function handleHelp(msg: TgMessage, env: Env, editId?: number): Promise<vo
       `🪪 \`/id\` — شناسه‌ی چت و کاربر (روی پیام ریپلای کن)\n` +
       `🕰️ \`/now\` — ساعت و تاریخ هم‌اکنون در تهران\n` +
       `❓ \`/help\` — همین راهنما\n\n` +
-      `💡 توی هر چتی می‌تونی @${BOT_INFO?.username ?? "NovaBot"} رو صدا بزنی و سریع سوال بپرسی یا ترجمه کنی (Inline Mode)!\n\n` +
+      `💡 توی هر چتی می‌تونی @${BOT_INFO?.username ?? "GholmoradBot"} رو صدا بزنی و سریع سوال بپرسی یا ترجمه کنی (Inline Mode)!\n\n` +
       `💡 مستقیم هم می‌تونی بگی «یه وب‌اپ/بازی بساز»، «این عکسو ویرایش کن» یا «برام ویس بفرست» — خودش تشخیص می‌ده.`;
 
     if (isOwner) {
@@ -15765,10 +15765,10 @@ async function handleHelp(msg: TgMessage, env: Env, editId?: number): Promise<vo
     }
   } else {
     text =
-      `🧭 *Nova Guide*\n\n` +
+      `🧭 *Gholmorad Guide*\n\n` +
       `━━━━━━━━━━━━━━━\n` +
       `💬 **Chatting**\n` +
-      `Just type or send a voice note — Nova replies naturally. Send images, PDFs, or text files for analysis too.\n\n` +
+      `Just type or send a voice note — Gholmorad replies naturally. Send images, PDFs, or text files for analysis too.\n\n` +
       `🛠 **Main Commands**\n` +
       `🏠 \`/start\` — Home & daily usage\n` +
       `🆕 \`/new\` — Clear memory, fresh start\n` +
@@ -15790,7 +15790,7 @@ async function handleHelp(msg: TgMessage, env: Env, editId?: number): Promise<vo
       `🪪 \`/id\` — Chat & user IDs (reply to a message)\n` +
       `🕰️ \`/now\` — Current time & date in Tehran\n` +
       `❓ \`/help\` — This guide\n\n` +
-      `💡 In any chat, mention @${BOT_INFO?.username ?? "NovaBot"} for quick answers or translations (Inline Mode)!`;
+      `💡 In any chat, mention @${BOT_INFO?.username ?? "GholmoradBot"} for quick answers or translations (Inline Mode)!`;
 
     if (isOwner) {
       text += `\n\n━━━━━━━━━━━━━━━\n` +
@@ -15841,7 +15841,7 @@ async function handleSetPrompt(msg: TgMessage, args: string[], env: Env): Promis
   const alias = args[0].toLowerCase();
   const text = args.slice(1).join(" ").trim();
   const map: Record<string, AIEngine> = {
-    "نوا": "gemini", nova: "gemini",
+    "قلمراد": "gemini", nova: "gemini",
   };
   const engine = map[alias];
 
@@ -17178,7 +17178,7 @@ User message:
             ? `[REPLY_MEDIA_CONTEXT — GIF/VIDEO]
 کاربر ${senderName} روی یک رسانه متحرک از ${replierName} ریپلای کرده است.
 
-رسانه واقعی به‌صورت binary به‌عنوان ورودی پیوست شده است.
+رسانه واقعی به‌صورت binary به‌عقلمرادن ورودی پیوست شده است.
 خود محتوای بصری/ویدیویی را بررسی کن.
 
 قوانین بسیار مهم:
@@ -17396,7 +17396,7 @@ else if (reply.animation) {
 این پیام واقعاً به یک GIF/انیمیشن پیوست شده است.
 محتوای رسانه را از داده‌ی تصویری/ویدیویی پیوست‌شده بررسی کن.
 هرگز درباره‌ی محتوای GIF از روی نام فایل، شناسه فایل، پسوند فایل یا متن‌هایی مثل "[GIF]" حدس نزن.
-اگر فریم نماینده/thumbnail پیوست شده، حتماً آن را به‌عنوان شاهد بصری بررسی کن.
+اگر فریم نماینده/thumbnail پیوست شده، حتماً آن را به‌عقلمرادن شاهد بصری بررسی کن.
 اگر فایل متحرک قابل تحلیل بود، حرکت و رویدادهای قابل مشاهده را نیز بررسی کن.
 اگر چیزی واقعاً قابل تشخیص نیست، همان را صریح بگو.
 
@@ -17461,7 +17461,7 @@ Current user message:
 
     // ------------------------------------------------------------
     // 2) سپس خود فایل Animation را هم بده.
-    // MP4/WebM را به‌عنوان video بفرست.
+    // MP4/WebM را به‌عقلمرادن video بفرست.
     // GIF خام را مستقیماً به Gemini تحمیل نکن؛ چون ممکن است
     // در بعضی مسیرها به‌صورت visual input معتبر تفسیر نشود.
     // ------------------------------------------------------------
@@ -17545,7 +17545,7 @@ Current user message:
         prompt +
         (
           attached
-            ? `\n\n[رسانه واقعی GIF/Animation به‌عنوان ورودی همین پیام پیوست شده است. فقط از همان ورودی بصری نتیجه‌گیری کن.]`
+            ? `\n\n[رسانه واقعی GIF/Animation به‌عقلمرادن ورودی همین پیام پیوست شده است. فقط از همان ورودی بصری نتیجه‌گیری کن.]`
             : `\n\n[هشدار: محتوای باینری GIF در این درخواست قابل دریافت نشد. درباره محتوای GIF یا نام فایل حدس نزن.]`
         ),
     });
@@ -17624,7 +17624,7 @@ async function handleTextMessage(msg: TgMessage, env: Env): Promise<void> {
       if (banData?.until && banData.until > Date.now()) { await deleteMessage(chat.id, msg.message_id); return; }
       if (banData?.until && banData.until <= Date.now()) await env.SESSIONS.delete(banKey);
 
-      // 🧠 هوش جمعی: ثبت حضور و پیام کاربر در حافظه گروه، حتی اگر نوا را صدا نزده باشد
+      // 🧠 هوش جمعی: ثبت حضور و پیام کاربر در حافظه گروه، حتی اگر قلمراد را صدا نزده باشد
       touchGroupMember(session, from);
       const groupCtx = groupContextCache.get(chat.id) ?? { messages: [], lastCleanup: Date.now() };
       groupCtx.messages.push({
@@ -17758,7 +17758,7 @@ async function handleTextMessage(msg: TgMessage, env: Env): Promise<void> {
           if (from.id === cfg.BOT_OWNER_ID) {
             await sendMessage(chat.id, cfg.SYSTEM_PROMPT
               ? `📋 **سیستم پرامپت سراسری فعلی:**\n\n\`\`\`\n${cfg.SYSTEM_PROMPT.slice(0, 3500)}\n\`\`\``
-              : "📋 سیستم پرامپت سراسری تنظیم نشده — پیش‌فرض نوا استفاده می‌شود.",
+              : "📋 سیستم پرامپت سراسری تنظیم نشده — پیش‌فرض قلمراد استفاده می‌شود.",
               { reply_to_message_id: msg.message_id });
           }
           break;
@@ -18322,7 +18322,7 @@ if (photo?.length) { fileId = photo[photo.length - 1].file_id; mimeType = "image
     if (category === "image") {
       const b64 = arrayBufferToBase64(arrayBuf);
       // 💾 ذخیره‌ی عکس آپلودی کاربر (حداکثر ۷ روز) تا هم برای ویرایش در دسترس
-      // باشد، هم به‌عنوان Asset در وب‌اپ‌ها/بازی‌ها قابل استفاده باشد.
+      // باشد، هم به‌عقلمرادن Asset در وب‌اپ‌ها/بازی‌ها قابل استفاده باشد.
       let hostedUrl = "";
       try {
         const upId = `img_${generateId()}`;
@@ -18393,7 +18393,7 @@ if (photo?.length) { fileId = photo[photo.length - 1].file_id; mimeType = "image
 }
 // SECTION: ADMIN NAVIGATION — ONE PANEL, ONE DESTINATION
 //
-// Nova used to carry two administrative interfaces. The web dashboard at /admin
+// Gholmorad used to carry two administrative interfaces. The web dashboard at /admin
 // (adminDashboard.html over /api/admin/*) holds the real feature set: cursor-paged
 // user search, VIP/block/language/persona actions, per-user prompt, limits, memory
 // and reminder management, groups, web apps, media, broadcast, live config, key
@@ -18481,8 +18481,8 @@ async function sendAdminPanel(
 
   if (chatType !== "private") {
     await deliver(isFa
-      ? "🔐 پنل مدیریت فقط در چت خصوصی نوا باز می‌شود. در پیوی <code>/admin</code> را بزن."
-      : "🔐 The admin panel opens only in Nova's private chat. Send <code>/admin</code> there.");
+      ? "🔐 پنل مدیریت فقط در چت خصوصی قلمراد باز می‌شود. در پیوی <code>/admin</code> را بزن."
+      : "🔐 The admin panel opens only in Gholmorad's private chat. Send <code>/admin</code> there.");
     return { ok: false, url: null, reason: "not_private" };
   }
 
@@ -18498,8 +18498,8 @@ async function sendAdminPanel(
   }
 
   const body = isFa
-    ? "👑 <b>Nova Control Center</b>\n\nهمهٔ مدیریت — کاربران، گروه‌ها، رسانه، پیام همگانی، کلیدها و تنظیمات — در پنل وب است:"
-    : "👑 <b>Nova Control Center</b>\n\nEverything — users, groups, media, broadcast, keys and config — lives in the web panel:";
+    ? "👑 <b>Gholmorad Control Center</b>\n\nهمهٔ مدیریت — کاربران، گروه‌ها، رسانه، پیام همگانی، کلیدها و تنظیمات — در پنل وب است:"
+    : "👑 <b>Gholmorad Control Center</b>\n\nEverything — users, groups, media, broadcast, keys and config — lives in the web panel:";
   await deliver(body, JSON.stringify({
     inline_keyboard: [[{ text: isFa ? "⚙️ باز کردن پنل مدیریت" : "⚙️ Open Admin Panel", web_app: { url } }]],
   }));
@@ -18786,7 +18786,7 @@ async function handleRetiredControlCenterCallback(cb: TgCallbackQuery, env: Env)
 function panelDivider(): string {
   return `┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n`;
 }
-/** نوار پیشرفت ریزدونه (گرانولاریتی یک‌هشتم بلوک) — حرکت نرم به‌جای پرش پله‌ای */
+/** قلمرادر پیشرفت ریزدونه (گرانولاریتی یک‌هشتم بلوک) — حرکت نرم به‌جای پرش پله‌ای */
 function fineProgressBar(pct: number, size = 12): string {
   const eighths = ["", "▏", "▎", "▍", "▌", "▋", "▊", "▉"];
   const clamped = Math.min(100, Math.max(0, pct));
@@ -19040,8 +19040,8 @@ async function handleCallback(cb: TgCallbackQuery, env: Env): Promise<void> {
 
   // ── Model selection ──
   if (data.startsWith("set_model_")) {
-    // Nova is the only agent — no backend switching
-    await answerCb(cb.id, "✅ Nova is your AI agent");
+    // Gholmorad is the only agent — no backend switching
+    await answerCb(cb.id, "✅ Gholmorad is your AI agent");
     return;
   }
 
@@ -19277,7 +19277,7 @@ if (data === "open_language") {
   }
 
   // Switches between the two persona modes. Manual (default) means only a confirm
-  // tap can change persona; auto-adapt lets Nova adjust on its own under the
+  // tap can change persona; auto-adapt lets Gholmorad adjust on its own under the
   // cooldown/streak brakes.
   //
   // Enabling it clears the pin a previous confirmation left behind. Without that,
@@ -19333,7 +19333,7 @@ if (data === "open_language") {
     const isGroup = chat.type !== "private";
     const source = isGroup ? session.userCustomPromptSource?.get(from.id) : session.customPromptSource;
     const userCustom = isGroup ? session.userCustomPrompts?.get(from.id) : session.customPrompts.gemini;
-    const persona = PERSONAS[session.currentPersonaId ?? "nova"];
+    const persona = PERSONAS[session.currentPersonaId ?? "Gholmorad"];
     const personaName = sLang === "fa" ? persona.nameFA : persona.nameEN;
     const personaTag = sLang === "fa" ? persona.tagFA : persona.tagEN;
 
@@ -19342,8 +19342,8 @@ if (data === "open_language") {
       text = `📋 **${sLang === "fa" ? "پرامپت شخصی شما" : "Your Custom Prompt"}:**\n\n\`${userCustom}\``;
     } else if (userCustom) {
       text = sLang === "fa"
-        ? `🎭 **شخصیت فعال:** ${persona.emoji} ${personaName}\n_${personaTag}_\n\n🔒 پرامپت داخلی شخصیت‌های از پیش تعریف‌شده به دلایل امنیتی نمایش داده نمی‌شود.\n\nبرای تنظیم پرامپت دستی خودتان از دستور زیر استفاده کنید:\n\`/setprompt nova [متن شما]\``
-        : `🎭 **Active persona:** ${persona.emoji} ${personaName}\n_${personaTag}_\n\n🔒 Preset persona prompts are not shown for security reasons.\n\nTo set your own custom prompt, use:\n\`/setprompt nova [your text]\``;
+        ? `🎭 **شخصیت فعال:** ${persona.emoji} ${personaName}\n_${personaTag}_\n\n🔒 پرامپت داخلی شخصیت‌های از پیش تعریف‌شده به دلایل امنیتی نمایش داده نمی‌شود.\n\nبرای تنظیم پرامپت دستی خودتان از دستور زیر استفاده کنید:\n\`/setprompt Gholmorad [متن شما]\``
+        : `🎭 **Active persona:** ${persona.emoji} ${personaName}\n_${personaTag}_\n\n🔒 Preset persona prompts are not shown for security reasons.\n\nTo set your own custom prompt, use:\n\`/setprompt Gholmorad [your text]\``;
     } else {
       text = `📋 **${sLang === "fa" ? "پرامپت شخصی شما" : "Your Custom Prompt"}:**\n\n\`${def}\``;
     }
@@ -19524,7 +19524,7 @@ async function showHomePanel(
   let text = "";
   if (lang === "fa") {
     text = `╭━━━━━━━━━━━━━━━━━━━━━╮\n` +
-           `┃ 🌌 <b>مرکز فرماندهی نوا</b>\n` +
+           `┃ 🌌 <b>مرکز فرماندهی قلمراد</b>\n` +
            `┃ <i>نسخه ${BOT_VERSION} · هسته هوشمند</i>\n` +
            `╰━━━━━━━━━━━━━━━━━━━━━╯\n\n` +
            `👤 <b>کاربر:</b> <code>${escapeHTML(user.first_name)}</code> (${tier})\n` +
@@ -19538,7 +19538,7 @@ async function showHomePanel(
            `💡 <i>یکی از گزینه‌های زیر را انتخاب کنید:</i>`;
   } else if (lang === "ar") {
     text = `╭━━━━━━━━━━━━━━━━━━━━━╮\n` +
-           `┃ 🌌 <b>لوحة تحكم نوفا</b>\n` +
+           `┃ 🌌 <b>لوحة تحكم نوا</b>\n` +
            `┃ <i>الإصدار ${BOT_VERSION} · المحرك الذكي</i>\n` +
            `╰━━━━━━━━━━━━━━━━━━━━━╯\n\n` +
            `👤 <b>المستخدم:</b> <code>${escapeHTML(user.first_name)}</code> (${tier})\n` +
@@ -19552,7 +19552,7 @@ async function showHomePanel(
            `💡 <i>اختر أحد الخيارات أدناه:</i>`;
   } else {
     text = `╭━━━━━━━━━━━━━━━━━━━━━╮\n` +
-           `┃ 🌌 <b>Nova Command Center</b>\n` +
+           `┃ 🌌 <b>Gholmorad Command Center</b>\n` +
            `┃ <i>Version ${BOT_VERSION} · AI Core</i>\n` +
            `╰━━━━━━━━━━━━━━━━━━━━━╯\n\n` +
            `👤 <b>User:</b> <code>${escapeHTML(user.first_name)}</code> (${tier})\n` +
@@ -19636,13 +19636,13 @@ async function showPromptMenu(chatId: number, msgId: number, session: ChatSessio
       `🎭 شخصیت فعال: *${current.emoji} ${currentName}*\n\n` +
       `📝 پرامپت: ${customPreview}\n\n` +
       `━━━━━━━━━━━━━━━\n` +
-      `برای تنظیم پرامپت دستی:\n\`/setprompt nova [متن]\``
+      `برای تنظیم پرامپت دستی:\n\`/setprompt Gholmorad [متن]\``
     : `✏️ *Prompt Management*\n\n` +
       `━━━━━━━━━━━━━━━\n` +
       `🎭 Active persona: *${current.emoji} ${currentName}*\n\n` +
       `📝 Prompt: ${customPreview}\n\n` +
       `━━━━━━━━━━━━━━━\n` +
-      `To set custom prompt:\n\`/setprompt nova [text]\``;
+      `To set custom prompt:\n\`/setprompt Gholmorad [text]\``;
 
   const kb: InlineKeyboard = { inline_keyboard: [
     [btn(lang === "fa" ? "🎭 تغییر شخصیت" : "🎭 Change Persona", "open_personas")],
@@ -19931,7 +19931,7 @@ function createHealthResponse(): Response {
     bot: BOT_INFO ? { name: BOT_INFO.first_name, username: BOT_INFO.username } : null,
     active_requests: total,
     max_requests: cfg.MAX_CONCURRENT_REQUESTS,
-    agent: "Nova",
+    agent: "Gholmorad",
   }, null, 2), { headers: { "Content-Type": "application/json" }, status: 200 });
 }
 
