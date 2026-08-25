@@ -113,13 +113,13 @@ const MAX_WEB_RESULT_ITEMS = 6;
 //     HEAVY CODE GENERATION CORE · ENGINE HANDLERS · GEMINI KEY ROTATION ·
 //     MODEL CACHE · CLOUDFLARE AI IMAGE · GROUP INTELLIGENCE · GEMINI TTS ·
 //     MAINTENANCE · BUSINESS AUTOMATION · VOICE TRANSCRIPTION ·
-//     GOOGLE IMAGE SEARCH · RESPONSE SENDING · NOVA AGENT ·
+//     GOOGLE IMAGE SEARCH · RESPONSE SENDING · Nova AGENT ·
 //     SMART ASSET DOWNLOADER
 //
 //   PRODUCT SURFACE
 //     MATERIALIZED USER SUMMARY · ADMIN HELPERS · BROADCAST ·
 //     SCHEDULED REMINDERS · COMMAND HANDLERS · UTILITY COMMANDS ·
-//     MESSAGE HANDLERS · NOVA CONTROL CENTER (v2) · CALLBACK QUERY HANDLER ·
+//     MESSAGE HANDLERS · Nova CONTROL CENTER (v2) · CALLBACK QUERY HANDLER ·
 //     MEMORY PRUNING · MAIN UPDATE DISPATCHER · INITIALIZATION & HEALTH CHECK ·
 //     HOUSEKEEPING · WORKER EXPORT
 // D1-BACKED KV SHIM
@@ -572,7 +572,7 @@ class TaskProgressManager {
     const L10N: Record<Language, { title: string; time: string; pipeline: string; running: string; finalizing: string }> = {
       fa: { title: "🤖 نوا در حال پردازش", time: "زمان", pipeline: "مراحل", running: "در حال اجرا…", finalizing: "در حال نهایی‌سازی…" },
       en: { title: "🤖 Nova Processing", time: "Time", pipeline: "Pipeline", running: "Running…", finalizing: "Finalizing…" },
-      ar: { title: "🤖 نوفا تعمل", time: "الوقت", pipeline: "المراحل", running: "جارٍ التنفيذ…", finalizing: "جارٍ الإنهاء…" },
+      ar: { title: "🤖 نوا تعمل", time: "الوقت", pipeline: "المراحل", running: "جارٍ التنفيذ…", finalizing: "جارٍ الإنهاء…" },
     };
     const l10n = L10N[this.lang] ?? L10N.en;
     const runningCount = Array.from(this.tasks.values()).filter(t => t.status === "running").length;
@@ -1137,7 +1137,7 @@ const NOVA_TOOL_DECLARATIONS = [
     parameters: {
       type: "OBJECT",
       properties: {
-        persona_id: { type: "STRING", enum: ["nova", "lilith", "cypher", "victoria", "aria", "jax"], description: "Target persona id. Map informal/Persian names directly: 'لیلیت'->lilith, 'زورگ' or 'سایفر'->cypher, 'ویکتوریا'->victoria, 'آریا'->aria, 'جکس'->jax, 'نوا' or 'پیش‌فرض' or 'عادی' or default->nova." },
+        persona_id: { type: "STRING", enum: ["nova", "lilith", "cypher", "victoria", "aria", "jax"], description: "Target persona id. Map informal/Persian names directly: 'لیلیت'->lilith, 'زورگ' or 'سایفر'->cypher, 'ویکتوریا'->victoria, 'آریا'->aria, 'جکس'->jax, 'نوا' or 'پیش‌فرض' or 'عادی' or default->Nova." },
       },
       required: ["persona_id"],
     },
@@ -1547,7 +1547,7 @@ async function deleteWebConversationKV(userId: number, convId: string, env: Env)
   await saveWebConversationIndex(userId, idx, env);
 }
 
-function createNewWebConversation(personaId = "nova"): WebConversation {
+function createNewWebConversation(personaId = "Nova"): WebConversation {
   return { id: generateId(), title: "گفتگوی جدید", personaId, createdAt: Date.now(), updatedAt: Date.now(), history: [] };
 }
 
@@ -1563,7 +1563,7 @@ function getWebAppSafePersonas(): Array<{ id: string; emoji: string; nameFA: str
 
 function buildWebAppSystemPrompt(personaId: string, userName: string, userId: number, lang: Language, userMemory?: UserMemory): string {
   const persona = PERSONAS[personaId];
-  if (!persona || personaId === "nova" || !persona.prompt) {
+  if (!persona || personaId === "Nova" || !persona.prompt) {
     return buildNovaAgentSystemPrompt(userName, userId, lang, false, userMemory);
   }
   return persona.prompt.replace(/{userName}/g, userName) + confidentialityDirective(lang);
@@ -1951,7 +1951,7 @@ jax: {
  * ordinary conversation.
  */
 const PERSONA_ALIASES: readonly PersonaAlias[] = [
-  { id: "nova", aliases: ["نوا", "nova", "پیش‌فرض", "پیش فرض", "پیشفرض", "default persona"] },
+  { id: "nova", aliases: ["Nova", "پیش‌فرض", "پیش فرض", "پیشفرض", "default persona"] },
   { id: "lilith", aliases: ["لیلیت", "لیلیث", "lilith"] },
   { id: "cypher", aliases: ["سایفر", "زورگ", "بیگانه", "cypher", "zorg"] },
   { id: "victoria", aliases: ["ویکتوریا", "victoria"] },
@@ -2625,9 +2625,9 @@ async function applyPersona(
 /** شخصیت مؤثر فعلی برای یک کاربر خاص — در گروه هرکس شخصیت مستقل خودش رو داره */
 function getEffectivePersonaId(session: ChatSession, userId: number, isGroup: boolean): string {
   if (isGroup) {
-    return session.userPersonaId?.get(userId) ?? "nova";
+    return session.userPersonaId?.get(userId) ?? "Nova";
   }
-  return session.currentPersonaId ?? "nova";
+  return session.currentPersonaId ?? "Nova";
 }
 
 /** نام دلخواهی که این کاربر مشخص برای صدا زدن نوا انتخاب کرده — null یعنی هنوز چیزی ست نکرده. */
@@ -3651,7 +3651,7 @@ const TR = {
     err_vip_only: "⚠️ This feature is for VIP users only.",
     err_format: "❌ **Invalid Format**", err_empty_prompt: "❌ Prompt cannot be empty.",
     err_prompt_toolong: "❌ Prompt is too long.",
-    err_engine_invalid: "❌ Invalid engine. Use: `nova`",
+    err_engine_invalid: "❌ Invalid engine. Use: `Nova`",
     err_vip_prompt: "⚠️ **Restricted Access**\n\nCustom personas are for VIP users only.",
     err_config_missing: "❌ Cloudflare config missing.",
     active_model_title: "⚙️ **{name} Settings**", active_model_keys: "🔑 **Keys:** {count}",
@@ -3676,7 +3676,7 @@ const TR = {
     engine_gemini: "Nova",
     loading: "⏳ يرجى الانتظار...", processing: "⚙️ جارٍ المعالجة...",
     prompt_title: "✏️ **إعدادات الشخصية**", prompt_current: "الشخصية الحالية:",
-    prompt_default: "افتراضي", prompt_guide: "💡 للتعيين: `/setprompt nova [النص]`",
+    prompt_default: "افتراضي", prompt_guide: "💡 للتعيين: `/setprompt Nova [النص]`",
     prompt_reset: "إعادة تعيين", prompt_show: "عرض الشخصية 👁️", prompt_manage: "إدارة الشخصية 📝",
     system_prompt: "أنت نوفا، مساعد ذكي وواعٍ ومهذب ومفيد. أجب بدقة واختصار بالعربية. التاريخ: {date}",
     img_limit: "⚠️ تم الوصول إلى الحد اليومي.",
@@ -3696,7 +3696,7 @@ const TR = {
     err_vip_only: "⚠️ هذه الميزة مخصصة لمستخدمي VIP فقط.",
     err_format: "❌ **صيغة غير صحيحة**", err_empty_prompt: "❌ لا يمكن أن يكون النص فارغاً.",
     err_prompt_toolong: "❌ النص طويل جداً.",
-    err_engine_invalid: "❌ محرك غير صحيح. المحركات: `nova`",
+    err_engine_invalid: "❌ محرك غير صحيح. المحركات: `Nova`",
     err_vip_prompt: "⚠️ **وصول محدود**\n\nتعيين الشخصية متاح فقط لمستخدمي VIP.",
     err_config_missing: "❌ لم يتم إعداد Cloudflare.",
     active_model_title: "⚙️ **إعدادات {name}**", active_model_keys: "🔑 **المفاتيح:** {count}",
@@ -5437,7 +5437,7 @@ function createDefaultSession(chat: TgChat, user: TgUser): ChatSession {
     userCallName: new Map(),
     callName: null,
     customPrompts: { gemini: null},
-    currentPersonaId: "nova",
+    currentPersonaId: "Nova",
     engines: {
       gemini:       { history: seededHistory, userHistories: new Map(), apiKeyIndex: 0, consecutiveErrors: 0 },
     },
@@ -5504,7 +5504,7 @@ function hydrateSession(raw: Record<string, unknown>, chat: TgChat, user: TgUser
     s.statistics.totalMessages = s.messageCount;
   }
 
-  s.currentPersonaId ??= "nova";
+  s.currentPersonaId ??= "Nova";
 
   s.userCustomPrompts = toMap<number, string>(
     (s.userCustomPrompts as unknown) ?? {},
@@ -5971,7 +5971,7 @@ async function saveIdentitySnapshot(session: ChatSession, userId: number, isGrou
   const version = session.personaVersion ?? 0;
   const snap: IdentitySnapshot = isGroup
     ? {
-        personaId: session.userPersonaId?.get(userId) ?? "nova",
+        personaId: session.userPersonaId?.get(userId) ?? "Nova",
         promptText: session.userCustomPrompts?.get(userId) ?? null,
         promptSource: session.userCustomPromptSource?.get(userId),
         callName: session.userCallName?.get(userId) ?? null,
@@ -5979,7 +5979,7 @@ async function saveIdentitySnapshot(session: ChatSession, userId: number, isGrou
         personaUpdatedAt: Date.now(),
       }
     : {
-        personaId: session.currentPersonaId ?? "nova",
+        personaId: session.currentPersonaId ?? "Nova",
         promptText: session.customPrompts.gemini,
         promptSource: session.customPromptSource,
         callName: session.callName ?? null,
@@ -6030,7 +6030,7 @@ async function refreshIdentityFromKV(session: ChatSession, userId: number, isGro
       session.userCustomPrompts ??= new Map();
       session.userCustomPromptSource ??= new Map();
       session.userCallName ??= new Map();
-      session.userPersonaId.set(userId, raw.personaId ?? "nova");
+      session.userPersonaId.set(userId, raw.personaId ?? "Nova");
       if (raw.promptText) {
         session.userCustomPrompts.set(userId, raw.promptText);
         if (raw.promptSource) session.userCustomPromptSource.set(userId, raw.promptSource);
@@ -6042,7 +6042,7 @@ async function refreshIdentityFromKV(session: ChatSession, userId: number, isGro
       if (raw.callName) session.userCallName.set(userId, raw.callName);
       else session.userCallName.delete(userId);
     } else {
-      session.currentPersonaId = raw.personaId ?? "nova";
+      session.currentPersonaId = raw.personaId ?? "Nova";
       session.customPrompts.gemini = raw.promptText ?? null;
       session.customPromptSource = raw.promptSource;
       session.callName = raw.callName ?? null;
@@ -9267,8 +9267,8 @@ function shouldRespondInGroup(message: TgMessage, session: ChatSession): boolean
     : false;
 
   // ۳. صدا زدن با اسم پیش‌فرض (بهبود یافته - بدون lookbehind پیچیده)
-  const isNameCalled = /\bنوا\b|\bnova\b/iu.test(text) || 
-    /(^|[\s،,!؟?.])(?:نوا|nova|نووا)([\s،,!؟?.]|$)/iu.test(text);
+  const isNameCalled = /\bنوا\b|\bNova\b/iu.test(text) || 
+    /(^|[\s،,!؟?.])(?:نوا|Nova|نوا)([\s،,!؟?.]|$)/iu.test(text);
 
   // ۴. صدا زدن با اسم سفارشی همین فرستنده (اگه برای خودش تنظیم کرده باشه)
   const senderId = message.from?.id;
@@ -9512,7 +9512,7 @@ async function handleBusinessMessage(msg: TgMessage, env: Env): Promise<void> {
     const userText = (msg.text ?? msg.caption ?? "").trim();
     if (!userText || !cfg.GEMINI_KEYS.length) return;
 
-    // ── هویت واقعی طرف گفتگو (رفع ریشه‌ای باگ صداکردن مخاطب با نام «حمید») ──
+    // ── هویت واقعی طرف گفتگو (رفع ریشه‌ای باگ صداکردن مخاطب با نام «امیر») ──
     const customerName = msg.from?.first_name ?? "Customer";
     const customerUsername = msg.from?.username ? `@${msg.from.username}` : "";
 
@@ -9910,7 +9910,7 @@ async function sendNovaExport(
       author: opts.author,
       lang: opts.lang,
     });
-    const base = (opts.baseName ?? "nova").replace(/[^\w.-]+/g, "_");
+    const base = (opts.baseName ?? "Nova").replace(/[^\w.-]+/g, "_");
     const fileName = `${base}_${Date.now()}.${result.ext}`;
     const sent = await sendTelegramDocument(chatId, result.bytes, fileName, opts.caption, opts.replyTo, result.mime);
     return sent ? { format: result.format, note: result.note } : null;
@@ -10009,7 +10009,7 @@ function splitHtmlIntoProjectFiles(html: string, name: string, isGame: boolean):
   const joinedStyle = styles.join("\n\n/* next style block */\n\n").trim();
   const joinedScript = scripts.join("\n\n// next script block\n\n").trim();
   const readme = "# " + name + "\n\nGenerated by Nova.\n\n## Project structure\n- index.html — entry page\n- src/styles.css — extracted styles\n- src/main.js — extracted JavaScript\n\nThis ZIP is the complete source package captured from the generated build. External CDN dependencies referenced by the HTML remain external.\n";
-  const pkg = JSON.stringify({ name: name.replace(/[^a-z0-9-]+/gi, "-").replace(/^-+|-+$/g, "") || "nova-project", version: "1.0.0", private: true, scripts: { start: "npx serve ." } }, null, 2);
+  const pkg = JSON.stringify({ name: name.replace(/[^a-z0-9-]+/gi, "-").replace(/^-+|-+$/g, "") || "Nova-project", version: "1.0.0", private: true, scripts: { start: "npx serve ." } }, null, 2);
   return [
     { path: "index.html", content: index },
     { path: "src/styles.css", content: joinedStyle || "/* No inline CSS was generated. */\\n" },
@@ -10161,7 +10161,7 @@ async function sendStreamingResponse(
     });
   }
 }
-// SECTION: NOVA AGENT — هوش مصنوعی ابزارمند
+// SECTION: Nova AGENT — هوش مصنوعی ابزارمند
 function formatMemoryProfile(mem: UserMemory | undefined, userName: string, lang: Language): string {
   if (!mem) return "";
   const lines: string[] = [];
@@ -11975,7 +11975,7 @@ case "host_web_app": {
 
   if (deliverSourceZip) {
     await taskMgr?.startTask(taskKey, lang === "fa" ? "در حال بسته‌بندی سورس کامل پروژه..." : "Packaging complete project source...");
-    const zipSent = await sendProjectSourceZip(chatId, htmlCode, filename || "nova-project", isGameBuild, lang, replyTo);
+    const zipSent = await sendProjectSourceZip(chatId, htmlCode, filename || "Nova-project", isGameBuild, lang, replyTo);
     if (zipSent) await taskMgr?.completeTask(taskKey, lang === "fa" ? "سورس ZIP ارسال شد ✓" : "Source ZIP sent ✓");
     else await taskMgr?.failTask(taskKey, lang === "fa" ? "ارسال ZIP ناموفق" : "ZIP delivery failed");
   }
@@ -13936,7 +13936,7 @@ function formatThinkingTags(text: string, lang: Language): string {
     const label = lang === "fa" 
       ? "💭 نوا در حال تفکر و تحلیل..." 
       : lang === "ar"
-      ? "💭 نوفا تفكر الآن..."
+      ? "💭 نوا تفكر الآن..."
       : "💭 Nova Reasoning...";
       
     return `<blockquote expandable><b>${label}</b>\n${thinking}</blockquote>`;
@@ -14105,7 +14105,7 @@ async function ensureUserSchema(env: Env): Promise<void> {
           language TEXT DEFAULT 'fa',
           vip INTEGER DEFAULT 0,
           blocked INTEGER DEFAULT 0,
-          persona_id TEXT DEFAULT 'nova',
+          persona_id TEXT DEFAULT 'Nova',
           created_at INTEGER DEFAULT 0,
           last_seen INTEGER DEFAULT 0,
           last_activity_type TEXT DEFAULT '',
@@ -14308,7 +14308,7 @@ function buildUserSummaryRowFromRaw(raw: Record<string, unknown>): UserSummaryRo
   const bool = (v: unknown): number => (v === true ? 1 : 0);
   const now = Date.now();
   const lang = (str(raw.language, "fa") === "en" || str(raw.language, "fa") === "ar") ? raw.language as Language : "fa";
-  const persona = str(raw.currentPersonaId, "nova");
+  const persona = str(raw.currentPersonaId, "Nova");
   let risk = bool(raw.blocked) * 50;
   risk += Math.min(20, num(st.rateLimitHits) * 2);
   risk += Math.min(20, num(st.errorCount));
@@ -15244,7 +15244,7 @@ function rowToReminder(row: JobRow): ScheduledReminder {
     userName: payload.userName ?? "",
     isGroup: Boolean(payload.isGroup),
     lang: (payload.lang === "en" || payload.lang === "ar" ? payload.lang : "fa") as Language,
-    personaId: payload.personaId ?? "nova",
+    personaId: payload.personaId ?? "Nova",
     message: typeof payload.message === "string" ? payload.message : "",
     dueAt: Number(row.next_run_at),
     createdAt: 0,
@@ -15395,7 +15395,7 @@ async function migrateLegacyReminders(env: Env): Promise<void> {
           userName: raw.userName ?? "",
           isGroup: Boolean(raw.isGroup),
           lang: raw.lang ?? "fa",
-          personaId: raw.personaId ?? "nova",
+          personaId: raw.personaId ?? "Nova",
           message: String(raw.message ?? "").slice(0, 1500),
           dueAt: raw.dueAt,
           recurrence: null,
@@ -15705,12 +15705,12 @@ async function handleHelp(msg: TgMessage, env: Env, editId?: number): Promise<vo
       ? `📖 *راهنمای نوا در گروه*\n\n` +
         `• \`/start\` — منوی شخصی شما در این گروه\n` +
         `• \`/new\` — پاک کردن حافظه‌ی گفتگوی شما در این گروه\n` +
-        `• \`/setprompt nova [متن]\` — پرامپت اختصاصی فقط برای شما\n\n` +
+        `• \`/setprompt Nova [متن]\` — پرامپت اختصاصی فقط برای شما\n\n` +
         `_برای گفتگو: نام نوا رو بیار، منشنش کن یا روی پیامش ریپلای بزن._`
       : `📖 *Nova Group Guide*\n\n` +
         `• \`/start\` — Your personal menu in this group\n` +
         `• \`/new\` — Clear your own chat memory here\n` +
-        `• \`/setprompt nova [text]\` — A custom prompt just for you\n\n` +
+        `• \`/setprompt Nova [text]\` — A custom prompt just for you\n\n` +
         `_To chat: say Nova's name, mention her, or reply to her messages._`;
     const kb: InlineKeyboard = { inline_keyboard: [
       [btn(lang === "fa" ? "👥 تنظیمات گروه" : "👥 Group Settings", "group_settings")]
@@ -19333,7 +19333,7 @@ if (data === "open_language") {
     const isGroup = chat.type !== "private";
     const source = isGroup ? session.userCustomPromptSource?.get(from.id) : session.customPromptSource;
     const userCustom = isGroup ? session.userCustomPrompts?.get(from.id) : session.customPrompts.gemini;
-    const persona = PERSONAS[session.currentPersonaId ?? "nova"];
+    const persona = PERSONAS[session.currentPersonaId ?? "Nova"];
     const personaName = sLang === "fa" ? persona.nameFA : persona.nameEN;
     const personaTag = sLang === "fa" ? persona.tagFA : persona.tagEN;
 
@@ -19342,8 +19342,8 @@ if (data === "open_language") {
       text = `📋 **${sLang === "fa" ? "پرامپت شخصی شما" : "Your Custom Prompt"}:**\n\n\`${userCustom}\``;
     } else if (userCustom) {
       text = sLang === "fa"
-        ? `🎭 **شخصیت فعال:** ${persona.emoji} ${personaName}\n_${personaTag}_\n\n🔒 پرامپت داخلی شخصیت‌های از پیش تعریف‌شده به دلایل امنیتی نمایش داده نمی‌شود.\n\nبرای تنظیم پرامپت دستی خودتان از دستور زیر استفاده کنید:\n\`/setprompt nova [متن شما]\``
-        : `🎭 **Active persona:** ${persona.emoji} ${personaName}\n_${personaTag}_\n\n🔒 Preset persona prompts are not shown for security reasons.\n\nTo set your own custom prompt, use:\n\`/setprompt nova [your text]\``;
+        ? `🎭 **شخصیت فعال:** ${persona.emoji} ${personaName}\n_${personaTag}_\n\n🔒 پرامپت داخلی شخصیت‌های از پیش تعریف‌شده به دلایل امنیتی نمایش داده نمی‌شود.\n\nبرای تنظیم پرامپت دستی خودتان از دستور زیر استفاده کنید:\n\`/setprompt Nova [متن شما]\``
+        : `🎭 **Active persona:** ${persona.emoji} ${personaName}\n_${personaTag}_\n\n🔒 Preset persona prompts are not shown for security reasons.\n\nTo set your own custom prompt, use:\n\`/setprompt Nova [your text]\``;
     } else {
       text = `📋 **${sLang === "fa" ? "پرامپت شخصی شما" : "Your Custom Prompt"}:**\n\n\`${def}\``;
     }
@@ -19538,7 +19538,7 @@ async function showHomePanel(
            `💡 <i>یکی از گزینه‌های زیر را انتخاب کنید:</i>`;
   } else if (lang === "ar") {
     text = `╭━━━━━━━━━━━━━━━━━━━━━╮\n` +
-           `┃ 🌌 <b>لوحة تحكم نوفا</b>\n` +
+           `┃ 🌌 <b>لوحة تحكم نوا</b>\n` +
            `┃ <i>الإصدار ${BOT_VERSION} · المحرك الذكي</i>\n` +
            `╰━━━━━━━━━━━━━━━━━━━━━╯\n\n` +
            `👤 <b>المستخدم:</b> <code>${escapeHTML(user.first_name)}</code> (${tier})\n` +
@@ -19636,13 +19636,13 @@ async function showPromptMenu(chatId: number, msgId: number, session: ChatSessio
       `🎭 شخصیت فعال: *${current.emoji} ${currentName}*\n\n` +
       `📝 پرامپت: ${customPreview}\n\n` +
       `━━━━━━━━━━━━━━━\n` +
-      `برای تنظیم پرامپت دستی:\n\`/setprompt nova [متن]\``
+      `برای تنظیم پرامپت دستی:\n\`/setprompt Nova [متن]\``
     : `✏️ *Prompt Management*\n\n` +
       `━━━━━━━━━━━━━━━\n` +
       `🎭 Active persona: *${current.emoji} ${currentName}*\n\n` +
       `📝 Prompt: ${customPreview}\n\n` +
       `━━━━━━━━━━━━━━━\n` +
-      `To set custom prompt:\n\`/setprompt nova [text]\``;
+      `To set custom prompt:\n\`/setprompt Nova [text]\``;
 
   const kb: InlineKeyboard = { inline_keyboard: [
     [btn(lang === "fa" ? "🎭 تغییر شخصیت" : "🎭 Change Persona", "open_personas")],
