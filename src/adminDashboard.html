@@ -322,6 +322,71 @@ html[dir="rtl"] .drawer .dpanel{--drawer-from:-100%}
 .drawer-head{display:flex;align-items:center;justify-content:space-between;margin-block-end:var(--s3)}
 .drawer-head b{font-weight:750;font-size:var(--fs-md)}
 
+/* ── inline expandable user row ─────────────────────────────────────────
+   The detail panel used to live in a separate card below the table, so
+   clicking a user in row 14 moved your eye to the bottom of the page with no
+   visual link back to the row you clicked. It now expands in place, directly
+   under its own row.
+
+   RTL note: this is anchored with LOGICAL properties and a direction-aware
+   reveal offset, not `direction:rtl`. The panel emerges from the reading-start
+   edge — the RIGHT edge in Persian, the LEFT edge in English — and stays
+   pinned to that edge while the table scrolls horizontally, which is what the
+   old left-anchored positioning got wrong. */
+.urow.is-open{background:rgba(124,110,255,.06)}
+.urow.is-open>td{border-block-end-color:transparent}
+/* Accent edge on the reading-start side, marking the open row as the parent. */
+.urow.is-open>td:first-child{box-shadow:inset var(--edge-x,3px) 0 0 0 var(--accent)}
+html[dir="rtl"] .urow.is-open>td:first-child{--edge-x:-3px}
+.userbtn{display:flex;align-items:center;gap:var(--s2)}
+.userbtn .chev{
+  flex:0 0 auto;color:var(--muted);font-size:11px;line-height:1;
+  transition:transform var(--dur-fast) var(--ease),color var(--dur-fast);
+}
+.userbtn[aria-expanded="true"] .chev{transform:rotate(180deg);color:var(--accent)}
+
+.drow>td{padding:0;border-block-end:0;background:var(--sunken)}
+.drow.open>td{border-block-end:1px solid var(--border)}
+/* Height animation is content-driven (0fr -> 1fr), so the panel keeps animating
+   correctly when the async detail replaces the skeleton and changes height. */
+.dexp{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--dur) var(--ease)}
+.drow.open .dexp{grid-template-rows:1fr}
+.dexp>.dexp-in{overflow:hidden;min-height:0}
+/* Pinned to the reading-start edge of the horizontal scrollport so the panel is
+   always where the user is looking, whatever the table's scroll offset — the
+   right edge in Persian, the left edge in English. This lives outside .dexp
+   because an overflow:hidden ancestor would become the sticky scrollport and
+   quietly disable the pinning. */
+.dsticky{position:sticky;inset-inline-start:0;width:var(--tw-w,100%);max-width:100%}
+.dpanel-body{
+  background:var(--surface-1);border-radius:var(--r-lg);
+  padding:var(--s4);
+  border-inline-start:2px solid var(--accent);
+  /* The reveal starts offset toward the reading-start edge and scales out of
+     it, so in Persian it visibly grows from the right. */
+  transform:translateX(var(--exp-from,-14px)) scaleY(.98);
+  transform-origin:var(--exp-origin,left) top;
+  opacity:0;
+  transition:transform var(--dur) var(--ease),opacity var(--dur-fast) var(--ease);
+}
+html[dir="rtl"] .dpanel-body{--exp-from:14px;--exp-origin:right}
+.drow.open .dpanel-body{transform:none;opacity:1}
+.dpanel-close{
+  position:absolute;inset-block-start:var(--s3);inset-inline-end:var(--s3);
+  z-index:2;
+}
+.detail-hint{
+  padding:var(--s4);color:var(--muted);font-size:var(--fs-sm);text-align:center;
+  border:1px dashed var(--border);border-radius:var(--r-lg);margin-block-start:var(--s3);
+}
+@media(prefers-reduced-motion:reduce){
+  .dexp,.dpanel-body,.userbtn .chev{transition:none}
+  .dpanel-body{transform:none}
+}
+@media(max-width:560px){
+  .dpanel-body{padding:var(--s3)}
+}
+
 /* ── user detail ────────────────────────────────────────────────────── */
 .detail .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:var(--s2);margin-block:var(--s3)}
 .detail .kv div{background:var(--sunken);border:1px solid var(--border);border-radius:var(--r-md);padding:var(--s2) var(--s3)}
@@ -461,6 +526,55 @@ html[dir="rtl"] .drawer .dpanel{--drawer-from:-100%}
 .mcard .meta b{font-size:var(--fs-sm);font-weight:650;word-break:break-all}
 .mcard .meta small{color:var(--muted);font-size:var(--fs-xs);word-break:break-word}
 .mcard .row{display:flex;gap:var(--s1);padding:0 var(--s2) var(--s2)}
+
+/* ── sticker library ────────────────────────────────────────────────────
+   The library had no UI at all before, so this is new rather than a restyle.
+   Everything is laid out with logical properties, so the whole tab mirrors
+   correctly in Persian without a single directional override. */
+.stk-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:var(--s2);padding:var(--s4)}
+.stk-stats div{background:var(--sunken);border:1px solid var(--border);border-radius:var(--r-md);padding:var(--s2) var(--s3)}
+.stk-stats span{display:block;color:var(--muted);font-size:var(--fs-xs)}
+.stk-stats b{display:block;margin-block-start:var(--s1);font-size:var(--fs-md);font-variant-numeric:tabular-nums}
+.stk-cats{display:flex;flex-wrap:wrap;gap:var(--s2);padding:0 var(--s4) var(--s4)}
+.stk-cat{
+  display:inline-flex;align-items:center;gap:var(--s2);min-height:34px;
+  padding:0 var(--s3);border:1px solid var(--border);border-radius:var(--r-full);
+  background:var(--surface-2);color:var(--text-soft);font-size:var(--fs-sm);
+  transition:border-color var(--dur-fast),color var(--dur-fast);
+}
+.stk-cat:hover{border-color:var(--border-strong);color:var(--text)}
+.stk-cat[aria-pressed="true"]{border-color:var(--accent);color:var(--text);background:rgba(124,110,255,.12)}
+.stk-cat i{font-style:normal;color:var(--muted);font-variant-numeric:tabular-nums}
+.stk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:var(--s3);padding:var(--s3)}
+.stk-card{
+  background:var(--sunken);border:1px solid var(--border);border-radius:var(--r-md);
+  overflow:hidden;display:flex;flex-direction:column;
+  transition:border-color var(--dur-fast),opacity var(--dur-fast);
+}
+.stk-card:hover{border-color:var(--border-strong)}
+.stk-card.off{opacity:.45}
+.stk-card.off .stk-thumb{filter:grayscale(1)}
+.stk-thumb{
+  position:relative;aspect-ratio:1/1;background:#0b1120;
+  display:grid;place-items:center;overflow:hidden;border-block-end:1px solid var(--border);
+}
+.stk-thumb img,.stk-thumb video{width:100%;height:100%;object-fit:contain;display:block;background:#0b1120}
+.stk-thumb .ph{font-size:30px;line-height:1}
+.stk-thumb .badge{
+  position:absolute;inset-block-start:var(--s1);inset-inline-end:var(--s1);
+  background:rgba(8,13,22,.82);border:1px solid var(--border);border-radius:var(--r-sm);
+  font-size:var(--fs-xs);padding:1px 5px;color:var(--text-soft);
+}
+.stk-meta{padding:var(--s2) var(--s3);display:grid;gap:2px;min-width:0}
+.stk-meta b{font-size:var(--fs-sm);font-weight:650}
+.stk-meta small{color:var(--muted);font-size:var(--fs-xs);word-break:break-word}
+.stk-act{display:flex;flex-wrap:wrap;gap:var(--s1);padding:0 var(--s2) var(--s2)}
+.stk-act>*{flex:1 1 0;min-width:0}
+.stk-act select{min-height:30px;font-size:var(--fs-xs);padding-inline:var(--s2)}
+.hint{color:var(--muted);font-size:var(--fs-sm);margin:0 0 var(--s3)}
+@media(max-width:560px){
+  .stk-grid{grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:var(--s2)}
+}
 .mcard .row>*{flex:1 1 0;min-width:0}
 .linkbtn{
   display:inline-flex;align-items:center;justify-content:center;min-height:34px;
@@ -564,7 +678,7 @@ html[dir="rtl"] .drawer .dpanel{--drawer-from:-100%}
             <div class="pager-group"><button class="sm" id="nextBtn">بعدی ›</button></div>
           </div>
         </div>
-        <div class="card detail" id="detail"><div class="status">یک کاربر را انتخاب کنید.</div></div>
+        <div class="detail-hint" id="detailHint">برای دیدن و ویرایش جزئیات، روی نام یک کاربر بزنید — پنل درست زیر همان ردیف باز می‌شود.</div>
       </section>
 
       <section class="panel" id="panel-broadcast" role="tabpanel" aria-labelledby="tab-broadcast">
@@ -610,6 +724,74 @@ html[dir="rtl"] .drawer .dpanel{--drawer-from:-100%}
             <div class="pager-group"><button class="sm" id="mediaPrev">‹ قبلی</button></div>
             <span class="tag" id="mediaPageState" aria-live="polite">—</span>
             <div class="pager-group"><button class="sm" id="mediaNext">بعدی ›</button></div>
+          </div>
+        </div>
+      </section>
+      <section class="panel" id="panel-stickers" role="tabpanel" aria-labelledby="tab-stickers">
+        <div class="page-head"><h1>استیکرها</h1><p>کتابخانه‌ی حال‌وهوا: پیش‌نمایش، دسته‌بندی، فعال/غیرفعال و افزودن</p></div>
+
+        <div class="card">
+          <div class="section-head"><h2>نمای کلی</h2>
+            <button class="sm ghost icon-btn" id="stkRefresh" aria-label="تازه‌سازی">↻</button></div>
+          <div class="stk-stats" id="stkStats" aria-live="polite"><div class="skel"><i></i></div></div>
+          <div class="stk-cats" id="stkCats"></div>
+          <div class="toolbar-line">
+            <span class="hint" id="stkBulkWho">روی یک دسته بزنید تا عملیات گروهی روی همان دسته اعمال شود.</span>
+            <button class="sm ghost" id="stkBulkEnable" style="margin-inline-start:auto">فعال‌سازی همه</button>
+            <button class="sm ghost" id="stkBulkDisable">غیرفعال‌سازی همه</button>
+            <button class="sm ghost danger" id="stkBulkPrune">پاک‌سازی بی‌استفاده‌ها</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="toolbar" role="search">
+            <label class="sr-only" for="stkSearch">جستجو در استیکرها</label>
+            <input id="stkSearch" placeholder="جستجو: تگ، ایموجی، پک، دسته…">
+            <label class="sr-only" for="stkCat">دسته</label>
+            <select id="stkCat"><option value="">همه‌ی دسته‌ها</option></select>
+            <label class="sr-only" for="stkState">وضعیت</label>
+            <select id="stkState">
+              <option value="">فعال و غیرفعال</option>
+              <option value="enabled">فقط فعال</option>
+              <option value="disabled">فقط غیرفعال</option>
+            </select>
+            <label class="sr-only" for="stkSort">ترتیب</label>
+            <select id="stkSort">
+              <option value="recent">جدیدترین</option>
+              <option value="used">پراستفاده‌ترین</option>
+              <option value="unused">بی‌استفاده‌ها</option>
+            </select>
+            <button class="primary" id="stkApply">اعمال</button>
+          </div>
+          <div class="mbar" id="stkBar" aria-live="polite"><span class="tag loading">—</span></div>
+          <div class="stk-grid" id="stkGrid"></div>
+          <div class="pager" id="stkPager" hidden>
+            <div class="pager-group"><button class="sm" id="stkPrev">‹ قبلی</button></div>
+            <span class="tag" id="stkPageState" aria-live="polite">—</span>
+            <div class="pager-group"><button class="sm" id="stkNext">بعدی ›</button></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-head"><h2>افزودن</h2></div>
+          <div class="section-body">
+            <p class="hint">یک پک کامل تلگرام را وارد کن (ایموجی هر استیکر حفظ می‌شود)، یا یک <code>file_id</code> تنها را دستی اضافه کن.</p>
+            <div class="toolbar">
+              <label class="sr-only" for="stkPack">نام پک</label>
+              <input id="stkPack" placeholder="نام پک، مثل AnimatedEmojies یا لینک t.me/addstickers/…">
+              <label class="sr-only" for="stkPackCat">دسته‌ی مقصد</label>
+              <select id="stkPackCat"></select>
+              <button class="primary" id="stkImport">وارد کردن پک</button>
+            </div>
+            <div class="toolbar">
+              <label class="sr-only" for="stkFileId">file_id</label>
+              <input id="stkFileId" placeholder="file_id استیکر یا گیف">
+              <label class="sr-only" for="stkAddCat">دسته</label>
+              <select id="stkAddCat"></select>
+              <label class="sr-only" for="stkAddType">نوع</label>
+              <select id="stkAddType"><option value="sticker">استیکر</option><option value="animation">گیف</option></select>
+              <button id="stkAdd">افزودن</button>
+            </div>
           </div>
         </div>
       </section>
@@ -937,6 +1119,7 @@ const TABS = [
   {id:"groups",    label:"گروه‌ها",      icon:"💬"},
   {id:"webapps",   label:"وب‌اپ‌ها",     icon:"🌐"},
   {id:"media",     label:"رسانه",       icon:"🖼️"},
+  {id:"stickers",  label:"استیکرها",    icon:"🎭"},
   {id:"requests",  label:"درخواست‌ها",   icon:"📨"},
   {id:"logs",      label:"لاگ‌ها",       icon:"📜"},
   {id:"keys",      label:"کلیدها",      icon:"🔑"},
@@ -1011,6 +1194,7 @@ async function loadTab(tab, force){
     else if(tab==="groups")    ok = await loadGroups();
     else if(tab==="webapps")   ok = await loadWebApps();
     else if(tab==="media")     ok = await loadMedia();
+    else if(tab==="stickers")  ok = await loadStickers();
     else if(tab==="requests")  ok = await loadRequests();
     else if(tab==="logs")      ok = await loadLogs();
     else if(tab==="keys")      ok = await loadKeys();
@@ -1111,7 +1295,10 @@ async function loadUsers(reset){
     $("prevBtn").disabled = users.history.length===0;
     $("firstBtn").disabled = users.page===1;
     $("pageState").textContent = "صفحه " + fmtNum(users.page);
+    users.selected = null;   // ردیف‌ها دوباره ساخته شدند؛ پنل باز قبلی دیگر وجود ندارد
+    const hint = $("detailHint"); if(hint) hint.hidden = false;
     document.querySelectorAll("#userRows [data-user]").forEach(b=> b.onclick = ()=> selectUser(Number(b.dataset.user)));
+    syncPanelWidth();
     return true;
   }catch(e){
     if(e && (e.kind==="abort" || e.name==="AbortError")) return false;
@@ -1128,19 +1315,74 @@ function rowHtml(u){
   const risk = Number(u.riskScore||0);
   const rc = risk>=60?"risk-high":risk>=30?"risk-med":"risk-low";
   const st = u.statistics||{}, dl = u.dailyLimits||{};
-  return `<tr><td><button class="userbtn" data-user="${u.userId}"><b>${esc(u.firstName||"Unknown")}</b>`+
-    `<div class="mono">${u.userName?("@"+esc(u.userName)+" · "):""}${u.userId}</div></button></td>`+
+  return `<tr class="urow" data-uid="${u.userId}"><td><button class="userbtn" data-user="${u.userId}" `+
+    `aria-expanded="false" aria-controls="drow-${u.userId}"><span class="chev">▾</span>`+
+    `<span style="min-width:0"><b>${esc(u.firstName||"Unknown")}</b>`+
+    `<div class="mono">${u.userName?("@"+esc(u.userName)+" · "):""}${u.userId}</div></span></button></td>`+
     `<td>${u.vipStatus?'<span class="tag vip">VIP</span>':'<span class="tag">Free</span>'} ${u.blocked?'<span class="tag blocked">Block</span>':""}</td>`+
     `<td>${esc(u.personaId||"nova")}</td><td>${fmtNum(st.totalMessages)}</td>`+
     `<td>${fmtNum(dl.messages)}/${fmtNum(dl.imagesGenerated)}/${fmtNum(dl.imagesEdited)}</td>`+
     `<td><span class="${rc}">${risk}/100</span></td><td>${esc(fmt(u.lastSeen||st.firstUsed))}</td></tr>`;
 }
+/* پنل جزئیات دقیقاً زیر همان ردیف باز می‌شود؛ نه صفحه‌ی جدا، نه پرش به پایین. */
+function syncPanelWidth(){
+  // پنل به لبه‌ی شروعِ خواندن چسبیده است، پس عرضش را از خودِ ناحیه‌ی اسکرول می‌گیرد
+  // تا در موبایل (که جدول اسکرول افقی دارد) از کادر بیرون نزند.
+  const tw = document.querySelector("#panel-users .tablewrap");
+  if(tw) tw.style.setProperty("--tw-w", tw.clientWidth + "px");
+}
+function collapseDetail(){
+  const row = document.querySelector("#userRows tr.drow");
+  const btn = document.querySelector('#userRows .userbtn[aria-expanded="true"]');
+  if(btn){ btn.setAttribute("aria-expanded","false"); btn.closest("tr").classList.remove("is-open"); }
+  users.selected = null;
+  if(!row) return;
+  row.classList.remove("open");
+  const kill = ()=>{ if(row.parentNode) row.remove(); };
+  const panel = row.querySelector(".dexp");
+  if(panel && !matchMedia("(prefers-reduced-motion:reduce)").matches){
+    let done = false;
+    panel.addEventListener("transitionend", ()=>{ if(!done){ done = true; kill(); } }, { once:true });
+    setTimeout(()=>{ if(!done){ done = true; kill(); } }, 420);
+  } else kill();
+  const hint = $("detailHint"); if(hint) hint.hidden = false;
+}
+function openDetailRow(id){
+  const tr = document.querySelector('#userRows tr.urow[data-uid="'+id+'"]');
+  if(!tr) return null;
+  const drow = document.createElement("tr");
+  drow.className = "drow";
+  drow.id = "drow-" + id;
+  drow.innerHTML = '<td colspan="7"><div class="dsticky"><div class="dexp"><div class="dexp-in">'+
+    '<div class="detail dpanel-body" id="detail" role="region" aria-label="جزئیات کاربر">'+skeleton(3)+'</div>'+
+    '</div></div></div></td>';
+  tr.after(drow);
+  tr.classList.add("is-open");
+  const btn = tr.querySelector(".userbtn");
+  if(btn) btn.setAttribute("aria-expanded","true");
+  syncPanelWidth();
+  // یک فریم صبر می‌کنیم تا مرورگر حالت بسته را ثبت کند و انیمیشن واقعاً اجرا شود.
+  requestAnimationFrame(()=> requestAnimationFrame(()=>{
+    drow.classList.add("open");
+    // ردیف باز را در دید نگه می‌داریم، بدون پرش ناگهانی.
+    setTimeout(()=>{ try{ drow.scrollIntoView({ behavior:"smooth", block:"nearest" }); }catch(_){} }, 240);
+  }));
+  const hint = $("detailHint"); if(hint) hint.hidden = true;
+  return drow.querySelector("#detail");
+}
 async function selectUser(id){
-  const el = $("detail");
-  el.innerHTML = skeleton(3);
+  // کلیک دوباره روی همان کاربر = بستن.
+  if(users.selected && users.selected.id === id && document.querySelector("#userRows tr.drow")){
+    collapseDetail(); return;
+  }
+  collapseDetail();
+  const el = openDetailRow(id);
+  if(!el) return;
   el.setAttribute("aria-busy","true");
+  users.selected = { id, user:null, details:{} };
   try{
     const d = await api("/api/admin/users/"+id);
+    if(!users.selected || users.selected.id !== id) return;   // کاربر بین‌راه عوض شد
     users.selected = { id, user:d.user, details:d.details||{} };
     renderDetail();
     loadUserMemory(id);
@@ -1159,7 +1401,8 @@ function renderDetail(){
   const ov = d.limitOverrides||{};
   const ovTxt = Object.keys(ov).length ? Object.keys(ov).map(k=>`${esc(k)}=${fmtNum(ov[k])}`).join(" · ") : "پیش‌فرض سراسری";
   $("detail").innerHTML = `
-    <div style="padding:14px">
+    <div style="position:relative">
+      <button class="sm ghost icon-btn dpanel-close" type="button" data-collapse title="بستن" aria-label="بستن جزئیات">✕</button>
       <div class="dhead">
         <div class="avatar">${esc((u.firstName||"U").slice(0,1))}</div>
         <div style="min-width:0"><h2 style="margin:0;font-size:17px">${esc(u.firstName||"Unknown")}</h2>
@@ -1223,6 +1466,12 @@ function renderDetail(){
       </div>
     </div>`;
   document.querySelectorAll("#detail [data-act]").forEach(b=> b.onclick = ()=> doAction(b.dataset.act));
+  const cl = document.querySelector("#detail [data-collapse]");
+  if(cl) cl.onclick = ()=>{
+    const tr = document.querySelector('#userRows tr.urow[data-uid="'+users.selected.id+'"]');
+    collapseDetail();
+    const b = tr && tr.querySelector(".userbtn"); if(b) b.focus();
+  };
   $("histBtn").onclick = ()=> loadHistory(users.selected.id);
 }
 async function loadUserMemory(id){
@@ -1535,6 +1784,189 @@ async function loadMedia(opts){
   }, { rows:3 });
 }
 
+/* ── کتابخانه‌ی استیکر ─────────────────────────────────────────────────
+   نوا استیکرهایی که کاربران می‌فرستند را خودش یاد می‌گیرد، ولی تا امروز هیچ راهی
+   برای دیدن، دسته‌بندی، غیرفعال کردن یا حذفشان نبود. این تب همان سطحِ مدیریت است. */
+const stickers = { offset:0, limit:48, total:0, hasMore:false, seq:0, cats:[], stats:null, filled:false };
+
+function stkQuery(){
+  const p = new URLSearchParams();
+  p.set("limit", String(stickers.limit));
+  p.set("offset", String(stickers.offset));
+  const q = ($("stkSearch").value||"").trim();          if(q) p.set("q", q);
+  const c = $("stkCat").value;                           if(c) p.set("category", c);
+  const st = $("stkState").value;                        if(st) p.set("state", st);
+  const so = $("stkSort").value;                         if(so) p.set("sort", so);
+  return "?" + p.toString();
+}
+
+/** پیش‌نمایش از خودِ ورکر پروکسی می‌شود — آدرس فایل تلگرام شامل توکن ربات است. */
+function stkPreviewUrl(id){
+  return "/api/admin/stickers/preview?id="+encodeURIComponent(id)+"&auth="+encodeURIComponent(initData);
+}
+
+function stkThumb(it){
+  // .tgs یک لوتیِ فشرده است و در <img> رندر نمی‌شود؛ به‌جای کادر خالیِ گمراه‌کننده،
+  // ایموجی خودِ استیکر را نشان می‌دهیم.
+  if(it.format === "animated") return '<div class="ph">'+esc(it.emoji||"🎞️")+'</div><span class="badge">TGS</span>';
+  if(it.format === "video" || it.type === "animation")
+    return '<video src="'+stkPreviewUrl(it.id)+'" muted loop playsinline preload="metadata"></video>'+
+           '<span class="badge">'+(it.type==="animation"?"GIF":"WEBM")+'</span>';
+  return '<img loading="lazy" alt="" src="'+stkPreviewUrl(it.id)+'" '+
+         'onerror="this.replaceWith(Object.assign(document.createElement(\'div\'),{className:\'ph\',textContent:'+
+         JSON.stringify(it.emoji||"🎭")+'}))">';
+}
+
+function stkCard(it){
+  const label = stickers.cats.find(c=>c.id===it.category);
+  const opts = stickers.cats.map(c=>
+    '<option value="'+c.id+'"'+(c.id===it.category?" selected":"")+'>'+esc(c.emoji+" "+c.fa)+'</option>').join("");
+  return '<div class="stk-card'+(it.enabledResolved?"":" off")+'" data-id="'+esc(it.id)+'" data-cat="'+esc(it.category)+'">'+
+    '<div class="stk-thumb">'+stkThumb(it)+'</div>'+
+    '<div class="stk-meta">'+
+      '<b>'+esc((it.emoji||"")+" "+(label?label.fa:it.category))+'</b>'+
+      '<small>'+fmtNum(it.uses)+' بار استفاده'+(it.setName?" · "+esc(it.setName):"")+'</small>'+
+      (it.tags&&it.tags.length?'<div class="chips">'+it.tags.slice(0,4).map(t=>'<span class="chip">'+esc(t)+'</span>').join("")+'</div>':"")+
+    '</div>'+
+    '<div class="stk-act">'+
+      '<button class="sm" data-stk-toggle>'+(it.enabledResolved?"غیرفعال":"فعال")+'</button>'+
+      '<button class="sm danger" data-stk-del>حذف</button>'+
+      '<select data-stk-move aria-label="انتقال به دسته">'+opts+'</select>'+
+      '<button class="sm ghost" data-stk-tag>تگ</button>'+
+    '</div>'+
+  '</div>';
+}
+
+function stkFillCategorySelects(){
+  if(stickers.filled || !stickers.cats.length) return;
+  const opts = stickers.cats.map(c=>'<option value="'+c.id+'">'+esc(c.emoji+" "+c.fa)+'</option>').join("");
+  $("stkCat").innerHTML = '<option value="">همه‌ی دسته‌ها</option>'+opts;
+  $("stkPackCat").innerHTML = opts;
+  $("stkAddCat").innerHTML = opts;
+  stickers.filled = true;
+}
+
+function stkRenderStats(st){
+  if(!st) return;
+  $("stkStats").innerHTML =
+    '<div><span>کل</span><b>'+fmtNum(st.total)+'</b></div>'+
+    '<div><span>فعال</span><b>'+fmtNum(st.enabled)+'</b></div>'+
+    '<div><span>غیرفعال</span><b>'+fmtNum(st.disabled)+'</b></div>'+
+    '<div><span>گیف/انیمیشن</span><b>'+fmtNum(st.animations)+'</b></div>'+
+    '<div><span>هنوز استفاده نشده</span><b>'+fmtNum(st.neverUsed)+'</b></div>';
+  const active = $("stkCat").value;
+  $("stkCats").innerHTML = (st.byCategory||[]).map(c=>
+    '<button class="stk-cat" type="button" data-stk-cat="'+c.category+'" aria-pressed="'+(active===c.category)+'">'+
+    '<span aria-hidden="true">'+c.emoji+'</span><span>'+esc(c.label)+'</span>'+
+    '<i>'+fmtNum(c.enabled)+'/'+fmtNum(c.total)+'</i></button>').join("");
+  stkSyncBulk();
+  $("stkCats").querySelectorAll("[data-stk-cat]").forEach(b=> b.onclick = ()=>{
+    // کلیک دوباره روی دسته‌ی فعال، فیلتر را برمی‌دارد.
+    $("stkCat").value = ($("stkCat").value === b.dataset.stkCat) ? "" : b.dataset.stkCat;
+    stickers.offset = 0;
+    loadStickers();
+  });
+}
+
+async function loadStickers(opts){
+  if(opts && opts.offset !== undefined) stickers.offset = Math.max(0, opts.offset);
+  const grid = $("stkGrid");
+  return await section(grid, async ()=>{
+    const seq = ++stickers.seq;
+    const d = await api("/api/admin/stickers"+stkQuery());
+    if(seq !== stickers.seq) return;
+    stickers.cats = d.categories || stickers.cats;
+    stickers.stats = d.stats || stickers.stats;
+    stkFillCategorySelects();
+    stkRenderStats(stickers.stats);
+    const items = d.items || [];
+    stickers.total = Number(d.total||items.length);
+    stickers.hasMore = !!d.hasMore;
+    if(!items.length && stickers.offset > 0 && stickers.total > 0){
+      stickers.offset = Math.max(0, stickers.total - stickers.limit);
+      return await loadStickers({ offset: stickers.offset });
+    }
+    $("stkBar").innerHTML =
+      '<span class="pill">'+fmtNum(stickers.total)+' آیتم در این فیلتر</span>'+
+      '<span class="pill">سقف هر دسته: '+fmtNum(d.perCategoryMax||60)+'</span>';
+    grid.innerHTML = items.length
+      ? items.map(stkCard).join("")
+      : emptyState("🎭","استیکری نیست","نوا با دیدن استیکرهای کاربران کتابخانه را می‌سازد؛ یا پایین‌تر یک پک را وارد کن.");
+    const pager = $("stkPager");
+    const show = stickers.offset>0 || stickers.hasMore;
+    pager.hidden = !show;
+    if(show){
+      const from = stickers.total ? stickers.offset+1 : 0;
+      $("stkPageState").textContent = fmtNum(from)+"–"+fmtNum(stickers.offset+items.length)+" از "+fmtNum(stickers.total);
+      $("stkPrev").disabled = stickers.offset<=0;
+      $("stkNext").disabled = !stickers.hasMore;
+    }
+    wireStickerCards();
+  }, { rows:3 });
+}
+
+// عملیات گروهی فقط روی دسته‌ی انتخاب‌شده معنی دارد، پس دکمه‌ها بدون فیلتر خاموش‌اند.
+function stkSyncBulk(){
+  const cat  = $("stkCat") ? $("stkCat").value : "";
+  const meta = (stickers.cats || []).find(c=> c.id === cat);
+  const who  = $("stkBulkWho");
+  if(who) who.textContent = cat
+    ? "عملیات گروهی روی دسته‌ی «"+(meta ? meta.fa : cat)+"» اعمال می‌شود."
+    : "روی یک دسته بزنید تا عملیات گروهی روی همان دسته اعمال شود.";
+  ["stkBulkEnable","stkBulkDisable","stkBulkPrune"].forEach(id=>{
+    const b = $(id); if(b) b.disabled = !cat;
+  });
+}
+
+async function stkPost(action, body){
+  return await api("/api/admin/stickers/"+action, { method:"POST", body:JSON.stringify(body) });
+}
+
+function wireStickerCards(){
+  $("stkGrid").querySelectorAll(".stk-card").forEach(card=>{
+    const id = card.dataset.id, category = card.dataset.cat;
+    const busy = on => card.querySelectorAll("button,select").forEach(b=> b.disabled = on);
+    const t = card.querySelector("[data-stk-toggle]");
+    if(t) t.onclick = async()=>{
+      busy(true);
+      try{
+        await stkPost("update", { category, id, enabled: card.classList.contains("off") });
+        invalidateTab("stickers"); await loadStickers();
+      }catch(e){ busy(false); toast(e.message,"err"); }
+    };
+    const del = card.querySelector("[data-stk-del]");
+    if(del) del.onclick = async()=>{
+      if(!await confirmAction("حذف استیکر","این استیکر از دسته‌ی «"+category+"» حذف شود؟")) return;
+      busy(true);
+      try{
+        await stkPost("remove", { category, id });
+        toast("حذف شد","ok"); invalidateTab("stickers"); await loadStickers();
+      }catch(e){ busy(false); toast(e.message,"err"); }
+    };
+    const mv = card.querySelector("[data-stk-move]");
+    if(mv) mv.onchange = async()=>{
+      const to = mv.value;
+      if(to === category) return;
+      busy(true);
+      try{
+        await stkPost("move", { category, id, to });
+        toast("منتقل شد","ok"); invalidateTab("stickers"); await loadStickers();
+      }catch(e){ busy(false); mv.value = category; toast(e.message,"err"); }
+    };
+    const tag = card.querySelector("[data-stk-tag]");
+    if(tag) tag.onclick = async()=>{
+      const cur = Array.from(card.querySelectorAll(".chips .chip")).map(c=>c.textContent).join(", ");
+      const v = await askInput("تگ‌ها","تگ‌ها را با کاما جدا کن (برای جستجو و دسته‌بندی).", cur);
+      if(v === null) return;
+      busy(true);
+      try{
+        await stkPost("update", { category, id, tags: v.split(",").map(x=>x.trim()).filter(Boolean) });
+        toast("ذخیره شد","ok"); invalidateTab("stickers"); await loadStickers();
+      }catch(e){ busy(false); toast(e.message,"err"); }
+    };
+  });
+}
+
 /* ── درخواست‌ها / لاگ‌ها / کلیدها ─────────────────────────────────────── */
 async function loadRequests(){
   const list = $("requestList");
@@ -1733,6 +2165,58 @@ function bindStatic(){
   $("mediaKind").onchange = ()=>{ invalidateTab("media"); loadMedia({ offset:0 }); };
   $("mediaPrev").onclick  = ()=> loadMedia({ offset: Math.max(0, media.offset - media.limit) });
   $("mediaNext").onclick  = ()=>{ if(media.hasMore) loadMedia({ offset: media.offset + media.limit }); };
+
+  // ── استیکرها ──
+  const stkReload = ()=>{ stickers.offset = 0; invalidateTab("stickers"); loadStickers(); };
+  $("stkApply").onclick   = stkReload;
+  $("stkRefresh").onclick = stkReload;
+  $("stkCat").onchange    = stkReload;
+  $("stkState").onchange  = stkReload;
+  $("stkSort").onchange   = stkReload;
+  $("stkSearch").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); stkReload(); } });
+  $("stkPrev").onclick    = ()=> loadStickers({ offset: Math.max(0, stickers.offset - stickers.limit) });
+  $("stkNext").onclick    = ()=>{ if(stickers.hasMore) loadStickers({ offset: stickers.offset + stickers.limit }); };
+  const stkBulk = async (action, ask)=>{
+    const cat  = $("stkCat").value;
+    if(!cat) return toast("اول یک دسته انتخاب کن","err");
+    const meta = (stickers.cats || []).find(c=> c.id === cat);
+    const label = meta ? meta.fa : cat;
+    if(!await confirmAction("عملیات گروهی", ask.replace("{c}", label))) return;
+    ["stkBulkEnable","stkBulkDisable","stkBulkPrune"].forEach(id=> $(id).disabled = true);
+    try{
+      const d = await stkPost("bulk", { category: cat, action });
+      toast(fmtNum(d.affected || 0)+" آیتم تغییر کرد", (d.affected ? "ok" : "err"));
+      invalidateTab("stickers"); await loadStickers({ offset:0 });
+    }catch(e){ toast(e.message,"err"); }
+    finally{ stkSyncBulk(); }
+  };
+  $("stkBulkEnable").onclick  = ()=> stkBulk("enable",  "همه‌ی استیکرهای «{c}» فعال شوند؟");
+  $("stkBulkDisable").onclick = ()=> stkBulk("disable", "همه‌ی استیکرهای «{c}» غیرفعال شوند؟");
+  $("stkBulkPrune").onclick   = ()=> stkBulk("prune",   "استیکرهای هرگز استفاده‌نشده‌ی «{c}» که بیش از ۷ روز از افزودنشان گذشته حذف شوند؟");
+  $("stkImport").onclick  = async()=>{
+    const pack = ($("stkPack").value||"").trim();
+    if(!pack) return toast("نام پک را وارد کن","err");
+    const btn = $("stkImport"); btn.disabled = true;
+    try{
+      const d = await stkPost("import", { pack, category: $("stkPackCat").value });
+      toast(fmtNum(d.added)+" استیکر اضافه شد"+(d.room===0?" (دسته پر است)":""), d.added?"ok":"err");
+      $("stkPack").value = "";
+      invalidateTab("stickers"); await loadStickers({ offset:0 });
+    }catch(e){ toast(e.message,"err"); }
+    finally{ btn.disabled = false; }
+  };
+  $("stkAdd").onclick = async()=>{
+    const id = ($("stkFileId").value||"").trim();
+    if(!id) return toast("file_id را وارد کن","err");
+    const btn = $("stkAdd"); btn.disabled = true;
+    try{
+      await stkPost("add", { id, category: $("stkAddCat").value, type: $("stkAddType").value });
+      toast("اضافه شد","ok");
+      $("stkFileId").value = "";
+      invalidateTab("stickers"); await loadStickers({ offset:0 });
+    }catch(e){ toast(e.message,"err"); }
+    finally{ btn.disabled = false; }
+  };
   $("reqLoad").onclick    = ()=>{ invalidateTab("requests"); loadRequests(); };
   $("reqSearch").addEventListener("keydown", e=>{ if(e.key==="Enter") $("reqLoad").click(); });
   $("logsLoad").onclick   = ()=>{ invalidateTab("logs"); loadLogs(); };
@@ -1749,8 +2233,15 @@ function bindStatic(){
   document.addEventListener("keydown", e=>{
     if(e.key!=="Escape") return;
     if($("modal").classList.contains("open")){ $("modalCancel").click(); return; }
-    if($("drawer").classList.contains("open")) closeDrawer();
+    if($("drawer").classList.contains("open")){ closeDrawer(); return; }
+    // بعد از آن‌ها، پنل بازِ جزئیاتِ کاربر بسته می‌شود.
+    if(document.querySelector("#userRows tr.drow")){
+      const tr = document.querySelector("#userRows tr.urow.is-open");
+      collapseDetail();
+      const b = tr && tr.querySelector(".userbtn"); if(b) b.focus();
+    }
   });
+  window.addEventListener("resize", syncPanelWidth, { passive:true });
 
   // Keep focus inside an open modal so keyboard users cannot tab out of it.
   $("modal").addEventListener("keydown", e=>{

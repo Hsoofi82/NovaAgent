@@ -34,6 +34,8 @@ import {
 } from "../src/webBuilder.ts";
 import { buildUniversalDesignSkills, assessVisualQuality } from "../src/designSkills.ts";
 import { rankSearchItems, normalizeSearchItems } from "../src/webSearch.ts";
+import { runSearch, normalizeEffort, describeSearchRun } from "../src/search.ts";
+import { classifyRequestIntent } from "../src/intent.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const latin1 = new TextDecoder("latin1");
@@ -948,4 +950,291 @@ test("web search: normalizeSearchItems rejects unsafe and duplicate links", () =
     si("https://nofields.example.com/y", "", ""),
   ], 10);
   assert.deepEqual(items.map(i => i.link), ["https://ok.example.com/x"]);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SEARCH — the canonical adaptive engine (src/search.ts) and the routing that
+   reaches it. The engine must be a *single* call that always comes back with
+   prose: no limit, dead provider or dead model may turn into a thrown error,
+   because the loop above it has nothing to retry with.
+   ══════════════════════════════════════════════════════════════════════════ */
+function stubDeps(over = {}) {
+  const calls = { search: 0, read: 0, think: 0, queries: [], opts: [] };
+  const deps = {
+    lang: "fa",
+    calls,
+    async search(q, num, opts) {
+      calls.search++; calls.queries.push(q); calls.opts.push(opts ?? null);
+      return Array.from({ length: Math.min(num, 4) }, (_, i) => ({
+        title: `t${calls.search}-${i}`,
+        link: `https://site${i}.example.com/a${calls.search}`,
+        snippet: `شواهد ${q} عدد ${100 + i}`,
+      }));
+    },
+    async readPage(url, maxChars) { calls.read++; return `متن کامل صفحه ${url}`.slice(0, maxChars); },
+    async think(system, user) {
+      calls.think++;
+      if (system.startsWith("You are the planning stage")) {
+        return JSON.stringify({
+          effort: "deep", recency: "days", complexity: 6, want_sources: false,
+          goals: ["g1"], queries: [{ q: "q1", goal: "g1", recency: "days" }, { q: "q2", goal: "g1" }],
+          stop_when: "enough",
+        });
+      }
+      if (system.startsWith("You are the sufficiency check")) {
+        return JSON.stringify({ enough: true, missing: [], next_queries: [] });
+      }
+      if (system.startsWith("You are the verification stage")) {
+        return JSON.stringify({ conflicts: [], weak: [], confidence: "high" });
+      }
+      return "پاسخ نهایی: عدد ۱۰۰ در روز جاری.";
+    },
+    ...over,
+  };
+  return deps;
+}
+
+test("engine returns a finished answer from one call", async () => {
+  const deps = stubDeps();
+  const out = await runSearch("قیمت دلار امروز چنده", "auto", deps);
+  assert.equal(out.degraded, null, `unexpected degrade: ${out.degraded}`);
+  assert.ok(out.answer.includes("پاسخ نهایی"), out.answer);
+  assert.equal(out.wantSources, false, "sources stay hidden unless asked");
+  assert.ok(out.sources.length > 0);
+  assert.equal(out.effort, "deep", "planner effort is honoured for auto");
+  assert.ok(deps.calls.opts.some(o => o && o.dateRestrict), "freshness window must reach the provider");
+  assert.match(describeSearchRun(out), /deep/);
+});
+
+test("explicit effort hint overrides the planner", async () => {
+  const out = await runSearch("سوپر دیپ سرچ درباره قیمت دلار در چند سال اخیر", "super", stubDeps());
+  assert.equal(out.effort, "super");
+  assert.ok(out.answer.length > 0);
+});
+
+test("a dead provider degrades instead of throwing", async () => {
+  const out = await runSearch("نرخ تورم ایران", "fast", stubDeps({ async search() { return []; } }));
+  assert.equal(out.sources.length, 0);
+  assert.equal(out.degraded, "no_sources");
+  assert.ok(out.answer.trim().length > 0, "must still say something honest");
+});
+
+test("model failures never sink the run", async () => {
+  const out = await runSearch("نرخ تورم ایران", "deep", stubDeps({ async think() { throw new Error("model down"); } }));
+  assert.ok(out.answer.trim().length > 0);
+  assert.ok(out.sources.length > 0, "retrieval still happened via the structural fallback plan");
+});
+
+test("garbage plan JSON falls back structurally", async () => {
+  const deps = stubDeps({ async think(system) {
+    if (system.startsWith("You are the planning stage")) return "not json at all";
+    return "answer text";
+  } });
+  const out = await runSearch("تورم ایران", "auto", deps);
+  assert.ok(deps.calls.queries.includes("تورم ایران"), "raw request becomes the query");
+  assert.ok(out.answer.length > 0);
+});
+
+test("cancellation is the only thrown outcome", async () => {
+  await assert.rejects(
+    () => runSearch("نرخ تورم ایران", "fast", stubDeps({ isCancelled: async () => true })),
+    /CANCELLED_BY_USER/,
+  );
+});
+
+test("normalizeEffort maps legacy depth names", () => {
+  assert.equal(normalizeEffort("quick"), "fast");
+  assert.equal(normalizeEffort("standard"), "deep");
+  assert.equal(normalizeEffort("super"), "super");
+  assert.equal(normalizeEffort(undefined), "auto");
+  assert.equal(normalizeEffort("nonsense"), "auto");
+});
+
+test("want_sources from the plan turns the footer on", async () => {
+  const out = await runSearch("منبع هم بده", "deep", stubDeps({ async think(system) {
+    if (system.startsWith("You are the planning stage")) {
+      return JSON.stringify({ effort: "deep", recency: "any", complexity: 4, want_sources: true, goals: [], queries: [{ q: "a" }], stop_when: "" });
+    }
+    if (system.startsWith("You are the sufficiency check")) return JSON.stringify({ enough: true });
+    if (system.startsWith("You are the verification stage")) return JSON.stringify({ confidence: "medium" });
+    return "با منبع";
+  } }));
+  assert.equal(out.wantSources, true);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SEARCH ROUTING — the router only forces research when the user names the act.
+   Deciding that a *topic* (prices, news, crypto) needs the web is the model's
+   job, and the old keyword tables that made that decision are gone.
+   ══════════════════════════════════════════════════════════════════════════ */
+const SELF = ["نوا", "nova"];
+const PERSONAS = [{ id: "sarcastic", aliases: ["نیش", "طعنه‌زن"] }];
+
+function route(text, extra = {}) {
+  return classifyRequestIntent({
+    text, isGroup: false, isReply: false,
+    selfNames: SELF, personaAliases: PERSONAS,
+    ...extra,
+  });
+}
+
+test("named search acts route to research with forced tool", () => {
+  for (const t of [
+    "نوا یه سوپر دیپ سرچ بزن درباره قیمت دلار تو ایران توی چند سال اخیر تحقیق کن",
+    "نوا سرچ کن ببین امروز چه خبره",
+    "یه تحقیق کن درباره انرژی هسته‌ای",
+    "please search the web for the latest on this",
+    "can you google it for me",
+    "do a deep dive on tesla earnings",
+    "منبع هم بده",
+  ]) {
+    const d = route(t);
+    assert.equal(d.category, "research", `expected research for: ${t} (got ${d.category}/${d.reason})`);
+    assert.equal(d.forceToolCall, true, `expected forced tool for: ${t}`);
+    assert.ok(d.allowedTools?.includes("search"), "search must be allowed");
+    assert.ok(!d.allowedTools?.includes("deep_search"), "no legacy tool name");
+  }
+});
+
+test("volatile topics are no longer keyword-routed to search", () => {
+  for (const t of [
+    "قیمت دلار چنده",
+    "قیمت بیت کوین امروز چند شد؟",
+    "آخرین خبرهای ایران چیه",
+    "what's the weather like today",
+    "who won the match last night",
+    "bitcoin price now",
+  ]) {
+    const d = route(t);
+    assert.notEqual(d.category, "research", `must not force research for: ${t}`);
+    assert.ok(
+      d.category === "general_knowledge" || d.category === "conversation",
+      `expected model-judged category for "${t}", got ${d.category}/${d.reason}`,
+    );
+  }
+});
+
+test("non-search deterministic routing is unchanged", () => {
+  const cases = [
+    ["این عکس رو سیاه سفید کن", { hasAttachedImage: true }, "image_edit"],
+    ["یه عکس از یه گربه فضایی بکش", {}, "image_generate"],
+    ["نوا اسمت رو بذار آوا", {}, "name_switch"],
+    ["برو تو حالت نیش", {}, "persona_switch"],
+    ["میوتش کن برای یه ساعت", { isReply: true, repliedUserId: 42, isChatAdmin: true }, "moderation"],
+    ["یه بازی مافیا بساز", {}, "game_create"],
+    ["نوا هر روز صبح ساعت ۸ بهم بگو آب بخورم", {}, "scheduling"],
+  ];
+  for (const [text, extra, expected] of cases) {
+    const d = route(text, extra);
+    assert.equal(d.category, expected, `"${text}" → ${d.category}/${d.reason}, expected ${expected}`);
+  }
+});
+
+test("calling Nova by name is never a persona/search command", () => {
+  for (const t of ["نوا", "نوا؟", "نوا جان", "nova"]) {
+    const d = route(t);
+    assert.ok(
+      d.category !== "persona_switch" && d.category !== "persona_info" && d.category !== "research",
+      `"${t}" → ${d.category}`,
+    );
+  }
+});
+
+/* ── Search engine: latency optimisations ──────────────────────────────────
+   These three pin the behaviour added when the engine was tuned for real-world
+   speed. They are ordering/budget properties, not output assertions, so they
+   fail loudly if a later refactor quietly serialises the pipeline again. */
+
+test("page reads run concurrently with the gap analysis", async () => {
+  // Proof by construction: the sufficiency-check call blocks until the first
+  // page read has *started*. If reads only began after the gap analysis
+  // returned (the old, serial order) this would deadlock, so the race below
+  // would lose to the 3s guard.
+  let firstReadStarted;
+  const readStarted = new Promise(res => { firstReadStarted = res; });
+
+  const deps = stubDeps({
+    async readPage(url, maxChars) {
+      firstReadStarted();
+      return `متن کامل صفحه ${url}`.slice(0, maxChars);
+    },
+    async think(system) {
+      if (system.startsWith("You are the planning stage")) {
+        return JSON.stringify({
+          effort: "deep", recency: "days", complexity: 6, want_sources: false,
+          goals: ["g1"], queries: [{ q: "q1", goal: "g1" }, { q: "q2", goal: "g1" }],
+          stop_when: "enough",
+        });
+      }
+      if (system.startsWith("You are the sufficiency check")) {
+        await readStarted;
+        return JSON.stringify({ enough: true, missing: [], next_queries: [] });
+      }
+      if (system.startsWith("You are the verification stage")) {
+        return JSON.stringify({ conflicts: [], weak: [], confidence: "high" });
+      }
+      return "پاسخ نهایی.";
+    },
+  });
+
+  const out = await Promise.race([
+    runSearch("نرخ تورم ایران", "deep", deps),
+    new Promise((_, rej) => setTimeout(() => rej(new Error("reads are still serialised after the gap analysis")), 3000)),
+  ]);
+  assert.ok(out.answer.includes("پاسخ نهایی"), out.answer);
+});
+
+test("read-ahead cannot exhaust the page-read budget", async () => {
+  // deep allows 4 reads over 2 rounds. The round-1 read-ahead may take at most
+  // half of them, so a gap-filling round still gets to read its own findings.
+  let round = 0;
+  const deps = stubDeps({
+    async think(system) {
+      if (system.startsWith("You are the planning stage")) {
+        return JSON.stringify({
+          effort: "deep", recency: "any", complexity: 7, want_sources: false,
+          goals: ["g1"], queries: [{ q: "q1", goal: "g1" }],
+          stop_when: "enough",
+        });
+      }
+      if (system.startsWith("You are the sufficiency check")) {
+        round++;
+        return round === 1
+          ? JSON.stringify({ enough: false, missing: ["m1"], next_queries: [{ q: "q3", goal: "g1" }] })
+          : JSON.stringify({ enough: true, missing: [], next_queries: [] });
+      }
+      if (system.startsWith("You are the verification stage")) {
+        return JSON.stringify({ conflicts: [], weak: [], confidence: "medium" });
+      }
+      return "پاسخ نهایی.";
+    },
+  });
+
+  await runSearch("تحلیل کامل بازار مسکن", "deep", deps);
+  assert.ok(deps.calls.read > 0, "nothing was read at all");
+  assert.ok(deps.calls.read <= 4, `read budget overspent: ${deps.calls.read}`);
+});
+
+test("caller voice is injected into the synthesis prompt", async () => {
+  let synthSystem = "";
+  const deps = stubDeps({
+    voice: "You are Nova. Voice: warm and direct.",
+    async think(system) {
+      if (system.startsWith("You are the planning stage")) {
+        return JSON.stringify({
+          effort: "fast", recency: "live", complexity: 2, want_sources: false,
+          goals: ["g1"], queries: [{ q: "q1", goal: "g1" }], stop_when: "enough",
+        });
+      }
+      if (system.startsWith("You are the sufficiency check") || system.startsWith("You are the verification stage")) {
+        return JSON.stringify({ enough: true, missing: [], next_queries: [], conflicts: [], weak: [], confidence: "high" });
+      }
+      synthSystem = system;
+      return "پاسخ نهایی.";
+    },
+  });
+
+  await runSearch("قیمت دلار", "fast", deps);
+  assert.match(synthSystem, /WHO YOU ARE/, "synthesis prompt lost the persona block");
+  assert.match(synthSystem, /warm and direct/, "the caller's voice never reached the writer");
 });

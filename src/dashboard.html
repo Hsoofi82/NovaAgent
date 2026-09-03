@@ -322,8 +322,9 @@
             height: 7px;
             border-radius: 50%;
             background: var(--accent-2);
-            top: 5px;
-            right: 4px;
+            /* Physical `right` put the dot on the wrong corner in RTL. */
+            inset-block-start: 5px;
+            inset-inline-end: 4px;
             display: none;
             box-shadow: 0 0 8px var(--accent-2);
             animation: pulse-dot 2s ease-in-out infinite;
@@ -2982,8 +2983,13 @@
                     fill.style.width = "0%";
                     timeEl.textContent = "0:00"; });
                 card.querySelector(".audioTrack").addEventListener("click", e => { const r = card.querySelector(
-                        ".audioTrack").getBoundingClientRect(); const pct = (e.clientX - r.left) / r.width; if (audio
-                        .duration) audio.currentTime = pct * audio.duration; }); return card; }
+                        ".audioTrack").getBoundingClientRect();
+                    // The fill grows from the inline-start edge, so the click ratio
+                    // has to be measured from that same edge — the right one in RTL.
+                    const rtl = getComputedStyle(card).direction === "rtl";
+                    const raw = (e.clientX - r.left) / (r.width || 1);
+                    const pct = Math.min(1, Math.max(0, rtl ? 1 - raw : raw));
+                    if (audio.duration) audio.currentTime = pct * audio.duration; }); return card; }
 
             function addMessage(role, payload, opts) { opts = opts || {};
                 markHasMessages(); const row = document.createElement("div");

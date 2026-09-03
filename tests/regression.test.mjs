@@ -277,14 +277,37 @@ test("agent loop: retry hands off message ownership", () => {
   assert.match(body, /const handoffMsgId = loadingState\.id;/);
 });
 
-test("agent loop: usage increment is awaited on every path", () => {
+test("agent loop: usage increment is never a floating promise", () => {
   const start = SRC.indexOf("async function processAIRequestUnlocked");
   const body = SRC.slice(start, SRC.indexOf("\nfunction formatThinkingTags", start));
-  const calls = [...body.matchAll(/(await\s+)?incrementUsageWithUser\(/g)];
+  // The original defect was a bare `incrementUsageWithUser(...)` with nothing
+  // holding onto it, so the isolate could return before the counter landed and
+  // usage was silently undercounted. Awaiting it fixed that but put a mutex and
+  // a D1 write inside aiChatMutex *after* the answer was already delivered, so
+  // the chat's next message queued behind bookkeeping. `runBackground` is the
+  // third option: the promise is registered and drained by
+  // drainBackgroundTasks() in ctx.waitUntil, so it still cannot be lost.
+  const calls = [...body.matchAll(/(await\s+|runBackground\(\(\)\s*=>\s*)?incrementUsageWithUser\(/g)];
   assert.ok(calls.length > 0, "expected usage increments in the agent loop");
   for (const m of calls) {
-    assert.ok(m[1], "every incrementUsageWithUser call must be awaited (it does a mutex + save)");
+    assert.ok(m[1], "incrementUsageWithUser must be awaited or handed to runBackground, never left floating");
   }
+  assert.match(SRC, /await drainBackgroundTasks\(8000\)/, "background tasks must still be drained post-response");
+});
+
+test("agent loop: deferred session writes are guaranteed to be flushed", () => {
+  const start = SRC.indexOf("async function processAIRequestUnlocked");
+  const body = SRC.slice(start, SRC.indexOf("\nfunction formatThinkingTags", start));
+  assert.match(body, /deferSessionSave\(session\)/, "the agent loop must defer its bookkeeping write");
+  const helper = SRC.slice(
+    SRC.indexOf("function deferSessionSave"),
+    SRC.indexOf("async function flushPendingSessions"),
+  );
+  assert.match(helper, /sessionCache\.set\(/, "the isolate cache must stay authoritative for read-your-writes");
+  assert.match(helper, /_pendingSessionFlush\.set\(/, "the write must be queued, not dropped");
+  // The drain is what turns "deferred" into "persisted"; force=true is required
+  // or saveSession's coalescing window simply re-buffers the session forever.
+  assert.match(SRC, /await flushPendingSessions\(env, true\)/, "the post-response drain must force-flush");
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -606,4 +629,41 @@ test("ui: admin dashboard polls without overlapping or running hidden", () => {
   assert.ok(guard, "poll must bail out when a previous poll is still running");
   assert.match(guard[0], /document\.hidden/, "poll must bail out while the document is hidden");
   assert.match(html, /clearInterval\(pollTimer\)/, "timer must be torn down when hidden");
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PERF — the search engine synthesizes its own final answer, so relaying it
+   through the outer model cost a second full generation on top of a run that
+   could already have taken a minute. The short-circuit must stay narrow: only
+   a turn whose entire tool workload was a *successful* search may skip the
+   relay, and it must do the same bookkeeping the normal success path does.
+   ══════════════════════════════════════════════════════════════════════════ */
+test("agent loop: search short-circuit is narrow and complete", () => {
+  const start = SRC.indexOf("async function processAIRequestUnlocked");
+  const body = SRC.slice(start, SRC.indexOf("\nfunction formatThinkingTags", start));
+
+  const guard = body.slice(body.indexOf("const searchOnlyTurn ="), body.indexOf("const searchDirect ="));
+  assert.match(guard, /toolResults\.every\(tr => tr\.name === "search"\)/, "a mixed tool turn must still go through the model");
+  assert.match(guard, /success\?\?: boolean|success\?: boolean/, "the guard must read the success flag");
+  assert.match(guard, /=== true/, "a failed search must still be explained by the model");
+
+  const branch = body.slice(body.indexOf("if (searchDirect) {"), body.indexOf("const webAppResult ="));
+  assert.match(branch, /addToHistory\(engine\.history, "model"/, "the delivered answer must be recorded as a model turn");
+  assert.match(branch, /session\.statistics\.geminiMessages\+\+/, "counters must match the normal success path");
+  assert.match(branch, /recordRequest\(session\)/);
+  // Delivery precedes bookkeeping everywhere else in this function; the
+  // short-circuit must not regress to persist-then-send.
+  assert.ok(
+    branch.indexOf("deliverFinalResponse") < branch.indexOf("deferSessionSave"),
+    "the answer must be delivered before any persistence work",
+  );
+});
+
+test("agent loop: a verbatim search answer is not stored twice", () => {
+  const start = SRC.indexOf("async function processAIRequestUnlocked");
+  const body = SRC.slice(start, SRC.indexOf("\nfunction formatThinkingTags", start));
+  const fr = body.slice(body.indexOf("const frParts: Part[] ="), body.indexOf('addToHistory(engine.history, "user", frParts'));
+  assert.match(fr, /searchDirect && tr\.name === "search"/, "the functionResponse must be slimmed when the answer is sent verbatim");
+  assert.match(fr, /delivered: true/);
+  assert.match(fr, /compactToolResponseForModel\(tr\.name, tr\.response\)/, "every other tool result must still be passed through intact");
 });

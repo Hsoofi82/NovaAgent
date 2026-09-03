@@ -137,8 +137,52 @@ const NOVA_GE_RUNTIME = String.raw`
     canvas: "#0e1116", ink: "#f5f7fa", muted: "#93a0b4", primary: "#4f8cff",
     accent: "#ffc857", danger: "#ff5c5c", shapeA: "#4f8cff", shapeB: "#ffc857",
     particle: "#ffffff", font: "ui-sans-serif, system-ui, sans-serif",
-    audio: "chiptune", density: 2
+    audio: "chiptune", density: 2,
+    light: "top-left", depth: "layered", lighting: "flat", camera: "fixed", ui: "corners"
   };
+
+  /* ── Colour helpers ────────────────────────────────────────────────────────
+     Shared by the depth primitives. Parsing is tolerant: #rgb, #rrggbb and
+     rgb()/rgba() all work, and anything unrecognised degrades to mid grey
+     rather than throwing inside a render loop. */
+  const COLOR_CACHE = Object.create(null);
+  function parseColor(input) {
+    const key = String(input == null ? "" : input);
+    const hit = COLOR_CACHE[key];
+    if (hit) return hit;
+    let out = [128, 128, 128];
+    const c = key.trim();
+    if (c.charAt(0) === "#") {
+      const hex = c.slice(1);
+      if (hex.length === 3 || hex.length === 4) {
+        out = [parseInt(hex[0] + hex[0], 16), parseInt(hex[1] + hex[1], 16), parseInt(hex[2] + hex[2], 16)];
+      } else if (hex.length >= 6) {
+        out = [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
+      }
+    } else {
+      const m = c.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i);
+      if (m) out = [Math.round(+m[1]), Math.round(+m[2]), Math.round(+m[3])];
+    }
+    if (out.some(function (n) { return !isFinite(n); })) out = [128, 128, 128];
+    // Bounded: a game can only reference so many distinct colours, but a
+    // procedurally-generated colour per frame must not grow this forever.
+    if (Object.keys(COLOR_CACHE).length < 512) COLOR_CACHE[key] = out;
+    return out;
+  }
+  function shadeColor(color, amount) {
+    const rgb = parseColor(color);
+    const t = Math.max(-1, Math.min(1, Number(amount) || 0));
+    const mix = t >= 0 ? 255 : 0;
+    const k = Math.abs(t);
+    return "rgb(" + Math.round(rgb[0] + (mix - rgb[0]) * k) + ","
+      + Math.round(rgb[1] + (mix - rgb[1]) * k) + ","
+      + Math.round(rgb[2] + (mix - rgb[2]) * k) + ")";
+  }
+  function fadeColor(color, alpha) {
+    const rgb = parseColor(color);
+    const a = alpha == null ? 1 : Math.max(0, Math.min(1, Number(alpha) || 0));
+    return "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + "," + a + ")";
+  }
 
   // The single live game instance. Generated code (or a hot reload) can call
   // NovaGE.init() more than once; without tearing the previous instance down its
@@ -168,6 +212,15 @@ const NOVA_GE_RUNTIME = String.raw`
     for (const tk in themeSrc) { if (themeSrc[tk]) palette[tk] = themeSrc[tk]; }
     const audioCharacter = String(palette.audio || "chiptune");
     const burstDensity = Math.max(1, Math.min(4, Number(palette.density) || 2));
+    // One light direction for the whole game, so every box face and every cast
+    // shadow agrees. The shell derives it from the design intent's lighting.
+    const lightDir = (function () {
+      const raw = String(palette.light || "top-left");
+      if (raw === "top-right") return [-1, -1];
+      if (raw === "top") return [0, -1];
+      if (raw === "left") return [1, 0];
+      return [1, -1];
+    })();
 
     // ── Adaptive orientation ─────────────────────────────────────────────
     // landscape: 16:9 wide playfield · portrait: 9:16 tall playfield ·
@@ -268,6 +321,127 @@ const NOVA_GE_RUNTIME = String.raw`
         ctx.save(); ctx.fillStyle = color || palette.shapeB;
         ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
       },
+      /* ── Depth & light primitives ──────────────────────────────────────────
+         Design intent asks for parallax planes, volume, projection and real
+         lighting. Asking a model to hand-roll all of that inside a 30-second
+         generation is how you get "it ignored the brief and drew flat
+         rectangles again". These make the intended look the cheap option. */
+
+      /** Lighten (amount > 0) or darken (amount < 0) any hex/rgb colour. */
+      shade(color, amount) { return shadeColor(color || palette.shapeA, amount); },
+      /** Same colour at a given alpha — for glow passes, hazes and washes. */
+      fade(color, alpha) { return fadeColor(color || palette.ink, alpha); },
+      /**
+       * A solid with volume: top face, side face and a cast shadow, all lit from
+       * one consistent direction. lift is the apparent height in pixels.
+       */
+      box(x, y, w, h, lift, color) {
+        const base = color || palette.shapeA;
+        const dz = lift == null ? 10 : lift;
+        const lx = lightDir[0], ly = lightDir[1];
+        ctx.save();
+        // Cast shadow first, offset along the light direction.
+        ctx.fillStyle = "rgba(0,0,0,.28)";
+        ctx.beginPath();
+        ctx.ellipse(x + w / 2 + lx * dz * 0.8, y + h + ly * dz * 0.35, w * 0.55, Math.max(2, h * 0.18), 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Side face (away from the light), then the front, then the top.
+        ctx.fillStyle = shadeColor(base, -0.32);
+        ctx.beginPath();
+        ctx.moveTo(x + w, y); ctx.lineTo(x + w - lx * dz, y - dz);
+        ctx.lineTo(x + w - lx * dz, y + h - dz); ctx.lineTo(x + w, y + h);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = base;
+        ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = shadeColor(base, 0.22);
+        ctx.beginPath();
+        ctx.moveTo(x, y); ctx.lineTo(x - lx * dz, y - dz);
+        ctx.lineTo(x + w - lx * dz, y - dz); ctx.lineTo(x + w, y);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
+      },
+      /** Ground shadow on its own, for circles/sprites that are not boxes. */
+      shadow(x, y, rx, ry) {
+        ctx.save(); ctx.fillStyle = "rgba(0,0,0,.26)";
+        ctx.beginPath(); ctx.ellipse(x, y, rx, ry == null ? rx * 0.35 : ry, 0, 0, Math.PI * 2);
+        ctx.fill(); ctx.restore();
+      },
+      /**
+       * Parallax offset for a plane at depth z (0 = infinitely far, 1 = the
+       * playfield). Wraps by span so callers can draw a repeating strip.
+       */
+      parallax(x, z, span) {
+        const w = span || width;
+        const o = (x * (z == null ? 0.5 : z)) % w;
+        return o < 0 ? o + w : o;
+      },
+      /** Perspective scale for an object z units into the screen. */
+      project(z, focal) {
+        const f = focal || 320;
+        return f / (f + Math.max(0, z));
+      },
+      /** Horizon-relative ground scale for Mode-7 style rows. */
+      groundScale(screenY, horizonY) {
+        const hz = horizonY == null ? height * 0.42 : horizonY;
+        const d = screenY - hz;
+        return d <= 0 ? 0 : Math.min(1, d / Math.max(1, height - hz));
+      },
+      /**
+       * Darken the whole canvas except a lit radius around (x, y). This is real
+       * occlusion, not a dimmed overlay: call it AFTER drawing the scene.
+       */
+      light(x, y, radius, strength) {
+        const s = strength == null ? 0.92 : Math.max(0, Math.min(1, strength));
+        const g = ctx.createRadialGradient(x, y, Math.max(1, radius * 0.25), x, y, Math.max(2, radius));
+        g.addColorStop(0, "rgba(0,0,0,0)");
+        g.addColorStop(0.65, "rgba(0,0,0," + (s * 0.55).toFixed(3) + ")");
+        g.addColorStop(1, "rgba(0,0,0," + s.toFixed(3) + ")");
+        ctx.save(); ctx.fillStyle = g; ctx.fillRect(0, 0, width, height); ctx.restore();
+      },
+      /** A hard-edged light cone from (x, y) pointing at angle radians. */
+      cone(x, y, angle, spread, length, strength) {
+        const s = strength == null ? 0.9 : Math.max(0, Math.min(1, strength));
+        ctx.save();
+        ctx.fillStyle = "rgba(0,0,0," + s.toFixed(3) + ")";
+        ctx.beginPath();
+        ctx.rect(0, 0, width, height);
+        ctx.moveTo(x, y);
+        ctx.arc(x, y, length || Math.max(width, height), angle - (spread || 0.5) / 2, angle + (spread || 0.5) / 2);
+        ctx.closePath();
+        ctx.fill("evenodd");
+        ctx.restore();
+      },
+      /** Emissive halo pass — draw before the solid core for a neon look. */
+      glow(x, y, radius, color, layers) {
+        const n = layers || 3;
+        const c = color || palette.accent;
+        ctx.save();
+        for (let i = n; i > 0; i--) {
+          ctx.fillStyle = fadeColor(c, 0.1 + 0.06 * (n - i));
+          ctx.beginPath(); ctx.arc(x, y, radius * (1 + i * 0.45), 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      },
+      /** Edge darkening. Cheap atmosphere for dread/gritty moods. */
+      vignette(strength) {
+        const s = strength == null ? 0.55 : Math.max(0, Math.min(1, strength));
+        const g = ctx.createRadialGradient(
+          width / 2, height / 2, Math.min(width, height) * 0.32,
+          width / 2, height / 2, Math.max(width, height) * 0.75);
+        g.addColorStop(0, "rgba(0,0,0,0)");
+        g.addColorStop(1, "rgba(0,0,0," + s.toFixed(3) + ")");
+        ctx.save(); ctx.fillStyle = g; ctx.fillRect(0, 0, width, height); ctx.restore();
+      },
+      /** Flat translucent colour wash — the ambient-tint lighting model. */
+      tint(color, alpha) {
+        ctx.save(); ctx.fillStyle = fadeColor(color || palette.primary, alpha == null ? 0.12 : alpha);
+        ctx.fillRect(0, 0, width, height); ctx.restore();
+      },
+      /** A full-width horizontal band — sky/ground/haze planes in one call. */
+      band(y, h, color) {
+        ctx.save(); ctx.fillStyle = color || palette.surface;
+        ctx.fillRect(0, y, width, h); ctx.restore();
+      },
       burst(x, y, color, count) {
         // Particle count follows the mood's density (a dread game gets a sparse
         // puff, a playful one a wide spray) instead of a fixed 12 everywhere.
@@ -307,6 +481,15 @@ const NOVA_GE_RUNTIME = String.raw`
       get sceneName() { return currentName; },
       get orientation() { return orientation; },
       /** Live view info — always reflects the current logical playfield. */
+      /* The design intent the shell chose, so gameplay/render code can branch on
+         it instead of hardcoding one presentation. Read-only. */
+      design: {
+        depth: String(palette.depth || "layered"),
+        lighting: String(palette.lighting || "flat"),
+        camera: String(palette.camera || "fixed"),
+        ui: String(palette.ui || "corners"),
+        light: lightDir
+      },
       get view() {
         return { width, height, aspect: width / height, orientation, isPortrait: orientation === "portrait" };
       },
@@ -647,8 +830,8 @@ export function buildGameEnginePrompt(
   const designSkills = buildUniversalDesignSkills(
     direction,
     "game",
-    `this is a ${design.mood} ${design.genre} game in a ${design.setting} setting. The HUD is ${design.chrome.hud}. `
-    + `Match the genre's conventions, not a generic arcade layout — ${design.presentation[0]}`,
+    `this is a ${design.mood} ${design.genre} game in a ${design.setting} setting, shown ${design.camera} with ${design.depth} depth and ${design.lighting} lighting. `
+    + `The HUD is ${design.chrome.hud}. Match the genre's conventions, not a generic arcade layout — ${design.presentation[0]}`,
   );
 
   return `You are Nova Game Engine Turbo, a fast, expert 2D HTML5 game developer.
@@ -667,14 +850,31 @@ BUILT-IN API SPECIFICATION (NovaGE):
 - game.pointer (fields: .x, .y, .down, .tapped);
 - RESPONSIVE DIMENSIONS: ALWAYS use game.view.width / game.view.height (or game.width / game.height) for layout math, centers and spawn bounds — never hard-code 960/540. game.view also has .aspect, .orientation, .isPortrait.
 - game.clamp(v, min, max), game.hit(boxA, boxB), game.dist(x1, y1, x2, y2), game.random(min, max), game.randomChoice(array);
+- DEPTH & LIGHT PRIMITIVES (use these — they are why this game will not look flat):
+  · game.shade(color, amount) -> lighter (+) / darker (-) variant of a colour. For faces, distance haze and hover states.
+  · game.fade(color, alpha) -> the same colour translucent. For glows, washes and trails.
+  · game.box(x, y, w, h, lift, color) -> a solid WITH a top face, a side face and a cast shadow, lit consistently. Use instead of game.rect() for anything that should have volume.
+  · game.shadow(x, y, rx, ry) -> ground shadow for round/sprite entities.
+  · game.parallax(scrollX, z, span) -> wrapped offset for a background plane at depth z (0.1 far … 1 playfield). Call once per plane.
+  · game.project(z, focal) -> perspective scale for an object z units into the screen. Multiply size AND offset by it, draw far-to-near.
+  · game.groundScale(screenY, horizonY) -> 0..1 ground-plane scale for Mode-7 style rows and sprite footing.
+  · game.light(x, y, radius, strength) -> darkens everything except a lit radius. Call at the END of render().
+  · game.cone(x, y, angleRad, spread, length, strength) -> hard-edged light cone, everything outside is dark.
+  · game.glow(x, y, radius, color, layers) -> emissive halo. Draw BEFORE the solid core.
+  · game.vignette(strength), game.tint(color, alpha), game.band(y, h, color) -> atmosphere and background planes.
+- game.design -> { depth, lighting, camera, ui } — the chosen presentation, already decided for you.
 
 🎨 DESIGN INTENT — this game is NOT a generic arcade game. Build to this brief:
 - Genre: ${design.genre.toUpperCase()} · Mood: ${design.mood.toUpperCase()} · Setting: ${design.setting.toUpperCase()} · Camera: ${design.camera.toUpperCase()}
 - Core loop: ${design.loop}.
 - Palette is ALREADY themed (${isLightSetting(design.setting) ? "LIGHT background, dark ink" : "dark background, light ink"}). Read colours from game.palette — canvas ${p.canvas}, ink ${p.ink}, primary ${p.primary}, accent ${p.accent}, danger ${p.danger}. Do NOT invent a new palette and do NOT hardcode hex values for the base look; use game.palette.* so the page shell and the canvas agree.
+- Depth model: ${design.depth.toUpperCase()} · Lighting: ${design.lighting.toUpperCase()} · HUD: ${design.uiLayout.toUpperCase()}
 - Motion: ${design.motion.transition}. On impact: ${design.motion.impact}.
 - Audio character is ${design.audio}; call game.sound() with at least three DIFFERENT event names so the soundscape is not one repeated blip.
 ${design.presentation.map(rule => `- ${rule}`).join("\n")}
+
+🚫 THIS GAME MUST NOT BE (anti-repetition contract — every generated game gets a different one of these briefs, so do not regress to the generic version):
+${design.avoid.map(rule => `- ${rule}`).join("\n")}
 
 REQUIRED CONTRACT (Keep code concise, playable & fast):
 1. Define these scenes: ${sceneList}. End the code with: game.start("menu");  ("menu" and "play" are mandatory — the engine boots from "menu".)
