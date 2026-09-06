@@ -15,8 +15,8 @@
     "test:engines": "node --experimental-loader ./tests/ts-resolve.mjs --test tests/engines.test.mjs"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260730.1",
-    "wrangler": "^4.112.0",
-    "typescript": "^5.7.2"
+    "@cloudflare/workers-types": "^5.20260831.1",
+    "wrangler": "^4.127.1",
+    "typescript": "^7.0.2"
   }
 }
