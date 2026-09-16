@@ -1,22 +1,25 @@
 {
-  "name": "ƝØVΛᵅᵍᵉⁿᵗ",
-  "version": "1.0.0",
-  "description": "Nova AI Telegram Bot on Cloudflare Workers",
+  "name": "nova-merged",
+  "version": "2.0.0",
+  "description": "Nova AI Telegram Bot on Cloudflare Workers — merged build: Nova Astro (platform/security) + Nova Deeper (cognition/engines)",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
-    "test": "node --test tests/regression.test.mjs tests/core.test.mjs && npm run test:engines",
+    "test": "node --experimental-loader ./tests/ts-resolve.mjs --test tests/schedule.test.mjs tests/agentPlan.test.mjs tests/agentRuntime.test.mjs tests/artifact.test.mjs tests/codegen.test.mjs tests/boundaries.test.mjs tests/inline.test.mjs tests/deployment.test.mjs tests/engines.test.mjs tests/core.test.mjs tests/memory.test.mjs",
     "type-check": "tsc --noEmit",
     "validate": "npm run type-check && npm test && wrangler deploy --dry-run --outdir=.wrangler/dry",
-    "cf-types": "wrangler types",
-    "test:engines": "node --experimental-loader ./tests/ts-resolve.mjs --test tests/engines.test.mjs"
+    "cf-types": "wrangler types"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260831.1",
-    "wrangler": "^4.127.1",
-    "typescript": "^7.0.2"
+    "@cloudflare/workers-types": "^5.20260730.1",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.112.0"
+  },
+  "dependencies": {
+    "acorn": "^8.18.0",
+    "bidi-js": "^1.1.0"
   }
 }

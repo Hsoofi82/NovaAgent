@@ -5,13 +5,15 @@ import {
   NOVA_FONT_GID2ADV,
 } from "./novaFont";
 import { sanitizeHyperlink } from "./core";
+import { reorderBidi, directionalRuns, pdfUnicodeString, spreadsheetNumber } from "./typography";
+import { inspectJpeg, type JpegImage } from "./documentImages";
 
 /* ════════════════════════════════════════════════════════════════════════
  * SECTION 1 — PUBLIC TYPES
  * ══════════════════════════════════════════════════════════════════════ */
 
 /** Engine identity — bump the version when you extend renderers/themes. */
-export const NOVA_OFFICE_VERSION = "0.21 Beta";
+export const NOVA_OFFICE_VERSION = "0.30";
 export const NOVA_OFFICE_NAME = "Nova Office Engine";
 
 export type ExportFormat = "pdf" | "docx" | "xlsx" | "pptx" | "html" | "md";
@@ -27,7 +29,7 @@ export type BuiltinThemeName = "professional" | "modern" | "elegant" | "minimal"
 export type ThemeName = BuiltinThemeName | (string & {});
 
 export interface ExportOptions {
-  /** Desired format. Default "pdf". RTL content requesting "pdf" is auto-routed to "docx". */
+  /** Desired format. Default "pdf". Persian PDFs use an embedded Unicode font. */
   format?: ExportFormat;
   /** Visual theme. Default "professional". */
   theme?: ThemeName;
@@ -49,6 +51,8 @@ export interface ExportOptions {
   header?: string;
   /** Custom footer text (PDF/HTML). Falls back to a generated credit line. */
   footer?: string;
+  /** Already-fetched JPEG assets keyed by Markdown URL. Renderers perform no network access. */
+  images?: Record<string, Uint8Array>;
 }
 
 export interface ExportResult {
@@ -329,8 +333,33 @@ function isTableDivider(line: string): boolean {
   return /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(line);
 }
 
+/**
+ * Persian typography normalisation (from B). ASCII punctuation right after a
+ * Persian letter is replaced with its Persian counterpart and the most common
+ * broken ZWNJ joins are repaired, so shaped PDF output and every OOXML format
+ * inherit correct spacing/direction. Code fences and Latin text pass through.
+ */
+function normalizePersianTypo(text: string): string {
+  if (!text || !/[\u0600-\u06FF]/.test(text)) return text;
+  return text
+    .replace(/([\u0600-\u06FF])[;,]([\s\u200c]|$)/g, "$1،$2")
+    .replace(/([\u0600-\u06FF])\?/g, "$1؟")
+    // MERGE FIX: also match at the start of the string — the original required
+    // a leading space, so a sentence beginning with "می شود …" was never joined.
+    .replace(/(^|\s)(می|نمی) /g, "$1$2‌")
+    .replace(/ (ها|های|تر|ترین|ای|ام|ات|اش|مان)([،؛!\s]|$)/g, "‌$1$2");
+}
+
 export function parseDocument(input: string, opts: ExportOptions = {}): ParsedDoc {
-  const src = (input || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  // Line-by-line, but never inside a code fence: reshaping code or URLs breaks them.
+  let inFence = false;
+  const src = (input || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+    .split("\n")
+    .map(line => {
+      if (/^\s*(`{3,}|~{3,})/.test(line)) { inFence = !inFence; return line; }
+      return inFence ? line : normalizePersianTypo(line);
+    })
+    .join("\n");
   const lines = src.split("\n");
   const blocks: Block[] = [];
   const seenAnchors = new Set<string>();
@@ -935,6 +964,7 @@ const ARABIC_FORMS: Record<number, [number, number, number, number]> = {
 
 // Letters that join to the following letter (have initial/medial forms).
 function joinsToNext(cp: number): boolean {
+  if (cp === 0x0640 || cp === 0x200d) return true;
   const f = ARABIC_FORMS[cp];
   return !!f && f[2] !== f[0]; // initial differs from isolated ⇒ dual-joining
 }
@@ -968,8 +998,8 @@ function shapeArabic(text: string): number[] {
     // Determine neighbours ignoring combining marks.
     let prev = -1;
     for (let j = i - 1; j >= 0; j--) { if (!isArabicMark(cps[j])) { prev = cps[j]; break; } }
-    let next = -1;
-    for (let j = i + 1; j < cps.length; j++) { if (!isArabicMark(cps[j])) { next = cps[j]; break; } }
+    let next = -1, nextIndex = -1;
+    for (let j = i + 1; j < cps.length; j++) { if (!isArabicMark(cps[j])) { next = cps[j]; nextIndex = j; break; } }
 
     const prevJoins = prev >= 0 && joinsToNext(prev);
     const nextIsLetter = next >= 0 && isArabicLetter(next);
@@ -979,7 +1009,8 @@ function shapeArabic(text: string): number[] {
       const ligIso: Record<number, number> = { 0x0627: 0xFEFB, 0x0622: 0xFEF5, 0x0623: 0xFEF7, 0x0625: 0xFEF9 };
       const ligFin: Record<number, number> = { 0x0627: 0xFEFC, 0x0622: 0xFEF6, 0x0623: 0xFEF8, 0x0625: 0xFEFA };
       out.push(prevJoins ? ligFin[next] : ligIso[next]);
-      i++; // consume the alef too
+      for (let j = i + 1; j < nextIndex; j++) out.push(cps[j]);
+      i = nextIndex; // consume the actual alef, not an intervening combining mark
       continue;
     }
 
@@ -1007,38 +1038,11 @@ function runIsRTL(text: string): boolean {
  * Sufficient for typical Persian documents with embedded numbers/English.
  */
 function bidiReorder(cps: number[], baseRTL: boolean): number[] {
-  if (!baseRTL) return cps;
-  // Split into runs of "strong LTR" (latin letters, ASCII digits, and
-  // Persian/Arabic-Indic digits) vs the rest. Persian/Arabic digits (۰-۹ and
-  // ٠-٩) are logically LTR even inside RTL text — without this, a whole-line
-  // reversal scrambles their internal order too (e.g. "۱۳۹۹" -> "۹۹۳۱").
-  const isNumeric = (c: number) =>
-    (c >= 0x30 && c <= 0x39) ||   // ASCII digits
-    (c >= 0x0660 && c <= 0x0669) || // Arabic-Indic digits ٠-٩
-    (c >= 0x06F0 && c <= 0x06F9);   // Extended Arabic-Indic (Persian) digits ۰-۹
-  const isLatin = (c: number) => isNumeric(c) || (c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A);
-  const out: number[] = [];
-  let i = cps.length - 1;
-  while (i >= 0) {
-    if (isLatin(cps[i])) {
-      // collect the contiguous latin/numeric run, keep its internal order
-      let j = i;
-      while (
-        j >= 0 &&
-        (isLatin(cps[j]) || cps[j] === 0x20 || cps[j] === 0x2E || cps[j] === 0x2C || cps[j] === 0x066B || cps[j] === 0x066C)
-      ) j--;
-      for (let k = j + 1; k <= i; k++) out.push(cps[k]);
-      i = j;
-    } else {
-      out.push(cps[i]);
-      i--;
-    }
-  }
-  return out;
+  return Array.from(reorderBidi(cps.map(cp => String.fromCodePoint(cp)).join(""), baseRTL), char => char.codePointAt(0)!);
 }
 
 /** Full pipeline: shape + reorder a string for PDF emission. */
-function shapeForPdf(text: string, rtl: boolean): number[] {
+export function shapeForPdf(text: string, rtl: boolean): number[] {
   const shaped = shapeArabic(text);
   return bidiReorder(shaped, rtl);
 }
@@ -1105,6 +1109,7 @@ type RunStyle = "regular" | "bold" | "italic" | "mono";
 interface LaidRun { text: string; style: RunStyle; link?: string; w: number }
 
 class PdfBuilder {
+  private images = new Map<string, { name: string; image: JpegImage }>();
   private pages: PdfPage[] = [];
   private cur!: PdfPage;
   private cursorY = 0;
@@ -1136,7 +1141,7 @@ class PdfBuilder {
   /** Width (in text-space/1000) of a shaped-then-mapped string in the embedded font. */
   private measureEmbedded(text: string): number {
     let w = 0;
-    for (const ch of text) w += glyphAdvance(ch.codePointAt(0)!);
+    for (const cp of shapeArabic(text)) if (cp !== 0x200c && cp !== 0x200d) w += glyphAdvance(cp);
     return w;
   }
 
@@ -1163,9 +1168,10 @@ class PdfBuilder {
     const x = Math.max(opts.xLeft ?? MARGIN_X, xRight - wPts);
     const baseline = PAGE_H - this.cursorY - size;
     this.cur.ops.push(
+      `/Span << /ActualText ${pdfUnicodeString(text)} >> BDC`,
       "BT", `/FA ${size} Tf`, `${this.col(color)} rg`,
       `1 0 0 1 ${x.toFixed(2)} ${baseline.toFixed(2)} Tm`,
-      `${this.glyphHex(cps)} Tj`, "ET",
+      `${this.glyphHex(cps)} Tj`, "ET", "EMC",
     );
   }
 
@@ -1173,16 +1179,23 @@ class PdfBuilder {
   private wrapRtl(text: string, size: number, maxWidthPts: number): string[] {
     const words = text.split(/(\s+)/).filter(w => w !== "");
     const lines: string[] = [];
-    let cur = "";
+    let cur = "", curWidth = 0;
     const widthOf = (s: string) => (this.measureEmbedded(s) / 1000) * size;
     for (const word of words) {
-      const trial = cur + word;
-      if (widthOf(trial) > maxWidthPts && cur.trim()) {
+      const wordWidth = widthOf(word);
+      if (curWidth + wordWidth > maxWidthPts && cur.trim()) {
         lines.push(cur.trim());
-        cur = /^\s+$/.test(word) ? "" : word;
-      } else {
-        cur = trial;
+        cur = ""; curWidth = 0;
       }
+      if (!cur && /^\s+$/.test(word)) continue;
+      // A long URL/token must wrap rather than bleed into the next table column.
+      if (wordWidth > maxWidthPts) {
+        for (const char of word) {
+          const w = widthOf(char);
+          if (curWidth + w > maxWidthPts && cur) { lines.push(cur); cur = ""; curWidth = 0; }
+          cur += char; curWidth += w;
+        }
+      } else { cur += word; curWidth += wordWidth; }
     }
     if (cur.trim()) lines.push(cur.trim());
     return lines.length ? lines : [""];
@@ -1527,6 +1540,22 @@ class PdfBuilder {
   }
 
   private renderImagePlaceholder(b: Extract<Block, { type: "image" }>): void {
+    const image = inspectJpeg(this.opts.images?.[b.url]);
+    if (image && this.images.size < 8) {
+      let asset = this.images.get(b.url);
+      if (!asset) { asset = { name: `Im${this.images.size + 1}`, image }; this.images.set(b.url, asset); }
+      const scale = Math.min(CONTENT_W / image.width, 300 / image.height, 1);
+      const w = image.width * scale, h = image.height * scale;
+      this.ensureSpace(h + 38);
+      this.cur.ops.push(`q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${(MARGIN_X + (CONTENT_W - w) / 2).toFixed(2)} ${(PAGE_H - this.cursorY - h).toFixed(2)} cm /${asset.name} Do Q`);
+      this.cursorY += h + 6;
+      if (b.alt) {
+        if (this.rtl) { this.emitRtlText(b.alt, 9, this.theme.textFaint); this.cursorY += 18; }
+        else this.renderParagraph([{ text: b.alt, italic: true }]);
+      }
+      this.cursorY += 8;
+      return;
+    }
     // We cannot fetch/embed remote images in the Worker synchronously; show a
     // captioned reference box so the layout still communicates the image.
     const boxH = 46;
@@ -1645,24 +1674,40 @@ class PdfBuilder {
         break;
       }
       case "table": {
-        // Render each cell as a right-aligned shaped line, simple grid.
-        const size = 10.5; const lineH = size * 1.7;
-        const allRows = [b.header, ...b.rows].filter(r => r.length);
-        const cols = Math.max(1, ...allRows.map(r => r.length));
-        const colW = CONTENT_W / cols;
-        allRows.forEach((row, ri) => {
-          this.ensureSpaceRtl(lineH);
-          const baseY = PAGE_H - this.cursorY;
-          if (ri === 0) this.cur.ops.push(`${this.col(this.theme.tableHeaderBg)} rg`, `${MARGIN_X} ${(baseY - lineH + 4).toFixed(2)} ${CONTENT_W} ${lineH} re f`);
-          row.forEach((cell, ci) => {
-            // columns laid right-to-left
-            const cellRight = right - ci * colW;
-            const color = ri === 0 ? this.theme.tableHeaderText : this.theme.text;
-            const txt = this.clip(plainInline(cell), 40);
-            this.emitRtlText(txt, size, color, { xRight: cellRight - 4, xLeft: cellRight - colW + 4 });
-          });
-          this.cursorY += lineH;
-        });
+        const size = 10, lineH = 17, padding = 6;
+        const cols = Math.max(1, b.header.length, ...b.rows.map(r => r.length)), colW = CONTENT_W / cols;
+        const wrap = (row: Inline[][]) => Array.from({ length: cols }, (_, i) => this.wrapRtl(plainInline(row[i] ?? []), size, colW - padding * 2));
+        const header = b.header.length ? wrap(b.header) : null;
+        const headerLines = header ? Math.max(...header.map(c => c.length)) : 0;
+        const paint = (cells: string[][], start: number, count: number, isHeader: boolean, stripe: boolean) => {
+          const y = this.cursorY, h = count * lineH + padding * 2;
+          if (isHeader || stripe) this.cur.ops.push(`${this.col(isHeader ? this.theme.tableHeaderBg : this.theme.codeBg)} rg`, `${MARGIN_X} ${PAGE_H - y - h} ${CONTENT_W} ${h} re f`);
+          for (let ci = 0; ci < cols; ci++) {
+            const edge = right - ci * colW;
+            this.cur.ops.push(`${this.col(this.theme.rule)} RG 0.4 w`, `${edge - colW} ${PAGE_H - y - h} ${colW} ${h} re S`);
+            for (let line = 0; line < count; line++) {
+              this.cursorY = y + padding + line * lineH;
+              const text = cells[ci][start + line];
+              if (text) this.emitRtlText(text, size, isHeader ? this.theme.tableHeaderText : this.theme.text, { xRight: edge - padding, xLeft: edge - colW + padding });
+            }
+          }
+          this.cursorY = y + h;
+        };
+        const rows = [...(header ? [{ cells: header, head: true }] : []), ...b.rows.map(row => ({ cells: wrap(row), head: false }))];
+        for (let ri = 0; ri < rows.length; ri++) {
+          const row = rows[ri], lines = Math.max(1, ...row.cells.map(c => c.length));
+          let offset = 0;
+          while (offset < lines) {
+            if (this.cursorY + lineH + padding * 2 > PAGE_H - MARGIN_BOTTOM) {
+              this.newPage();
+              if (!row.head && header && headerLines <= 6) paint(header, 0, headerLines, true, false);
+            }
+            const capacity = Math.max(1, Math.floor((PAGE_H - MARGIN_BOTTOM - this.cursorY - padding * 2) / lineH));
+            const count = Math.min(capacity, lines - offset);
+            paint(row.cells, offset, count, row.head, ri % 2 === 0);
+            offset += count;
+          }
+        }
         this.cursorY += 6;
         break;
       }
@@ -1814,12 +1859,28 @@ class PdfBuilder {
         `/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> ` +
         `/FontDescriptor ${descNum} 0 R /CIDToGIDMap /Identity /DW 500 /W [${wEntries.join(" ")}] >>`,
       );
+      const unicodeByGlyph = new Map<number, string>();
+      for (const [cp, gid] of Object.entries(NOVA_FONT_UNI2GID)) {
+        const logical = String.fromCodePoint(Number(cp)).normalize("NFKC");
+        if (!unicodeByGlyph.has(gid)) unicodeByGlyph.set(gid, logical);
+      }
+      const mappings = [...unicodeByGlyph].map(([gid, text]) => `<${gid.toString(16).padStart(4, "0")}> ${pdfUnicodeString(text).replace("<feff", "<")}`);
+      const groups: string[] = [];
+      for (let i = 0; i < mappings.length; i += 100) {
+        const group = mappings.slice(i, i + 100); groups.push(`${group.length} beginbfchar\n${group.join("\n")}\nendbfchar`);
+      }
+      const cmap = utf8(`/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n/CMapName /NovaUnicode def\n/CMapType 2 def\n1 begincodespacerange\n<0000> <ffff>\nendcodespacerange\n${groups.join("\n")}\nendcmap\nCMapName currentdict /CMap defineresource pop\nend\nend`);
+      const cmapNum = addObj(`<< /Length ${cmap.length} >>`, cmap);
       fA = addObj(
         `<< /Type /Font /Subtype /Type0 /BaseFont /NovaVazir /Encoding /Identity-H ` +
-        `/DescendantFonts [${cidFontNum} 0 R] >>`,
+        `/DescendantFonts [${cidFontNum} 0 R] /ToUnicode ${cmapNum} 0 R >>`,
       );
     }
 
+    const imageRefs = [...this.images.values()].map(({name,image}) => {
+      const id = addObj(`<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace /${image.channels === 1 ? "DeviceGray" : "DeviceRGB"} /BitsPerComponent 8 /Filter /DCTDecode /Length ${image.bytes.length} >>`, image.bytes);
+      return `/${name} ${id} 0 R`;
+    }).join(" ");
     const pageObjNums: number[] = [];
     for (const pg of this.pages) {
       const content = utf8(pg.ops.join("\n"));
@@ -1842,7 +1903,7 @@ class PdfBuilder {
       const faRef = fA ? ` /FA ${fA} 0 R` : "";
       const pageNum = addObj(
         `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_W} ${PAGE_H}] ` +
-        `/Resources << /Font << /FR ${fR} 0 R /FB ${fB} 0 R /FI ${fI} 0 R /FM ${fM} 0 R${faRef} >> >> ` +
+        `/Resources << /Font << /FR ${fR} 0 R /FB ${fB} 0 R /FI ${fI} 0 R /FM ${fM} 0 R${faRef} >> /XObject << ${imageRefs} >> >> ` +
         `/Contents ${contentNum} 0 R${annotsRef} >>`,
       );
       pageObjNums.push(pageNum);
@@ -1855,7 +1916,7 @@ class PdfBuilder {
     // metadata (info dict)
     const esc = (s: string) => s.replace(/[()\\]/g, "\\$&");
     const infoNum = addObj(
-      `<< /Title (${esc(meta.title || "Document")}) /Author (${esc(meta.author || "Nova")}) /Producer (${NOVA_OFFICE_NAME}) /Creator (Nova) >>`,
+      `<< /Title ${pdfUnicodeString(meta.title || "Document")} /Author ${pdfUnicodeString(meta.author || "Nova")} /Producer (${NOVA_OFFICE_NAME}) /Creator (Nova) >>`,
     );
 
     // assemble byte stream with xref
@@ -1965,6 +2026,7 @@ function hp(pt: number): string {
 }
 
 class DocxRenderer {
+  private imageFiles: Array<{ path: string; data: Uint8Array }> = [];
   private theme: Theme;
   private opts: ExportOptions;
   private rtl: boolean;
@@ -1998,14 +2060,13 @@ class DocxRenderer {
       if (inl.italic) rpr.push("<w:i/><w:iCs/>");
       if (inl.strike) rpr.push("<w:strike/>");
       if (inl.code) rpr.push('<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/><w:shd w:val="clear" w:fill="' + hex(this.theme.codeBg) + '"/>');
-      if (this.rtl) rpr.push("<w:rtl/>");
       const color = inl.link ? "0563C1" : baseColor;
       if (color) rpr.push(`<w:color w:val="${color}"/>`);
       if (inl.link) rpr.push("<w:u w:val=\"single\"/>");
       const rprXml = rpr.length ? `<w:rPr>${rpr.join("")}</w:rPr>` : "";
       // preserve spaces
-      const text = `<w:t xml:space="preserve">${xmlEsc(inl.text)}</w:t>`;
-      const run = `<w:r>${rprXml}${text}</w:r>`;
+      const run = directionalRuns(inl.text, inl.code ? false : this.rtl).map(segment =>
+        `<w:r><w:rPr>${rpr.join("")}<w:rtl w:val="${segment.rtl ? 1 : 0}"/><w:lang w:val="${segment.rtl ? "fa-IR" : "en-US"}" w:bidi="fa-IR"/></w:rPr><w:t xml:space="preserve">${xmlEsc(segment.text)}</w:t></w:r>`).join("");
       if (inl.link) {
         const rid = this.addHyperlink(inl.link);
         out += `<w:hyperlink r:id="${rid}">${run}</w:hyperlink>`;
@@ -2020,7 +2081,9 @@ class DocxRenderer {
     const ppr: string[] = [];
     if (opts.style) ppr.push(`<w:pStyle w:val="${opts.style}"/>`);
     if (opts.numId !== undefined) ppr.push(`<w:numPr><w:ilvl w:val="${opts.ilvl ?? 0}"/><w:numId w:val="${opts.numId}"/></w:numPr>`);
-    if (this.rtl) ppr.push("<w:bidi/>");
+    if (this.rtl && opts.style !== "Code") ppr.push("<w:bidi/>");
+    if (opts.style === "Code") ppr.push('<w:bidi w:val="0"/><w:jc w:val="left"/>');
+    if (opts.style?.startsWith("Heading")) ppr.push("<w:keepNext/><w:keepLines/>");
     const spacing: string[] = [];
     if (opts.spacingBefore !== undefined) spacing.push(`w:before="${opts.spacingBefore}"`);
     if (opts.spacingAfter !== undefined) spacing.push(`w:after="${opts.spacingAfter}"`);
@@ -2052,8 +2115,16 @@ class DocxRenderer {
       }
       case "table":
         return this.table(b);
-      case "image":
-        return this.para([{ text: `[${b.alt || "image"}] ${b.url}`.trim(), italic: true, link: b.url || undefined }], { style: "Body" });
+      case "image": {
+        const image = inspectJpeg(this.opts.images?.[b.url]);
+        if (!image || this.imageFiles.length >= 8) return this.para([{ text: `[${b.alt || "image"}] ${b.url}`.trim(), italic: true, link: b.url || undefined }], { style: "Body" });
+        const id = this.imageFiles.length + 1, rid = `rIdImage${id}`;
+        this.imageFiles.push({ path: `word/media/image${id}.jpg`, data: image.bytes });
+        this.rels.push(`<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image${id}.jpg"/>`);
+        const scale = Math.min(5_900_000 / image.width, 3_800_000 / image.height);
+        const cx = Math.round(image.width * scale), cy = Math.round(image.height * scale);
+        return `<w:p><w:r><w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${id}" name="Image ${id}" descr="${xmlEsc(b.alt)}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${id}" name="image${id}.jpg"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>${this.para([{text:b.alt,italic:true}])}`;
+      }
       case "hr":
         return `<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="${hex(this.theme.rule)}"/></w:pBdr></w:pPr></w:p>`;
     }
@@ -2110,7 +2181,7 @@ class DocxRenderer {
 
     // section props (page size + RTL)
     const sect =
-      `<w:sectPr>${this.rtl ? "<w:bidi/>" : ""}` +
+      `<w:sectPr><w:headerReference w:type="default" r:id="rIdHeader"/><w:footerReference w:type="default" r:id="rIdFooter"/>${this.rtl ? "<w:bidi/>" : ""}` +
       `<w:pgSz w:w="12240" w:h="15840"/>` +
       `<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>` +
       `</w:sectPr>`;
@@ -2122,6 +2193,9 @@ class DocxRenderer {
       `<w:body>${body}${sect}</w:body></w:document>`;
 
     add("word/document.xml", documentXml);
+    const chrome = (tag: string, text: string, page = false) => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:${tag} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr>${this.rtl ? "<w:bidi/>" : ""}<w:jc w:val="${this.rtl ? "right" : "left"}"/></w:pPr>${this.runs([{ text }])}${page ? '<w:r><w:t xml:space="preserve"> · </w:t></w:r><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple>' : ""}</w:p></w:${tag}>`;
+    add("word/header1.xml", chrome("hdr", this.opts.header ?? doc.title ?? ""));
+    add("word/footer1.xml", chrome("ftr", this.opts.footer ?? NOVA_OFFICE_NAME, this.opts.pageNumbers !== false));
     add("word/styles.xml", this.stylesXml());
     add("word/numbering.xml", this.numberingXml());
     add("[Content_Types].xml", this.contentTypesXml());
@@ -2130,11 +2204,11 @@ class DocxRenderer {
     add("docProps/app.xml", this.appXml());
     add("word/_rels/document.xml.rels", this.docRelsXml());
 
-    return zipSync(files);
+    return zipSync([...files, ...this.imageFiles]);
   }
 
   private stylesXml(): string {
-    const bodyFont = "Calibri";
+    const bodyFont = this.rtl ? "Tahoma" : "Calibri";
     const headColor = hex(this.theme.heading);
     const accent = hex(this.theme.accent);
     const faint = hex(this.theme.textFaint);
@@ -2178,9 +2252,12 @@ class DocxRenderer {
       `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
       `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
       `<Default Extension="xml" ContentType="application/xml"/>` +
+      `<Default Extension="jpg" ContentType="image/jpeg"/>` +
       `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
       `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
       `<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>` +
+      `<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>` +
+      `<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>` +
       `<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>` +
       `<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>` +
       `</Types>`;
@@ -2200,6 +2277,8 @@ class DocxRenderer {
       `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
       `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
       `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>` +
+      `<Relationship Id="rIdHeader" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>` +
+      `<Relationship Id="rIdFooter" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>` +
       this.rels.join("") +
       `</Relationships>`;
   }
@@ -2261,12 +2340,14 @@ class XlsxRenderer {
   private theme: Theme;
   private shared: string[] = [];
   private sharedIdx = new Map<string, number>();
+  private sharedCount = 0;
 
   constructor(theme: Theme, _opts: ExportOptions) {
     this.theme = theme;
   }
 
   private si(text: string): number {
+    this.sharedCount++;
     let idx = this.sharedIdx.get(text);
     if (idx === undefined) {
       idx = this.shared.length;
@@ -2319,18 +2400,25 @@ class XlsxRenderer {
           const ref = `${colLetter(c)}${r + 1}`;
           const styleId = cell.style === "header" ? 1 : cell.style === "title" ? 2 : 0;
           const sAttr = styleId ? ` s="${styleId}"` : "";
+          const numeric = cell.style === "normal" ? spreadsheetNumber(cell.text) : null;
+          if (numeric !== null) return `<c r="${ref}"${sAttr}><v>${numeric}</v></c>`;
           const sidx = this.si(cell.text);
           return `<c r="${ref}"${sAttr} t="s"><v>${sidx}</v></c>`;
         }).join("");
         rowsXml += `<row r="${r + 1}">${cells}</row>`;
       });
       const cols = Math.max(1, ...sheet.rows.map(r => r.length));
-      const colsXml = `<cols><col min="1" max="${cols}" width="24" customWidth="1"/></cols>`;
+      const colsXml = `<cols>${Array.from({length:cols},(_,i)=>{
+        const width=Math.min(48,Math.max(12,...sheet.rows.slice(0,100).map(row=>(row[i]?.text.length??0)+3)));
+        return `<col min="${i+1}" max="${i+1}" width="${width}" customWidth="1"/>`;
+      }).join("")}</cols>`;
       const dim = `A1:${colLetter(cols - 1)}${Math.max(1, sheet.rows.length)}`;
       return (
         `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
         `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
-        `<dimension ref="${dim}"/>${colsXml}<sheetData>${rowsXml}</sheetData></worksheet>`
+        `<dimension ref="${dim}"/><sheetViews><sheetView workbookViewId="0" rightToLeft="${doc.rtl ? 1 : 0}"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>${colsXml}<sheetData>${rowsXml}</sheetData>` +
+        (sheet.rows[0]?.every(c=>c.style==="header") ? `<autoFilter ref="${dim}"/>` : "") +
+        `<pageMargins left="0.3" right="0.3" top="0.5" bottom="0.5" header="0.2" footer="0.2"/><pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>`
       );
     });
     sheetXmls.forEach((xml, i) => add(`xl/worksheets/sheet${i + 1}.xml`, xml));
@@ -2338,7 +2426,7 @@ class XlsxRenderer {
     // shared strings
     const sst =
       `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-      `<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${this.shared.length}" uniqueCount="${this.shared.length}">` +
+      `<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${this.sharedCount}" uniqueCount="${this.shared.length}">` +
       this.shared.map(s => `<si><t xml:space="preserve">${xmlEsc(s)}</t></si>`).join("") +
       `</sst>`;
     add("xl/sharedStrings.xml", sst);
@@ -2360,7 +2448,7 @@ class XlsxRenderer {
       `<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>` +
       `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>` +
       `<cellXfs count="3">` +
-      `<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>` +
+      `<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1" readingOrder="${doc.rtl ? 2 : 0}"/></xf>` +
       `<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment vertical="center"/></xf>` +
       `<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>` +
       `</cellXfs>` +
@@ -2481,16 +2569,28 @@ class PptxRenderer {
         // flatten table into "a | b | c" bullet rows (compact)
         if (b.header.length) cur!.bullets.push({ text: b.header.map(plainInline).join("  |  "), level: 0 });
         for (const r of b.rows) cur!.bullets.push({ text: r.map(plainInline).join("  |  "), level: 1 });
+      } else if (b.type === "code" || b.type === "image") {
+        if (!cur) ensure(doc.title || "");
+        cur!.bullets.push({ text: b.type === "code" ? b.text : `${b.alt} ${b.url}`, level: 0 });
       }
     }
     flush();
     // cap bullets per slide to keep slides readable; overflow → continuation slides
     const capped: Slide[] = [];
     for (const s of slides) {
-      if (s.isTitle || s.bullets.length <= 10) { capped.push(s); continue; }
-      for (let i = 0; i < s.bullets.length; i += 10) {
-        capped.push({ title: i === 0 ? s.title : `${s.title} (cont.)`, bullets: s.bullets.slice(i, i + 10) });
+      if (s.isTitle) { capped.push(s); continue; }
+      let page: Slide = { title: s.title, bullets: [] }, lines = 0;
+      for (const bullet of s.bullets) {
+        const chunks = bullet.text.match(/[\s\S]{1,350}(?:\s|$)|[\s\S]{1,350}/g) ?? [""];
+        for (const text of chunks) {
+          const cost = Math.ceil(text.length / 75) + 1;
+          if (lines + cost > 14 && page.bullets.length) {
+            capped.push(page); page = { title: `${s.title} ${this.rtl ? "(ادامه)" : "(cont.)"}`, bullets: [] }; lines = 0;
+          }
+          page.bullets.push({ ...bullet, text }); lines += cost;
+        }
       }
+      if (page.bullets.length || page.title) capped.push(page);
     }
     return capped;
   }
@@ -2501,8 +2601,8 @@ class PptxRenderer {
     const accent = hex(this.theme.accent);
     const head = hex(this.theme.heading);
     const faint = hex(this.theme.textFaint);
-    const algn = this.rtl ? ' algn="r"' : "";
-    const rtlAttr = this.rtl ? ' rtl="1"' : "";
+    const algn = this.rtl ? ' algn="r" rtl="1"' : "";
+    const rtlAttr = "";
     return (
       `<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ` +
       `xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ` +
@@ -2530,11 +2630,11 @@ class PptxRenderer {
     const accent = hex(this.theme.accent);
     const head = hex(this.theme.heading);
     const text = hex(this.theme.text);
-    const algn = this.rtl ? ' algn="r"' : "";
-    const rtlAttr = this.rtl ? ' rtl="1"' : "";
+    const algn = this.rtl ? ' algn="r" rtl="1"' : "";
+    const rtlAttr = "";
     const body = s.bullets.length
       ? s.bullets.map(bl => {
-          const indent = bl.level > 0 ? ` marL="${457200 * bl.level}" lvl="${Math.min(bl.level, 4)}"` : "";
+          const indent = bl.level > 0 ? ` ${this.rtl ? "marR" : "marL"}="${457200 * bl.level}" lvl="${Math.min(bl.level, 4)}"` : "";
           return `<a:p><a:pPr${indent}${algn}><a:buChar char="•"/></a:pPr>` +
             `<a:r><a:rPr lang="en-US" sz="2000"${rtlAttr}><a:solidFill><a:srgbClr val="${text}"/></a:solidFill></a:rPr>` +
             `<a:t>${this.esc(bl.text)}</a:t></a:r></a:p>`;
@@ -2775,6 +2875,7 @@ function renderHtml(doc: ParsedDoc, opts: ExportOptions): Uint8Array {
 
   const footer = opts.footer ?? (rtl ? `ساخته‌شده با ${NOVA_OFFICE_NAME}` : `Generated by ${NOVA_OFFICE_NAME}`);
   const css = `
+    ${rtl ? `@font-face { font-family: 'Vazirmatn'; src: url(data:font/ttf;base64,${NOVA_FONT_TTF_B64}) format('truetype'); font-display: swap; }` : ""}
     :root { color-scheme: ${theme.pageBg && theme.pageBg[0] < 0.5 ? "dark" : "light"}; }
     * { box-sizing: border-box; }
     body { font-family: ${fontStack}; line-height: 1.75; color: ${c(theme.text)};
@@ -2810,6 +2911,12 @@ function renderHtml(doc: ParsedDoc, opts: ExportOptions): Uint8Array {
     .toc li.lvl2 { padding-${rtl ? "right" : "left"}: 1.4em; font-size: .95em; }
     .toc a { text-decoration: none; }
     .footer { margin-top: 60px; padding-top: 16px; border-top: 1px solid ${c(theme.rule)}; text-align: center; color: ${c(theme.textFaint)}; font-size: .8em; }
+    pre,code { direction: ltr; unicode-bidi: isolate; text-align: left; }
+    p,li,td,th { overflow-wrap: anywhere; }
+    h1,h2,h3,h4 { break-after: avoid; }
+    p,li { orphans: 3; widows: 3; }
+    @media (max-width: 600px) { .page { padding: 24px 18px; } table { display: block; overflow-x: auto; } }
+    @media print { @page { size: A4; margin: 18mm; } .page { max-width: none; padding: 0; } .cover { break-after: page; } thead { display: table-header-group; } tr,figure { break-inside: avoid; } pre { white-space: pre-wrap; } }
   `.trim();
 
   const html =
@@ -2955,6 +3062,8 @@ export function officeCapabilities(): {
       "tables",
       "code-blocks",
       "custom-themes",
+      "unicode-bidi-bracket-resolution", "pdf-actualtext-tounicode", "jpeg-embedding",
+      "paginated-rtl-tables", "numeric-spreadsheet-cells", "content-aware-slide-pagination",
     ],
   };
 }

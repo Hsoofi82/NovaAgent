@@ -4,6 +4,7 @@
     "module": "ESNext",
     "lib": ["ES2022"],
     "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
     "types": ["@cloudflare/workers-types"],
     "strict": true,
     "esModuleInterop": true,

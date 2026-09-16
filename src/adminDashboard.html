@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <meta name="robots" content="noindex,nofollow">
 <title>Nova — Admin Control Center</title>
@@ -182,7 +182,10 @@ hr{border:0;border-block-start:1px solid var(--border);margin-block:var(--s3)}
   min-height:var(--tap);padding:0 var(--s3);border-radius:var(--r-md);
   color:var(--text-soft);font-size:var(--fs-base);
 }
-.navitem .ni{width:22px;text-align:center;font-size:var(--fs-md);flex:0 0 auto}
+.navitem .ni{width:18px;height:18px;flex:0 0 auto;display:block}
+.navgroup{display:grid;gap:var(--s1)}
+.navgroup+.navgroup{margin-top:var(--s2);padding-top:var(--s2);border-top:1px solid var(--border)}
+.navgroup-label{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);padding:0 10px}
 .navitem:hover{background:var(--surface-2);color:var(--text);border-color:transparent}
 .navitem[aria-current="page"]{
   background:linear-gradient(135deg,var(--accent-soft),rgba(47,211,167,.09));
@@ -282,7 +285,10 @@ td.num{font-variant-numeric:tabular-nums}
   background:var(--accent-soft);border:1px solid rgba(124,111,247,.28);color:#cdc7ff;
 }
 .risk-high{color:#ff7b88;font-weight:650}.risk-med{color:var(--warn)}.risk-low{color:var(--good)}
-.good-text{color:var(--good)}.bad-text{color:var(--bad)}
+.good-text{color:var(--good)}.bad-text{color:var(--bad)}.warn-text{color:var(--warn)}
+.dim{color:var(--muted)}
+.pill.ok{border-color:#22705d;background:var(--good-soft);color:var(--good)}
+.pill.bad{border-color:#6d2a35;background:var(--bad-soft);color:#ff9ba5}
 
 /* ── status / empty / skeleton ──────────────────────────────────────── */
 .status{padding:var(--s5) var(--s4);color:var(--muted);font-size:var(--fs-base);text-align:center}
@@ -503,6 +509,15 @@ html[dir="rtl"] .dpanel-body{--exp-from:14px;--exp-origin:right}
    thumbnail pipeline), so every one is lazy and decoded off the main thread;
    nothing above the fold blocks on media that may never be scrolled to. */
 .mbar{display:flex;justify-content:space-between;align-items:center;gap:var(--s2);flex-wrap:wrap;padding:var(--s3);border-block-end:1px solid var(--border)}
+.krow{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap;margin-block-end:var(--s3)}
+.mstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:var(--s3);padding:var(--s3);border-block-end:1px solid var(--border)}
+.mstat h4{margin:0 0 var(--s2);font-size:var(--fs-xs);font-weight:650;color:var(--muted);letter-spacing:.02em}
+.mstatrow{display:flex;flex-wrap:wrap;gap:var(--s1)}
+.mstatrow .pill{font-size:var(--fs-xs);padding:3px var(--s2)}
+.mstatrow .pill b{color:var(--text);font-weight:650}
+.kbar{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap;min-height:30px}
+.chk{display:inline-flex;align-items:center;gap:var(--s2);font-size:var(--fs-sm);color:var(--text-soft);cursor:pointer}
+.chk input{width:16px;height:16px;accent-color:var(--accent);margin:0;flex:none}
 .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:var(--s3);padding:var(--s3)}
 .mcard{background:var(--sunken);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;display:flex;flex-direction:column}
 .mcard:hover{border-color:var(--border-strong)}
@@ -536,6 +551,21 @@ html[dir="rtl"] .dpanel-body{--exp-from:14px;--exp-origin:right}
 .stk-stats span{display:block;color:var(--muted);font-size:var(--fs-xs)}
 .stk-stats b{display:block;margin-block-start:var(--s1);font-size:var(--fs-md);font-variant-numeric:tabular-nums}
 .stk-cats{display:flex;flex-wrap:wrap;gap:var(--s2);padding:0 var(--s4) var(--s4)}
+/* Health strip: the panel's job is telling you whether the library WORKS,
+   not letting you hand-maintain a mapping table. */
+.stk-health{padding:0 var(--s4) var(--s4)}
+.stk-health .hbar{
+  display:flex;align-items:center;gap:var(--s3);padding:var(--s3);
+  background:var(--sunken);border:1px solid var(--border);border-radius:var(--r-md);
+}
+.stk-health .score{font-size:var(--fs-lg);font-weight:700;font-variant-numeric:tabular-nums}
+.stk-health .meter{flex:1;height:8px;border-radius:var(--r-full);background:var(--surface-2);overflow:hidden}
+.stk-health .meter i{display:block;height:100%;border-radius:var(--r-full);transition:inline-size var(--dur-slow)}
+.stk-health.ok .score,.stk-health.ok .meter i{color:var(--good);background:var(--good)}
+.stk-health.warn .score,.stk-health.warn .meter i{color:var(--warn);background:var(--warn)}
+.stk-health.bad .score,.stk-health.bad .meter i{color:var(--bad);background:var(--bad)}
+.stk-health .score{background:none !important}
+.stk-health ul{margin:var(--s2) 0 0;padding-inline-start:var(--s4);color:var(--muted);font-size:var(--fs-xs);line-height:1.9}
 .stk-cat{
   display:inline-flex;align-items:center;gap:var(--s2);min-height:34px;
   padding:0 var(--s3);border:1px solid var(--border);border-radius:var(--r-full);
@@ -614,6 +644,15 @@ html[dir="rtl"] .dpanel-body{--exp-from:14px;--exp-origin:right}
 @media(prefers-contrast:more){
   :root{--border:#4a5c7d;--border-strong:#6b7fa5;--muted:#9dabc4}
 }
+.ops-chart{display:flex;align-items:flex-end;gap:6px;height:110px;direction:ltr;padding:var(--s3);border-bottom:1px solid var(--border)}
+.ops-bar{flex:1;background:var(--accent);min-height:2px;border-radius:4px 4px 0 0;position:relative}
+.ops-bar span{position:absolute;inset-inline:0;bottom:0;background:var(--bad);border-radius:4px 4px 0 0}
+.ops-trace{display:grid;gap:var(--s2);margin:0;padding:var(--s4);list-style:none}
+.ops-trace li{display:flex;gap:var(--s3);border-inline-start:2px solid var(--border-strong);padding-inline-start:var(--s3)}
+.ops-detail{border-top:1px solid var(--border);background:var(--sunken)}
+.ops-toolbar{display:flex;gap:var(--s2);align-items:center;flex-wrap:wrap;padding:var(--s3)}
+.ops-toolbar select{max-width:240px}.ops-toolbar .tag{margin-inline-start:auto}
+.ops-message{white-space:pre-wrap;overflow-wrap:anywhere;max-width:650px}
 </style>
 </head>
 <body>
@@ -648,6 +687,34 @@ html[dir="rtl"] .dpanel-body{--exp-from:14px;--exp-origin:right}
         <div class="card"><div class="section-head"><h2>مصرف امروز</h2></div><div class="list" id="overviewUsage"></div></div>
       </section>
 
+      <section class="panel" id="panel-runs" role="tabpanel" aria-labelledby="tab-runs">
+        <div class="page-head"><h1>مرکز اجرای عامل</h1><p>اجرای ابزارها و خطاها از همه نمونه‌های سرور · نگهداری ۱۴ روز · گفتگوی سادهٔ موفق برای کاهش نوشتن D1 در این فهرست ذخیره نمی‌شود.</p></div>
+        <div class="metrics" id="runMetrics"></div>
+        <div class="card"><div class="section-head"><h2>فعالیت ۲۴ ساعت اخیر</h2><span class="tag" id="runFreshness" aria-live="polite">—</span></div><div id="runChart"></div></div>
+        <div class="card">
+          <div class="ops-toolbar"><label for="runFilter">وضعیت اجرا</label><select id="runFilter"><option value="">همه</option><option value="running">در حال اجرا</option><option value="completed">کامل</option><option value="partial">ناقص</option><option value="failed">ناموفق</option><option value="interrupted">قطع‌شده / مهلت گذشته</option><option value="cancelled">لغوشده</option></select><button class="sm" id="runsRefresh">↻ تازه‌سازی</button></div>
+          <div id="runList" class="list"></div>
+          <div class="pager"><button class="sm" id="runsPrev">‹ قبلی</button><span id="runsPage" class="tag">۱</span><button class="sm" id="runsNext">بعدی ›</button></div>
+        </div>
+      </section>
+      <section class="panel" id="panel-jobs" role="tabpanel" aria-labelledby="tab-jobs">
+        <div class="page-head"><h1>زمان‌بندی و کارهای خودکار</h1><p>کنترل صف عامل و یادآورها؛ توقف موقت بر اجرای جاری اثر لغو ندارد.</p></div>
+        <div class="metrics" id="jobMetrics"></div>
+        <div class="card"><div class="ops-toolbar"><label for="jobFilter">وضعیت صف</label><select id="jobFilter"><option value="">همه</option><option value="pending">در انتظار</option><option value="running">در حال اجرا</option><option value="paused">متوقف</option></select><button class="sm" id="jobsRefresh">↻ تازه‌سازی</button></div>
+          <div id="jobList" class="list"></div>
+          <div class="pager"><button class="sm" id="jobsPrev">‹ قبلی</button><span id="jobsPage" class="tag">۱</span><button class="sm" id="jobsNext">بعدی ›</button></div>
+        </div>
+      </section>
+      <section class="panel" id="panel-audit" role="tabpanel" aria-labelledby="tab-audit">
+        <div class="page-head"><h1>تاریخچه مدیریت</h1><p>ثبت پایدار عملیات پنل، مدیر و نتیجه · نگهداری ۹۰ روز · بدون متن خصوصی یا کلیدها</p></div>
+        <div class="card"><div class="ops-toolbar"><button class="sm" id="auditRefresh">↻ تازه‌سازی</button></div><div id="auditList" class="list"></div>
+          <div class="pager"><button class="sm" id="auditPrev">‹ قبلی</button><span id="auditPage" class="tag">۱</span><button class="sm" id="auditNext">بعدی ›</button></div>
+        </div>
+      </section>
+      <section class="panel" id="panel-factory" role="tabpanel" aria-labelledby="tab-factory">
+        <div class="page-head"><h1>کارخانه اپلیکیشن</h1><p>پروژه‌های بومی Flutter، صف ساخت، اصلاح خودکار و خروجی‌های تأییدشده</p></div>
+        <div class="card"><div class="section-head"><h2>ساخت‌های اخیر</h2><button class="sm" id="factoryRefresh">↻</button></div><div id="factoryBuilds" class="list"></div></div>
+      </section>
       <section class="panel" id="panel-users" role="tabpanel" aria-labelledby="tab-users">
         <div class="page-head"><h1>کاربران</h1><p>جستجو، بازرسی و مدیریت کاربران</p></div>
         <div class="card">
@@ -706,19 +773,29 @@ html[dir="rtl"] .dpanel-body{--exp-from:14px;--exp-origin:right}
         <div class="page-head"><h1>گروه‌ها</h1><p>گروه‌هایی که ربات در آن‌ها عضو است</p></div>
         <div class="card"><div class="section-head"><h2>فهرست گروه‌ها</h2><button class="sm ghost icon-btn" id="groupsLoad" aria-label="تازه‌سازی گروه‌ها">↻</button></div><div class="list" id="groupsList"></div></div>
       </section>
-      <section class="panel" id="panel-webapps" role="tabpanel" aria-labelledby="tab-webapps">
-        <div class="page-head"><h1>وب‌اپ‌ها</h1><p>اپ‌ها و بازی‌های ساخته‌شده و میزبانی‌شده</p></div>
-        <div class="card"><div class="section-head"><h2>فهرست وب‌اپ‌ها</h2><button class="sm ghost icon-btn" id="appsLoad" aria-label="تازه‌سازی وب‌اپ‌ها">↻</button></div><div class="list" id="appsList"></div></div>
+      <section class="panel" id="panel-deployments" role="tabpanel" aria-labelledby="tab-deployments">
+        <div class="page-head"><h1>میزبانی‌های موقت</h1><p>هر پروژهٔ هاست‌شده، زمان ایجاد، انقضا و زمان باقی‌ماندهٔ آن — پاک‌سازی انقضا روی سرور اجرا می‌شود، نه فقط در نمایش.</p></div>
+        <div class="metrics" id="deployMetrics"></div>
+        <div class="card">
+          <div class="section-head"><h2>فهرست پروژه‌ها</h2>
+            <span class="ops-toolbar">
+              <button class="sm" id="deploySweep">پاک‌سازی انقضاشده‌ها</button>
+              <button class="sm ghost icon-btn" id="appsLoad" aria-label="تازه‌سازی میزبانی‌ها">↻</button>
+            </span>
+          </div>
+          <div class="list" id="appsList"></div>
+        </div>
       </section>
       <section class="panel" id="panel-media" role="tabpanel" aria-labelledby="tab-media">
-        <div class="page-head"><h1>رسانه</h1><p>تصاویر تولیدشده و آپلودهای کاربران</p></div>
+        <div class="page-head"><h1>رسانه</h1><p>هر چیزی که Nova ساخته یا کاربران فرستاده‌اند — با منبع، سازنده و زمان واقعی</p></div>
         <div class="card">
           <div class="toolbar">
             <label class="sr-only" for="mediaKind">نوع رسانه</label>
-            <select id="mediaKind"><option value="media">رسانه‌های تولیدشده</option><option value="assets">آپلودهای کاربران</option></select>
+            <select id="mediaKind"><option value="media">دفتر رسانه (تولید + آپلود)</option><option value="assets">دفتر دارایی‌ها (شامل نتایج جست‌وجو)</option></select>
             <button class="primary" id="mediaLoad">بارگذاری</button>
           </div>
           <div class="mbar" id="mediaBar" aria-live="polite"><span class="tag loading">—</span></div>
+          <div class="mstats" id="mediaStats" hidden></div>
           <div id="mediaList"></div>
           <div class="pager" id="mediaPager" hidden>
             <div class="pager-group"><button class="sm" id="mediaPrev">‹ قبلی</button></div>
@@ -735,6 +812,7 @@ html[dir="rtl"] .dpanel-body{--exp-from:14px;--exp-origin:right}
             <button class="sm ghost icon-btn" id="stkRefresh" aria-label="تازه‌سازی">↻</button></div>
           <div class="stk-stats" id="stkStats" aria-live="polite"><div class="skel"><i></i></div></div>
           <div class="stk-cats" id="stkCats"></div>
+          <div class="stk-health" id="stkHealth" aria-live="polite"></div>
           <div class="toolbar-line">
             <span class="hint" id="stkBulkWho">روی یک دسته بزنید تا عملیات گروهی روی همان دسته اعمال شود.</span>
             <button class="sm ghost" id="stkBulkEnable" style="margin-inline-start:auto">فعال‌سازی همه</button>
@@ -820,8 +898,19 @@ html[dir="rtl"] .dpanel-body{--exp-from:14px;--exp-origin:right}
         </div>
       </section>
       <section class="panel" id="panel-keys" role="tabpanel" aria-labelledby="tab-keys">
-        <div class="page-head"><h1>کلیدهای API</h1><p>سلامت و وضعیت کلیدهای Gemini</p></div>
-        <div class="card"><div class="section-head"><h2>کلیدهای Gemini</h2><button class="sm ghost icon-btn" id="keysLoad" aria-label="تازه‌سازی کلیدها">↻</button></div><div class="list" id="keysList"></div></div>
+        <div class="page-head"><h1>کلیدها و سرویس‌ها</h1><p>وضعیت واقعی همه‌ی اعتبارنامه‌های تنظیم‌شده</p></div>
+        <div class="card">
+          <div class="section-head"><h2>آزمایش زنده</h2><button class="sm ghost icon-btn" id="keysLoad" aria-label="تازه‌سازی فهرست">↻</button></div>
+          <div class="section-body">
+            <p class="hint" id="keysHint">فهرست پایین فقط می‌گوید چه چیزی تنظیم شده است. برای اینکه معلوم شود واقعاً کار می‌کند، آزمایش را اجرا کن — هر سرویس یک درخواست واقعی دریافت می‌کند.</p>
+            <div class="krow">
+              <button class="primary" id="keysTest">▶ آزمایش همه</button>
+              <label class="chk"><input type="checkbox" id="keysDeep"> آزمایش عمیق (ElevenLabs یک کاراکتر می‌سازد و اعتبار مصرف می‌کند)</label>
+            </div>
+            <div class="kbar" id="keysSummary" aria-live="polite"></div>
+          </div>
+        </div>
+        <div class="card"><div class="section-head"><h2>سرویس‌ها</h2></div><div class="list" id="keysList"></div></div>
       </section>
       <section class="panel" id="panel-business" role="tabpanel" aria-labelledby="tab-business">
         <div class="page-head"><h1>Business</h1><p>پاسخ‌دهی خودکار حساب Business</p></div>
@@ -984,7 +1073,15 @@ function apiError(kind, message){
 let everAuthed = false;
 /* نشست منقضی: تا اولین پاسخ موفق بعدی، کارهای پس‌زمینه متوقف می‌شوند. */
 let authDead = false;
-async function api(path, opts){
+const apiFlights = new Map();
+function api(path, opts){
+  if(opts && (opts.signal || (opts.method && opts.method!=="GET"))) return apiRequest(path, opts);
+  if(apiFlights.has(path)) return apiFlights.get(path);
+  const work = apiRequest(path, opts).finally(()=>apiFlights.delete(path));
+  apiFlights.set(path, work);
+  return work;
+}
+async function apiRequest(path, opts){
   opts = opts || {};
   if(opts.signal && opts.signal.aborted) throw apiError("abort","superseded");
   const ctrl = new AbortController();
@@ -1006,13 +1103,23 @@ async function api(path, opts){
       if(timedOut || (e && e.name==="AbortError")) throw apiError("timeout");
       throw apiError("offline");
     }
-    let d; try{ d = await r.json(); }catch(e){ d = { ok:false, error:"bad_json" }; }
+    let d; try{ d = await r.json(); }catch(e){
+      if(opts.signal && opts.signal.aborted) throw apiError("abort","superseded");
+      if(timedOut) throw apiError("timeout");
+      d = { ok:false, error:"bad_json" };
+    }
     if(r.status===403){
       onAuthFailure();
       throw apiError("auth");
     }
     if(r.status===503) throw apiError("unavailable", d && d.error ? ERR_TEXT.unavailable+" ("+d.error+")" : undefined);
-    if(!r.ok || !d.ok) throw apiError("server", d.error || ("HTTP "+r.status));
+    if(!r.ok || !d.ok){
+      const err = apiError("server", d.error || ("HTTP "+r.status));
+      // The backend can attach an operator-facing explanation (e.g. "this id
+      // belongs to a bot"); keep it on the error so toasts can show it verbatim.
+      if(d && typeof d.message==="string" && d.message) err.detail = d.message;
+      throw err;
+    }
     everAuthed = true;
     authDead = false;
     const banner = $("authBanner");
@@ -1112,27 +1219,75 @@ async function section(el, run, opts){
 }
 
 /* ── ناوبری ──────────────────────────────────────────────────────────── */
-const TABS = [
-  {id:"overview",  label:"داشبورد",     icon:"▦"},
-  {id:"users",     label:"کاربران",     icon:"👥"},
-  {id:"broadcast", label:"پیام‌ها",      icon:"📢"},
-  {id:"groups",    label:"گروه‌ها",      icon:"💬"},
-  {id:"webapps",   label:"وب‌اپ‌ها",     icon:"🌐"},
-  {id:"media",     label:"رسانه",       icon:"🖼️"},
-  {id:"stickers",  label:"استیکرها",    icon:"🎭"},
-  {id:"requests",  label:"درخواست‌ها",   icon:"📨"},
-  {id:"logs",      label:"لاگ‌ها",       icon:"📜"},
-  {id:"keys",      label:"کلیدها",      icon:"🔑"},
-  {id:"business",  label:"بیزینس",      icon:"🏢"},
-  {id:"system",    label:"سیستم",       icon:"⚙️"},
+/* ── Navigation ───────────────────────────────────────────────────────────
+   One coherent control centre instead of sixteen unrelated buttons.
+
+   Two changes matter here:
+     · icons come from a single stroke-based SVG set that inherits currentColor,
+       so they are visually uniform and theme correctly (the old mix of emoji,
+       box-drawing glyphs and geometric shapes rendered at three different
+       weights and could not be styled at all);
+     · tabs are grouped by what an operator is actually doing — monitoring,
+       people, content, platform — so related controls sit together and the
+       sidebar reads as a hierarchy rather than a dumping ground. */
+const ICONS = {
+  overview:'<path d="M3 12h4l2-5 3 10 2-5h3"/>',
+  runs:'<path d="M4 6h10M4 12h16M4 18h7"/><circle cx="18" cy="6" r="2"/>',
+  jobs:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+  audit:'<path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6M9 17h3"/>',
+  users:'<circle cx="9" cy="9" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><path d="M16 8a3 3 0 0 1 0 6"/>',
+  broadcast:'<path d="M4 11v2l10 4V7z"/><path d="M14 8l4-2v10l-4-2"/>',
+  groups:'<circle cx="8" cy="10" r="3"/><circle cx="16" cy="10" r="3"/><path d="M3 19c0-2 2-4 5-4s5 2 5 4M13 19c0-2 2-4 5-4"/>',
+  deployments:'<path d="M12 3l8 4v6c0 4-3.5 7-8 8-4.5-1-8-4-8-8V7z"/><path d="M9 12l2 2 4-4"/>',
+  media:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 15l4-4 4 4 3-3 5 5"/>',
+  stickers:'<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 10h.01M16 10h.01M8 15c2 1.5 6 1.5 8 0"/>',
+  requests:'<path d="M4 5h16v12H7l-3 3z"/><path d="M8 9h8M8 13h5"/>',
+  logs:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h4"/>',
+  keys:'<circle cx="8" cy="12" r="3"/><path d="M11 12h9M17 12v3M14 12v2"/>',
+  business:'<path d="M4 20V7l8-3 8 3v13"/><path d="M9 20v-6h6v6"/>',
+  system:'<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/>',
+  factory:'<path d="M4 20V9l5 3V9l5 3V6l6 3v11z"/>',
+};
+function icon(id){ return '<svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONS[id]||ICONS.overview)+'</svg>'; }
+
+const NAV_GROUPS = [
+  {id:"monitor", label:"پایش", tabs:[
+    {id:"overview", label:"داشبورد"},
+    {id:"runs", label:"اجرای عامل"},
+    {id:"jobs", label:"زمان‌بندی"},
+    {id:"audit", label:"تاریخچه مدیریت"},
+  ]},
+  {id:"people", label:"کاربران", tabs:[
+    {id:"users", label:"کاربران"},
+    {id:"groups", label:"گروه‌ها"},
+    {id:"broadcast", label:"پیام‌ها"},
+  ]},
+  {id:"content", label:"محتوا", tabs:[
+    {id:"deployments", label:"میزبانی‌ها"},
+    {id:"media", label:"رسانه"},
+    {id:"stickers", label:"استیکرها"},
+    {id:"factory", label:"کارخانه اپ"},
+  ]},
+  {id:"platform", label:"زیرساخت", tabs:[
+    {id:"requests", label:"درخواست‌ها"},
+    {id:"logs", label:"لاگ‌ها"},
+    {id:"keys", label:"کلیدها"},
+    {id:"business", label:"بیزینس"},
+    {id:"system", label:"سیستم"},
+  ]},
 ];
+const TABS = NAV_GROUPS.flatMap(g => g.tabs);
 const state = { tab:"overview" };
 function buildNav(){
   // Real <button>s inside <nav>, each with a stable id so the matching panel can
-  // point at it via aria-labelledby.
-  const html = TABS.map(t=>
-    `<button class="navitem" type="button" id="tab-${t.id}" data-tab="${t.id}">`+
-    `<span class="ni" aria-hidden="true">${t.icon}</span><span>${esc(t.label)}</span></button>`).join("");
+  // point at it via aria-labelledby. Group headers are non-interactive labels,
+  // which keeps the number of tab stops tied to the number of destinations.
+  const html = NAV_GROUPS.map(group =>
+    `<div class="navgroup" role="presentation"><span class="navgroup-label">${esc(group.label)}</span>`+
+    group.tabs.map(t=>
+      `<button class="navitem" type="button" id="tab-${t.id}" data-tab="${t.id}">`+
+      icon(t.id)+`<span>${esc(t.label)}</span></button>`).join("")+
+    `</div>`).join("");
   $("sidebarNav").innerHTML = html;
   $("drawerNav").innerHTML = html.replace(/id="tab-/g,'id="dtab-');
   // Event delegation: two listeners instead of one per nav item.
@@ -1189,10 +1344,14 @@ async function loadTab(tab, force){
   let ok = false;
   try{
     if(tab==="overview")  ok = await loadOverview();
+    else if(tab==="runs")      ok = await loadRuns();
+    else if(tab==="factory")   ok = await loadFactory();
+    else if(tab==="jobs")      ok = await loadOperationsPage("jobs");
+    else if(tab==="audit")     ok = await loadOperationsPage("audit");
     else if(tab==="users")     ok = await loadUsers(true);
     else if(tab==="broadcast") ok = await loadBroadcast();
     else if(tab==="groups")    ok = await loadGroups();
-    else if(tab==="webapps")   ok = await loadWebApps();
+    else if(tab==="deployments") ok = await loadDeployments();
     else if(tab==="media")     ok = await loadMedia();
     else if(tab==="stickers")  ok = await loadStickers();
     else if(tab==="requests")  ok = await loadRequests();
@@ -1209,6 +1368,122 @@ async function loadTab(tab, force){
   if(ok) tabLoaded[tab] = Date.now(); else invalidateTab(tab);
 }
 
+/* ── داشبورد ───────────────────────────────────────────────────────────
+ */
+async function loadFactory(){
+  return section($("factoryBuilds"),async()=>{
+    const data=await api("/api/admin/factory/builds");
+    if(data.availability?.available===false&&!(data.builds||[]).length){$("factoryBuilds").innerHTML=emptyState('▧','ساخت بومی فعلاً در دسترس نیست','سرویس ساخت خارجی متصل نیست. نسخهٔ وب نوا همچنان قابل استفاده است؛ درخواست APK یا EXE به صف ارسال نمی‌شود.');return;}
+    $("factoryBuilds").innerHTML=(data.builds||[]).map(b=>`<div class="item"><div><b>${esc(b.target)}</b> <span class="tag">${esc(b.status)}</span><small class="mono">${esc(b.projectId)}</small><small>${esc(fmt(b.createdAt))} · ${fmtNum(b.repairs)} اصلاح</small>${(b.artifacts||[]).map(a=>`<a href="${esc(a.url)}" rel="noreferrer">${esc(a.name)} · ${esc(a.signing)}</a>`).join(" · ")}</div>${['queued','generating','building','repairing'].includes(b.status)?`<button class="sm danger" data-build-cancel="${esc(b.buildId)}">لغو</button>`:''}</div>`).join('')||emptyState('▧','ساختی ثبت نشده','کاربران می‌توانند از نوا اپلیکیشن APK یا دسکتاپ بخواهند.');
+  },{rows:3});
+}
+const operationPages = Object.fromEntries(["runs","jobs","audit"].map(k=>[k,{cursor:"",next:null,back:[],controller:null,serial:0}]));
+const runLabels = {running:"در حال اجرا",completed:"کامل",partial:"ناقص",failed:"ناموفق",cancelled:"لغوشده",interrupted:"قطع‌شده / مهلت گذشته",pending:"در انتظار",paused:"متوقف"};
+function runBadge(status){
+  const kind=status==="completed"?"ok":["failed","interrupted"].includes(status)?"err":"";
+  return `<span class="tag ${kind}">${esc(runLabels[status]||status)}</span>`;
+}
+function metricsHtml(cards){return cards.map(([label,value])=>`<div class="metric"><span>${esc(label)}</span><b>${esc(value)}</b></div>`).join("");}
+async function loadRunSummary(quiet){
+  try{
+    const d=await api("/api/admin/runs/summary"), s=d.summary||{};
+    $("runMetrics").innerHTML=metricsHtml([
+      ["اجرا در ۲۴ ساعت",fmtNum(s.total)],["کامل",fmtNum(s.completed)],["ناقص / ناموفق",fmtNum(Number(s.partial||0)+Number(s.failed||0))],
+      ["کار خودکار در حال اجرا",fmtNum(s.running)],["قطع‌شده / مهلت گذشته",fmtNum(s.interrupted)],["میانگین مدت",fmtNum(Math.round(Number(s.avg_ms||0)/1000))+"s"],
+      ["فراخوانی مدل راهبر",fmtNum(s.model_calls)],["فراخوانی ابزار",fmtNum(s.tool_calls)],
+    ]);
+    const hour=3600000, end=Math.floor(d.generatedAt/hour)*hour;
+    const bins=Array.from({length:24},(_,i)=>{
+      const at=end-(23-i)*hour;
+      return (d.series||[]).find(b=>Number(b.hour)===at)||{hour:at,total:0,errors:0};
+    });
+    const max=Math.max(1,...bins.map(b=>Number(b.total)||0));
+    $("runChart").innerHTML='<div class="ops-chart" role="img" aria-label="تعداد اجراها در هر ساعت؛ قرمز اجراهای ناموفق یا ناقص">'+bins.map(b=>
+      `<div class="ops-bar" style="height:${Math.max(2,Number(b.total)/max*100)}%" title="${esc(fmt(b.hour))}: ${fmtNum(b.total)} اجرا، ${fmtNum(b.errors)} مشکل"><span style="height:${Number(b.total)?Number(b.errors)/Number(b.total)*100:0}%"></span></div>`).join("")+'</div><div class="section-body muted">۲۴ ساعت اخیر · بنفش: همه اجراها · قرمز: ناقص یا ناموفق</div>';
+    $("runFreshness").textContent="به‌روز · "+fmt(d.generatedAt);
+    return true;
+  }catch(e){
+    $("runFreshness").textContent="داده‌ی کهنه / ارتباط ناموفق";
+    if(!quiet) $("runMetrics").innerHTML=errorState(e,false);
+    return false;
+  }
+}
+async function loadRuns(opts){
+  return (await Promise.all([loadRunSummary(opts&&opts.quiet),loadOperationsPage("runs",opts)])).every(Boolean);
+}
+async function loadOperationsPage(kind,opts){
+  const p=operationPages[kind], serial=++p.serial;
+  if(p.controller) p.controller.abort();
+  p.controller=new AbortController();
+  const el=$(kind==="runs"?"runList":kind==="jobs"?"jobList":"auditList");
+  const filter=kind==="runs"?$("runFilter").value:kind==="jobs"?$("jobFilter").value:"";
+  const query=new URLSearchParams({cursor:p.cursor,status:filter});
+  $(kind+"Prev").disabled=true; $(kind+"Next").disabled=true;
+  const ok=await section(el,async()=>{
+    const d=await api("/api/admin/"+kind+"?"+query,{signal:p.controller.signal});
+    if(serial!==p.serial) throw apiError("abort","superseded");
+    p.next=d.cursor;
+    if(kind==="runs"){
+      el.innerHTML=(d.items||[]).map(r=>`<div class="item"><div><b class="mono">${esc(r.id.slice(0,8))}</b> ${runBadge(r.status)}<small>${esc(r.source)} · کاربر ${esc(r.user_id)} · ${esc(fmt(r.started_at))}</small><small>${fmtNum(r.rounds)} دور · ${fmtNum(r.tool_calls)} ابزار · ${fmtNum(r.model_calls)} مدل${r.finished_at?' · '+fmtNum(Math.round((r.finished_at-r.started_at)/1000))+'s':''}</small></div><button class="sm" data-run="${esc(r.id)}" aria-expanded="false">مسیر اجرا</button></div><div class="ops-detail" id="trace-${esc(r.id)}" hidden></div>`).join("")||emptyState("◈","اجرایی ثبت نشده","اجراهای جدید پس از فعال شدن ثبت پایدار اینجا ظاهر می‌شوند.");
+    }else if(kind==="jobs"){
+      const counts=d.counts||[], count=status=>counts.filter(c=>c.status===status).reduce((n,c)=>n+Number(c.count),0);
+      $("jobMetrics").innerHTML=metricsHtml([["در انتظار",fmtNum(count("pending"))],["در حال اجرا",fmtNum(count("running"))],["متوقف",fmtNum(count("paused"))],["عقب‌افتاده",fmtNum(counts.reduce((n,c)=>n+Number(c.overdue||0),0))]]);
+      el.innerHTML=(d.items||[]).map(j=>`<div class="item"><div><b>${j.kind==="agent_task"?"◈ کار عامل":"◷ یادآور"}</b> ${runBadge(j.status)}<small class="mono">${esc(j.id)} · ${esc(j.userId)}</small><p class="ops-message">${esc(j.message)}</p><small>${j.status==="paused"?"متوقف":esc(fmt(j.nextRunAt))} · ${esc(j.recurrence||"یک‌بار")} · ${fmtNum(j.runs)} اجرا</small>${j.lastError?`<small class="err">${esc(j.lastError)}</small>`:""}<div class="ops-toolbar"><button class="sm" data-job="${esc(j.id)}" data-action="${j.status==="paused"?"resume":"pause"}">${j.status==="paused"?"▶ ازسرگیری":"⏸ توقف"}</button><button class="sm danger" data-job="${esc(j.id)}" data-action="cancel">حذف از صف</button></div></div></div>`).join("")||emptyState("◷","صف خالی است","کارهای زمان‌بندی‌شده از طریق گفتگو با نوا ساخته می‌شوند.");
+    }else{
+      el.innerHTML=(d.items||[]).map(a=>`<div class="item"><div><b class="mono">${esc(a.action)}</b><small>مدیر ${esc(a.actor_id)} · ${esc(fmt(a.ts))}</small></div><span class="tag ${Number(a.status_code)<400?"ok":"err"}">${esc(a.status_code)}</span></div>`).join("")||emptyState("≡","هنوز عملیاتی ثبت نشده","عملیات بعدی پنل در این بخش ثبت می‌شود.");
+    }
+  },{rows:4,quiet:!!(opts&&opts.quiet),onQuietError:()=>toast("تازه‌سازی ناموفق؛ داده قبلی نمایش داده می‌شود","err")});
+  if(serial===p.serial){
+    $(kind+"Prev").disabled=p.back.length===0;
+    $(kind+"Next").disabled=!p.next;
+    $(kind+"Page").textContent="صفحه "+fmtNum(p.back.length+1);
+  }
+  return ok;
+}
+function resetOperationsPage(kind){
+  Object.assign(operationPages[kind],{cursor:"",next:null,back:[]});
+  invalidateTab(kind);
+  return kind==="runs"?loadRuns():loadOperationsPage(kind);
+}
+function bindOperations(){
+  $("factoryRefresh").onclick=loadFactory;
+  $("factoryBuilds").onclick=async e=>{const button=e.target.closest('[data-build-cancel]');if(!button)return;button.disabled=true;try{await api('/api/admin/factory/builds/'+button.dataset.buildCancel+'/cancel',{method:'POST',body:{}});await loadFactory();}catch(error){toast(error.message,'err');button.disabled=false;}};
+  for(const kind of ["runs","jobs","audit"]){
+    $(kind+"Refresh").onclick=()=>resetOperationsPage(kind);
+    $(kind+"Next").onclick=()=>{
+      const p=operationPages[kind]; if(!p.next)return;
+      p.back.push(p.cursor);p.cursor=p.next;loadOperationsPage(kind);
+    };
+    $(kind+"Prev").onclick=()=>{
+      const p=operationPages[kind];if(!p.back.length)return;
+      p.cursor=p.back.pop();loadOperationsPage(kind);
+    };
+  }
+  $("runFilter").onchange=()=>resetOperationsPage("runs");
+  $("jobFilter").onchange=()=>resetOperationsPage("jobs");
+  $("runList").addEventListener("click",async e=>{
+    const b=e.target.closest("[data-run]");if(!b)return;
+    const target=$("trace-"+b.dataset.run);if(!target)return;
+    target.hidden=!target.hidden;b.setAttribute("aria-expanded",String(!target.hidden));
+    if(target.hidden||target.dataset.loaded)return;
+    await section(target,async()=>{
+      const d=await api("/api/admin/runs/"+encodeURIComponent(b.dataset.run));
+      const events=d.run&&d.run.events||[];
+      target.innerHTML=events.length?'<ol class="ops-trace">'+events.map(v=>`<li><span class="mono">${fmtNum(Math.round(v.at/1000))}s</span><span>${esc(v.phase)} ${v.tool?'<b class="mono">'+esc(v.tool)+'</b>':''} ${esc(v.outcome||"")}</span></li>`).join("")+'</ol>':emptyState("◈","مسیر اجرا هنوز آماده نیست","جزئیات هنگام پایان اجرا ثبت می‌شوند.");
+      target.dataset.loaded="1";
+    });
+  });
+  $("jobList").addEventListener("click",async e=>{
+    const b=e.target.closest("[data-job]");if(!b)return;
+    const action=b.dataset.action;
+    if(action==="cancel"&&!await confirmAction("حذف کار","این کار از صف حذف می‌شود. اجرای جاری ممکن است نتیجه خود را ارسال کند."))return;
+    b.disabled=true;
+    try{
+      await api("/api/admin/jobs/control",{method:"POST",body:{id:b.dataset.job,action}});
+      toast("وضعیت کار تغییر کرد","ok");invalidateTab("audit");await loadOperationsPage("jobs");
+    }catch(err){toast(err.message,"err");b.disabled=false;}
+  });
+}
 /* ── داشبورد ───────────────────────────────────────────────────────────
    Three containers are filled from one request, so this loader manages their
    states together instead of going through section(). The old version set the
@@ -1240,6 +1515,7 @@ async function loadOverview(opts){
     $("metrics").innerHTML = cards.map(c=>`<div class="metric"><span>${esc(c[0])}</span><b>${c[1]}</b></div>`).join("");
     $("version").textContent = (d.version||"Nova") + " · Admin";
     $("overviewLive").innerHTML =
+      `<div class="item"><b>دامنه آمار</b><small>این نمونه سرور؛ آمار پایدار در «اجرای عامل»</small></div>`+
       `<div class="item"><b>Telegram API</b><small>${fmtNum(r.telegramCalls)} فراخوانی</small></div>`+
       `<div class="item"><b>D1</b><small>${fmtNum(r.d1Queries)} خواندن · ${fmtNum(r.d1Writes)} نوشتن</small></div>`+
       `<div class="item"><b>تسک‌های سنگین</b><small>${fmtNum(r.heavyTasks)} فعال</small></div>`+
@@ -1492,17 +1768,56 @@ async function loadUserMemory(id){
     if(m.lastProfileUpdate) html += `<div class="mono">آخرین به‌روزرسانی پروفایل: ${esc(fmt(m.lastProfileUpdate))}</div>`;
     if(!html) html = emptyState("🧠","حافظه‌ای ثبت نشده","پس از چند گفتگو، پروفایل بلندمدت ساخته می‌شود.");
     if(d.reminders && d.reminders.length){
-      html += `<hr><b style="font-size:12px">یادآورهای فعال (${fmtNum(d.reminders.length)}):</b>` +
-        d.reminders.map(r=>`<div class="item-row" style="margin-top:6px"><small>⏰ ${esc(r.message)}<br>${esc(fmt(r.dueAt))}</small>`+
-          `<button class="sm danger" data-remid="${esc(r.id)}">لغو</button></div>`).join("");
+      const pausedCount = d.reminders.filter(r=>r.status==="paused").length;
+      html += `<hr><b style="font-size:12px">یادآورها و کارهای زمان‌بندی‌شده (${fmtNum(d.reminders.length)}${pausedCount?` — ${fmtNum(pausedCount)} متوقف`:""}):</b>` +
+        d.reminders.map(r=>{
+          const isPaused = r.status === "paused";
+          // The server sends dueAt=null for a paused row instead of its frozen
+          // value, precisely so nothing here can render a time it will never
+          // fire at. Say it is stopped rather than printing an empty date.
+          const when = isPaused ? "متوقف — تا ازسرگیری اجرا نمی‌شود" : fmt(r.dueAt);
+          const meta = [
+            r.kind === "agent_task" ? "کار عامل" : "یادآوری",
+            r.repeats ? `تکرار: ${r.repeats}` : null,
+            r.runs ? `${fmtNum(r.runs)} اجرا` : null,
+            r.lastRunAt ? `آخرین اجرا: ${fmt(r.lastRunAt)}` : null,
+          ].filter(Boolean).join(" · ");
+          return `<div class="item-row" style="margin-top:6px"><small>${isPaused?"⏸":"⏰"} ${esc(r.message)}<br>${esc(when)}`
+            + `<br><span class="mono" style="opacity:.72">${esc(meta)}</span>`
+            + (r.lastError ? `<br><span style="color:#d33">⚠ ${esc(r.lastError)}</span>` : "")
+            + `</small><span style="display:flex;gap:4px">`
+            + `<button class="sm" data-remid="${esc(r.id)}" data-remact="${isPaused?"reminder_resume":"reminder_pause"}">${isPaused?"ازسرگیری":"توقف"}</button>`
+            + `<button class="sm danger" data-remid="${esc(r.id)}" data-remact="reminder_cancel">لغو</button>`
+            + `</span></div>`;
+        }).join("");
     }
     box.innerHTML = html;
+    // The pause/resume endpoint answers 409 with a reason code rather than a
+    // generic failure, because "already paused" and "it expired and is gone"
+    // need different words — and showing the raw enum would be its own kind of
+    // unreadable placeholder.
+    const REM_ERR = {
+      NOT_FOUND: "این مورد پیدا نشد؛ شاید قبلاً حذف شده.",
+      ALREADY_PAUSED: "این مورد از قبل متوقف بود.",
+      NOT_PAUSED: "این مورد متوقف نبود؛ همین حالا فعال است.",
+      EXPIRED: "بازهٔ زمانی این مورد گذشته بود، پس حذف شد.",
+      RECURRENCE_ENDED: "تکرارِ این مورد به پایان رسیده بود، پس حذف شد.",
+      ERROR: "زمان‌بند در دسترس نبود؛ دوباره تلاش کنید.",
+    };
+    const REM_OK = { reminder_cancel:"لغو شد", reminder_pause:"متوقف شد", reminder_resume:"از سر گرفته شد" };
     box.querySelectorAll("[data-remid]").forEach(b=> b.onclick = async()=>{
       b.disabled = true;
+      const act = b.dataset.remact || "reminder_cancel";
       try{
-        await api("/api/admin/users/"+id+"/action", { method:"POST", body:{ action:"reminder_cancel", value:b.dataset.remid } });
-        toast("یادآور لغو شد","ok"); loadUserMemory(id);
-      }catch(e){ b.disabled = false; toast(e.message,"err"); }
+        await api("/api/admin/users/"+id+"/action", { method:"POST", body:{ action:act, value:b.dataset.remid } });
+        toast(REM_OK[act] || "انجام شد","ok"); loadUserMemory(id);
+      }catch(e){
+        b.disabled = false;
+        toast(REM_ERR[e.message] || e.message, "err");
+        // EXPIRED and RECURRENCE_ENDED delete the row, so the list on screen is
+        // now stale in a way a failure toast alone would hide.
+        if(e.message==="EXPIRED"||e.message==="RECURRENCE_ENDED"||e.message==="NOT_FOUND") loadUserMemory(id);
+      }
     });
   }, { rows:2 });
 }
@@ -1527,7 +1842,7 @@ async function doAction(act){
     const txt = await askInput("پیام مستقیم", "متن پیام به "+(u.firstName||id), "", {multiline:true});
     if(txt===null || !txt.trim()) return;
     try{ await api("/api/admin/message", { method:"POST", body:{ userId:id, message:txt.trim() } }); toast("پیام ارسال شد ✓","ok"); }
-    catch(e){ toast("ارسال نشد: "+e.message,"err"); }
+    catch(e){ toast("ارسال نشد: "+(e.detail||e.message),"err"); }
     return;
   }
   if(act==="vip")   value = !u.vipStatus;
@@ -1588,7 +1903,7 @@ async function loadBroadcast(opts){
       `<div class="item"><b>${esc(j.status)} · ${j.percent}%</b>`+
       `<div class="bar"><i style="width:${Math.max(0,Math.min(100,j.percent))}%"></i></div>`+
       `<small style="margin-top:7px">مخاطب: ${esc(j.mode)} · ${fmtNum(j.processedIndex)} از ${fmtNum(j.totalUsers)}<br>`+
-      `✅ ${fmtNum(j.sent)} ارسال · ❌ ${fmtNum(j.failed)} خطا · ${esc(fmt(j.createdAt))}</small>`+
+      `✅ ${fmtNum(j.sent)} ارسال · ❌ ${fmtNum(j.failed)} خطا · ⚠️ ${fmtNum(j.uncertain)} بدون تأیید · ${esc(fmt(j.createdAt))}</small>`+
       `<small style="margin-top:6px;opacity:.75">${esc(j.message)}</small></div>`+
       (active?`<button class="danger" id="bcCancel" style="width:100%">🛑 لغو ارسال</button>`:"");
     if(active) $("bcCancel").onclick = async()=>{
@@ -1625,7 +1940,7 @@ async function sendDM(){
   try{
     await api("/api/admin/message", { method:"POST", body:{ userId:id, message:msg } });
     $("dmMessage").value = ""; toast("ارسال شد ✓","ok");
-  }catch(e){ toast("ارسال نشد: "+e.message,"err"); }
+  }catch(e){ toast("ارسال نشد: "+(e.detail||e.message),"err"); }
   finally{ btn.disabled = false; }
 }
 
@@ -1639,10 +1954,11 @@ async function loadGroups(){
       `<div class="item"><div class="item-row"><div style="min-width:0">`+
       `<b>${esc(g.title||"گروه")} ${g.vipStatus?'<span class="tag vip">VIP</span>':""}</b>`+
       `<small>${g.chatId} · ${esc(g.type||"")}${g.username?" · @"+esc(g.username):""}`+
-      `${g.memberCount?" · "+fmtNum(g.memberCount)+" عضو":""}<br>آخرین فعالیت: ${esc(fmt(g.lastActivity))}</small>`+
+      `${g.memberCount?" · "+fmtNum(g.memberCount)+" عضو":""}<br>آخرین فعالیت: ${esc(fmt(g.lastActivity))}<br>${g.configUnavailable?'وضعیت تنظیمات نامشخص':g.enabled?'پاسخ‌گویی روشن':'پاسخ‌گویی متوقف'}${g.delivery?.canSend===false?' · امکان ارسال پیام وجود ندارد':''}</small>`+
       `</div><div class="item-actions">`+
       `<button class="sm" data-gvip="${g.chatId}" data-val="${g.vipStatus?0:1}">${g.vipStatus?"حذف VIP":"VIP"}</button>`+
       `<button class="sm ghost" data-gcfg="${g.chatId}">تنظیمات</button>`+
+      `<button class="sm" data-genabled="${g.chatId}" data-val="${g.enabled?0:1}" ${g.configUnavailable?'disabled':''}>${g.enabled?'توقف پاسخ‌گویی':'روشن کردن پاسخ‌گویی'}</button>`+
       `</div></div></div>`).join("") : emptyState("💬","گروهی ثبت نشده","وقتی ربات به گروهی اضافه شود این‌جا فهرست می‌شود.");
     list.querySelectorAll("[data-gvip]").forEach(b=> b.onclick = async()=>{
       b.disabled = true;
@@ -1654,6 +1970,7 @@ async function loadGroups(){
       }catch(e){ b.disabled = false; toast(e.message,"err"); }
     });
     list.querySelectorAll("[data-gcfg]").forEach(b=> b.onclick = ()=> groupConfig(Number(b.dataset.gcfg)));
+    list.querySelectorAll('[data-genabled]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await api('/api/admin/groups/'+button.dataset.genabled+'/action',{method:'POST',body:{action:'enabled',value:button.dataset.val==='1'}});invalidateTab('groups');await loadGroups();}catch(error){toast(error.message,'err');button.disabled=false;}});
   }, { rows:3 });
 }
 async function groupConfig(chatId){
@@ -1669,36 +1986,74 @@ async function groupConfig(chatId){
 }
 
 /* ── وب‌اپ‌ها ────────────────────────────────────────────────────────── */
-async function loadWebApps(){
+/**
+ * Hosted deployments — the operator view of TEMPORARY hosting.
+ *
+ * The tab leads with the lifetime, because that is the property an operator is
+ * accountable for: what is live now, what expires next, and whether the sweep is
+ * keeping up. "Purge expired" is exposed because waiting for the next cron tick
+ * is not an answer when something needs to come down immediately.
+ */
+const HOST_BADGE = {
+  live:    { text:"فعال",       cls:"ok" },
+  draft:   { text:"منتشر نشده", cls:"" },
+  expired: { text:"منقضی",      cls:"err" },
+  deleted: { text:"حذف‌شده",    cls:"err" },
+};
+function remainingLabel(ms){
+  if(!ms||ms<=0) return "—";
+  const d=Math.floor(ms/86400000), h=Math.floor((ms%86400000)/3600000);
+  return d>0 ? `${fmtNum(d)} روز و ${fmtNum(h)} ساعت` : `${fmtNum(h)} ساعت`;
+}
+async function loadDeployments(){
   const list = $("appsList");
   return await section(list, async ()=>{
-    const d = await api("/api/admin/webapps");
-    const as = d.webapps||[];
-    // سرور حداکثر ۴۰ کلید را می‌خواند؛ اگر به سقف خورده باشد باید صریح گفته شود،
-    // نه این‌که فهرست بریده به‌عنوان فهرست کامل نمایش داده شود.
-    const cap = d.capped ? `<div class="pill">فقط ${fmtNum(as.length)} مورد اخیر نمایش داده می‌شود (سقف فهرست‌گیری).</div>` : "";
-    list.innerHTML = cap + (as.length ? as.map(a=>{
-      const url = location.origin + "/app/" + encodeURIComponent(a.name);
+    const d = await api("/api/admin/deployments");
+    const as = d.deployments||[];
+    const live = as.filter(a=>a.servable).length;
+    const soon = as.filter(a=>a.expiringSoon).length;
+    $("deployMetrics").innerHTML = metricsHtml([
+      ["فعال",fmtNum(live)],
+      ["منتشر نشده",fmtNum(as.filter(a=>a.status==="draft").length)],
+      ["نزدیک انقضا (۱۲ ساعت)",fmtNum(soon)],
+      ["منقضی‌شده در جدول",fmtNum(d.expiredCount||0)],
+      ["کل",fmtNum(as.length)],
+    ]);
+    list.innerHTML = as.length ? as.map(a=>{
+      const url = a.servable ? location.origin + "/app/" + encodeURIComponent(a.id) : null;
+      const badge = HOST_BADGE[a.status]||{text:a.status,cls:""};
       return `<div class="item"><div class="item-row"><div style="min-width:0">`+
-      `<b>${esc(a.name||"app")}</b>`+
-      `<small><a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a><br>`+
-      `${esc(fmt(a.createdAt))} · ${fmtNum(a.viewCount)} بازدید · ${kb(a.size)} · ${esc(a.createdByName||"")}</small>`+
-      `</div><div class="item-actions"><button class="sm danger" data-appdel="${esc(a.name)}">حذف</button></div>`+
+      `<b>${esc(a.title||a.id)}</b> <span class="tag ${badge.cls}">${esc(badge.text)}</span> ${a.expiringSoon?'<span class="tag err">نزدیک انقضا</span>':''}`+
+      `<small class="mono">${esc(a.id)} · ${esc(a.kind)} · ${esc(a.plan)}</small>`+
+      `<small>${url?`<a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>`:"لینک عمومی فعال نیست"}</small>`+
+      `<small>ایجاد ${esc(fmt(a.createdAt))} · انقضا ${a.expiresAt?esc(fmt(a.expiresAt)):"—"} · باقی‌مانده ${esc(remainingLabel(a.remainingMs))}</small>`+
+      `<small>مالک ${esc(a.ownerName||"—")} (${esc(a.ownerId)}) · ${fmtNum(a.views)} بازدید · ${kb(a.size)} · ${fmtNum(a.extensions)} تمدید</small>`+
+      `</div><div class="item-actions"><button class="sm danger" data-appdel="${esc(a.id)}">حذف</button></div>`+
       `</div></div>`;
-    }).join("") : emptyState("🌐","وب‌اپی ساخته نشده","اپ‌ها و بازی‌های ساخته‌شده این‌جا فهرست می‌شوند."));
+    }).join("") : emptyState("◧","میزبانی‌ای وجود ندارد","پروژه‌ها وقتی کاربر «اجرا روی سرور» را بزند این‌جا ظاهر می‌شوند.");
     list.querySelectorAll("[data-appdel]").forEach(b=> b.onclick = async()=>{
       const n = b.dataset.appdel;
-      if(!await confirmAction("حذف وب‌اپ","وب‌اپ «"+n+"» برای همیشه حذف شود؟")) return;
+      if(!await confirmAction("حذف میزبانی","میزبانی «"+n+"» حذف شود؟ لینک عمومی از کار می‌افتد.")) return;
       b.disabled = true;
       try{
         await api("/api/admin/webapps/"+encodeURIComponent(n),{method:"DELETE"});
         toast("حذف شد","ok");
-        invalidateTab("webapps");
-        await loadWebApps();
+        invalidateTab("deployments");
+        await loadDeployments();
       }catch(e){ b.disabled = false; toast(e.message,"err"); }
     });
   }, { rows:3 });
 }
+$("deploySweep") && ($("deploySweep").onclick = async ()=>{
+  const btn = $("deploySweep"); btn.disabled = true;
+  try{
+    const r = await api("/api/admin/deployments/sweep",{method:"POST"});
+    toast(`پاک‌سازی انجام شد — ${fmtNum(r.swept)} مورد منقضی`, "ok");
+    invalidateTab("deployments");
+    await loadDeployments();
+  }catch(e){ toast(e.message,"err"); }
+  finally{ btn.disabled = false; }
+});
 
 /* ── رسانه ─────────────────────────────────────────────────────────────
    Previews are the stored objects themselves — there is no thumbnail pipeline
@@ -1707,29 +2062,96 @@ async function loadWebApps(){
    `preload="none"`): nothing below the fold transfers a byte until the admin
    scrolls to it, and one page is 24 items rather than the old silent 200. */
 const media = { offset:0, limit:24, total:0, hasMore:false, kind:"media", seq:0 };
+/* Provenance words, not storage words. `source` is the only field that records
+   how a file came to exist, so it is the one the card leads with — the tab used
+   to print the raw enum (or nothing) and leave the operator guessing. */
+const MEDIA_SOURCE_TEXT = {
+  ai:       { icon:"✨", label:"تولید Nova" },
+  edit:     { icon:"🎨", label:"ویرایش روی تصویر کاربر" },
+  upload:   { icon:"📤", label:"آپلود در تلگرام" },
+  mini_app: { icon:"📱", label:"آپلود از مینی‌اپ" },
+  voice:    { icon:"🎙", label:"پیام صوتی" },
+  search:   { icon:"🔎", label:"نتیجه‌ی جست‌وجوی تصویر" },
+  unknown:  { icon:"❔", label:"منبع ثبت نشده" },
+};
+const MEDIA_KIND_TEXT = { image:"تصویر", gif:"گیف", voice:"صدا", file:"فایل", unknown:"نامشخص" };
+function mediaSourceText(src){
+  return MEDIA_SOURCE_TEXT[String(src||"unknown")] || { icon:"❔", label:String(src) };
+}
+/* "چه کسی" از روی داده‌ی ذخیره‌شده، نه حدس. */
+function mediaCreator(m){
+  const name = typeof m.createdByName==="string" ? m.createdByName.trim() : "";
+  const uid  = Number(m.createdBy||0);
+  if(name && uid) return esc(name)+" <span class=\"dim\">#"+fmtNum(uid)+"</span>";
+  if(name) return esc(name);
+  if(uid)  return "<span class=\"dim\">#"+fmtNum(uid)+"</span>";
+  // A record with no owner is a real state (pre-dates the field); saying so is
+  // the honest rendering, and inventing "system" would not be.
+  return "<span class=\"dim\">سازنده ثبت نشده</span>";
+}
 function mediaCard(m){
   const kind = String(m.kind||"").toLowerCase();
   const url  = m.url ? String(m.url) : "";
   const id   = String(m.id||"media");
-  const meta = `${esc(fmt(m.createdAt))} · ${kb(m.size)}${m.source?" · "+esc(m.source):""}`;
+  const src  = mediaSourceText(m.source);
+  // A remote record is a link to someone else's server; nothing was stored, so
+  // its `size: 0` must not be rendered as a 0-byte object we are holding.
+  const sizeText = m.remote ? "ارجاع بیرونی (ذخیره نشده)" : kb(m.size);
+  const meta = `${src.icon} ${esc(src.label)} · ${esc(fmt(m.createdAt))} · ${sizeText}`;
   let thumb;
   if(url && (kind==="image" || kind==="gif")){
     thumb = `<img src="${esc(url)}" alt="${esc(id)}" loading="lazy" decoding="async">`;
   }else if(url && kind==="voice"){
     thumb = `<div class="ph pad"><span class="phlabel">🎙 ویس</span>`+
             `<audio controls preload="none" src="${esc(url)}"></audio></div>`;
-  }else if(url && kind==="video"){
-    thumb = `<video controls preload="none" playsinline src="${esc(url)}"></video>`;
   }else{
     // فایل‌های بدون پیش‌نمایش (سند، فرمت ناشناخته، یا رسانه‌ی منقضی‌شده)
-    thumb = `<div class="ph"><span class="phlabel">${url?"📄 "+esc(kind||"فایل"):"⌛ در دسترس نیست"}</span></div>`;
+    thumb = `<div class="ph"><span class="phlabel">${url?"📄 "+esc(MEDIA_KIND_TEXT[kind]||kind||"فایل"):"⌛ در دسترس نیست"}</span></div>`;
   }
   return `<div class="mcard"><div class="mthumb">${thumb}</div>`+
     `<div class="meta"><b title="${esc(id)}">${esc(id)}</b><small>${meta}</small>`+
-    (m.prompt?`<small style="opacity:.7">${esc(String(m.prompt).slice(0,90))}</small>`:"")+
+    `<small>👤 ${mediaCreator(m)}</small>`+
+    // A filename and a prompt are different claims about a file. They used to
+    // share one slot, so an upload's filename rendered where a generation
+    // prompt belongs and looked like placeholder text.
+    (m.filename?`<small class="dim" title="${esc(String(m.filename))}">📎 ${esc(String(m.filename).slice(0,60))}</small>`:"")+
+    (m.prompt?`<small style="opacity:.75" title="${esc(String(m.prompt))}">💬 ${esc(String(m.prompt).slice(0,90))}</small>`:"")+
+    (m.remote?`<small class="dim">🔗 میزبان بیرونی — با انقضای لینک از دسترس خارج می‌شود</small>`:"")+
     `<div class="row">`+
     (url?`<a class="linkbtn" href="${esc(url)}" target="_blank" rel="noopener">باز کردن</a>`:"")+
     `<button class="sm danger" data-mdel="${esc(id)}">حذف</button></div></div></div>`;
+}
+/* Aggregates over the whole registry — every number here is counted server-side
+   from stored records. Nothing is estimated and nothing is shown when the
+   backend did not send it. */
+function renderMediaStats(st){
+  const box = $("mediaStats");
+  if(!st){ box.hidden = true; box.innerHTML = ""; return; }
+  const rank = o => Object.keys(o||{}).map(k=>[k,o[k]]).sort((a,b)=>b[1]-a[1]);
+  const sources = rank(st.bySource).map(([k,v])=>{
+    const t = mediaSourceText(k);
+    return `<span class="pill">${t.icon} ${esc(t.label)} <b>${fmtNum(v)}</b></span>`;
+  }).join("");
+  const kinds = rank(st.byKind).map(([k,v])=>
+    `<span class="pill">${esc(MEDIA_KIND_TEXT[k]||k)} <b>${fmtNum(v)}</b></span>`).join("");
+  const creators = (st.topCreators||[]).map(c=>
+    `<span class="pill">${c.name?esc(c.name):"#"+fmtNum(c.id)} <b>${fmtNum(c.count)}</b></span>`).join("");
+  const span = (st.oldestAt && st.newestAt)
+    ? `<div class="mstat"><h4>بازه‌ی زمانی</h4><div class="mstatrow">`+
+      `<span class="pill">قدیمی‌ترین: ${esc(fmt(st.oldestAt))}</span>`+
+      `<span class="pill">تازه‌ترین: ${esc(fmt(st.newestAt))}</span></div></div>`
+    : "";
+  box.innerHTML =
+    `<div class="mstat"><h4>منبع</h4><div class="mstatrow">${sources||'<span class="dim">—</span>'}</div></div>`+
+    `<div class="mstat"><h4>نوع</h4><div class="mstatrow">${kinds||'<span class="dim">—</span>'}</div></div>`+
+    `<div class="mstat"><h4>پرکارترین سازنده‌ها${st.creatorCount?" (از "+fmtNum(st.creatorCount)+")":""}</h4>`+
+      `<div class="mstatrow">${creators||'<span class="dim">—</span>'}</div></div>`+
+    (Number(st.remoteCount)>0
+      ? `<div class="mstat"><h4>ارجاع بیرونی</h4><div class="mstatrow">`+
+        `<span class="pill">${fmtNum(st.remoteCount)} رکورد بدون بایت ذخیره‌شده</span></div></div>`
+      : "")+
+    span;
+  box.hidden = false;
 }
 async function loadMedia(opts){
   const kind = $("mediaKind").value;
@@ -1754,10 +2176,17 @@ async function loadMedia(opts){
       return await loadMedia({ offset: media.offset });
     }
     const backend = d.backend==="r2" ? "R2 object storage" : "D1 (kv_store)";
+    // `totalBytes` counts stored blobs only — remote records hold none, so
+    // folding them in would have reported storage the deployment is not using.
     $("mediaBar").innerHTML =
-      `<span class="pill">${fmtNum(media.total)} آیتم · ${mb(d.totalBytes)}</span>`+
+      `<span class="pill">${fmtNum(media.total)} رکورد</span>`+
+      `<span class="pill">${mb(d.totalBytes)} ذخیره‌شده</span>`+
       `<span class="pill">ذخیره‌سازی: ${esc(backend)}</span>`+
       (d.retentionDays?`<span class="pill">نگه‌داری: ${fmtNum(d.retentionDays)} روز</span>`:"");
+    // Only render aggregates the backend actually sent: an older deployment
+    // answers without `stats`, and fabricating them here is the exact failure
+    // this panel is being fixed for.
+    renderMediaStats(d.stats);
     list.innerHTML = items.length
       ? `<div class="mgrid">`+items.map(mediaCard).join("")+`</div>`
       : emptyState("🖼️","رسانه‌ای نیست","تصاویر تولیدشده و آپلودها این‌جا دیده می‌شوند.");
@@ -1787,7 +2216,7 @@ async function loadMedia(opts){
 /* ── کتابخانه‌ی استیکر ─────────────────────────────────────────────────
    نوا استیکرهایی که کاربران می‌فرستند را خودش یاد می‌گیرد، ولی تا امروز هیچ راهی
    برای دیدن، دسته‌بندی، غیرفعال کردن یا حذفشان نبود. این تب همان سطحِ مدیریت است. */
-const stickers = { offset:0, limit:48, total:0, hasMore:false, seq:0, cats:[], stats:null, filled:false };
+const stickers = { offset:0, limit:48, total:0, hasMore:false, seq:0, cats:[], stats:null, health:null, collisions:[], filled:false };
 
 function stkQuery(){
   const p = new URLSearchParams();
@@ -1868,6 +2297,37 @@ function stkRenderStats(st){
   });
 }
 
+/**
+ * Library health, not a count.
+ *
+ * "۲۰۰ استیکر" tells you nothing about whether a sticker will actually be sent:
+ * a mood with an empty bucket fails live no matter how big the library is.
+ * This shows coverage, the moods that are empty or thin, and any emoji filed
+ * under two moods (which silently mis-routes one of them).
+ */
+function stkRenderHealth(h, collisions){
+  const el = $("stkHealth");
+  if(!el) return;
+  if(!h){ el.innerHTML = ""; return; }
+  const score = Math.max(0, Math.min(100, Number(h.score) || 0));
+  const cls = h.status === "healthy" ? "ok" : h.status === "empty" ? "bad" : "warn";
+  el.className = "stk-health " + cls;
+  const label = h.status === "healthy" ? "سالم" : h.status === "empty" ? "خالی" : "ناقص";
+  const issues = (h.issues || []).slice(0, 6).map(t => "<li>" + esc(t) + "</li>").join("");
+  const dup = (collisions || []).length
+    ? "<li>" + esc((collisions || []).map(c => c.emoji + " → " + (c.moods || []).join("/")).join("، ")) +
+      " — این ایموجی‌ها در بیش از یک دسته ثبت شده‌اند و یکی از دسته‌ها را بی‌صدا می‌دزدند.</li>"
+    : "";
+  el.innerHTML =
+    '<div class="hbar">' +
+      '<span class="score">' + fmtNum(score) + '<small style="font-size:var(--fs-xs);opacity:.7">/100</small></span>' +
+      '<span class="meter"><i style="inline-size:' + score + '%"></i></span>' +
+      '<span class="pill">' + esc(label) + '</span>' +
+      '<span class="pill">' + fmtNum(h.usableTotal || 0) + ' قابل استفاده</span>' +
+    '</div>' +
+    ((issues || dup) ? "<ul>" + issues + dup + "</ul>" : "");
+}
+
 async function loadStickers(opts){
   if(opts && opts.offset !== undefined) stickers.offset = Math.max(0, opts.offset);
   const grid = $("stkGrid");
@@ -1877,8 +2337,11 @@ async function loadStickers(opts){
     if(seq !== stickers.seq) return;
     stickers.cats = d.categories || stickers.cats;
     stickers.stats = d.stats || stickers.stats;
+    stickers.health = d.health || null;
+    stickers.collisions = d.emojiTableCollisions || [];
     stkFillCategorySelects();
     stkRenderStats(stickers.stats);
+    stkRenderHealth(stickers.health, stickers.collisions);
     const items = d.items || [];
     stickers.total = Number(d.total||items.length);
     stickers.hasMore = !!d.hasMore;
@@ -1997,26 +2460,127 @@ async function loadLogs(){
     }).join("") : emptyState("📜","لاگی با این فیلتر نیست","سطح یا تعداد را تغییر بده.");
   }, { rows:4 });
 }
+/* ── کلیدها ─────────────────────────────────────────────────────────────
+   The old panel printed "🟢 فعال" for every key that this isolate had not
+   benched, which was a verdict nothing had checked: a revoked key rendered
+   exactly like a healthy one. Two things are now kept strictly apart.
+
+   `/api/admin/keys` is an inventory — what is configured. It is free and
+   instant, so it paints on tab open. `POST /api/admin/keys/test` is a
+   verification — it calls every service for real and returns what each one
+   said. Nothing in this panel claims a credential works unless a probe said so,
+   and a credential that has not been tested says exactly that. */
+const KEY_SERVICE_ICON = {
+  telegram:"✈️", database:"🗄", media:"🖼", gemini:"🔷",
+  cloudflare:"🟠", elevenlabs:"🟣", google_search:"🔎",
+};
+/* Persian for each probe verdict, plus whether it reads as good or bad. */
+const PROBE_TEXT = {
+  ok:            { icon:"✅", label:"سالم",              cls:"good-text" },
+  invalid:       { icon:"❌", label:"نامعتبر",            cls:"bad-text"  },
+  forbidden:     { icon:"🚫", label:"دسترسی رد شد",       cls:"bad-text"  },
+  rate_limited:  { icon:"⏳", label:"محدودیت نرخ/سهمیه",  cls:"warn-text" },
+  unreachable:   { icon:"⚠️", label:"بی‌پاسخ",            cls:"bad-text"  },
+  not_configured:{ icon:"⚪", label:"تنظیم نشده",         cls:"" },
+};
+/* Probe results from the last run, keyed by credential id. */
+let keyProbes = {};
+let keysTesting = false;
+
+function keyCredRow(c, svc){
+  const pr = keyProbes[c.id];
+  const v  = pr ? (PROBE_TEXT[pr.status] || PROBE_TEXT.unreachable) : null;
+  // Untested is its own state. Showing a neutral dash here is the whole point:
+  // the panel must never imply a verdict it does not have.
+  const verdict = v
+    ? `<span class="${v.cls}">${v.icon} ${esc(v.label)}</span>`+
+      (typeof pr.latencyMs==="number" ? `<span class="dim"> · ${fmtNum(pr.latencyMs)}ms</span>` : "")
+    : `<span class="dim">— آزمایش نشده</span>`;
+  const info = pr && pr.info
+    ? Object.keys(pr.info).map(k=>`${esc(k)}: ${esc(String(pr.info[k]))}`).join(" · ")
+    : "";
+  // Local backoff is reported next to, never instead of, the upstream verdict:
+  // "benched here but healthy upstream" is what says the backoff has expired.
+  const bench = c.benchedUntil
+    ? `<small class="warn-text">⏸ در این استقرار تا ${esc(fmt(c.benchedUntil))} کنار گذاشته شده</small>`
+    : "";
+  return `<div class="item"><b>${esc(c.label)}${c.masked?` — <code>${esc(c.masked)}</code>`:""}</b>`+
+    `<small>${verdict}</small>`+
+    (info?`<small class="dim">${info}</small>`:"")+
+    (pr && pr.detail?`<small class="bad-text">${esc(pr.detail)}</small>`:"")+
+    (pr && pr.billed?`<small class="dim">💳 این آزمایش هزینه دارد</small>`:"")+
+    bench+
+    `</div>`;
+}
+
+function renderKeyServices(services){
+  const list = $("keysList");
+  list.innerHTML = services.map(svc=>{
+    const icon = KEY_SERVICE_ICON[svc.service] || "🔑";
+    if(!svc.configured){
+      return `<div class="item"><b>${icon} ${esc(svc.label)}</b>`+
+        `<small class="dim">⚪ تنظیم نشده — این سرویس در این استقرار اعتبارنامه ندارد</small>`+
+        (svc.note?`<small class="dim">${esc(svc.note)}</small>`:"")+`</div>`;
+    }
+    return `<div class="item"><b>${icon} ${esc(svc.label)}</b>`+
+      (svc.note?`<small class="dim">${esc(svc.note)}</small>`:"")+`</div>`+
+      svc.credentials.map(c=>keyCredRow(c, svc)).join("");
+  }).join("");
+}
+
 async function loadKeys(){
   const list = $("keysList");
   return await section(list, async ()=>{
     const d = await api("/api/admin/keys");
-    const ks = d.keys||[];
-    const live = ks.filter(k=>!k.disabled).length;
-    // «تنظیم نشده» با «خالی» یکی نیست: اولی یعنی استقرار ناقص است.
-    if(!d.configured){
-      list.innerHTML = unavailableState("کلید Gemini تنظیم نشده",
-        "بدون کلید، پاسخ‌دهی هوش مصنوعی کار نمی‌کند. با wrangler secret put GEMINI_API_KEY اضافه کن.");
-      return;
-    }
-    list.innerHTML =
-      `<div class="item"><b>مدل چت: ${esc(d.model)}</b><small>مدل کد: ${esc(d.codeModel)}<br>`+
-      `${fmtNum(live)} از ${fmtNum(ks.length)} کلید فعال</small></div>` +
-      ks.map(k=>
-        `<div class="item"><b>کلید ${fmtNum(k.index)} — ${esc(k.masked)}</b>`+
-        `<small class="${k.disabled?"bad-text":"good-text"}">${k.disabled?"🔴 غیرفعال (سهمیه/احراز)":"🟢 فعال"}`+
-        `${k.disabledUntil?" · تا "+esc(fmt(k.disabledUntil)):""}</small></div>`).join("");
+    // Older deployments answer without `services`; fall back to synthesising a
+    // Gemini-only inventory from the legacy `keys` array rather than blanking.
+    const services = Array.isArray(d.services) && d.services.length
+      ? d.services
+      : [{ service:"gemini", label:"Google Gemini", configured:!!d.configured,
+           credentials:(d.keys||[]).map(k=>({ id:"gemini:"+k.index, label:"GEMINI_KEY_"+k.index,
+             masked:k.masked, benchedUntil:k.disabledUntil||null })) }];
+    $("keysHint").textContent = "مدل چت: "+(d.model||"—")+" · مدل کد: "+(d.codeModel||"—")+
+      " — فهرست زیر فقط می‌گوید چه تنظیم شده؛ برای وضعیت واقعی، آزمایش را اجرا کن.";
+    renderKeyServices(services);
   }, { rows:2 });
+}
+
+async function runKeyTests(){
+  if(keysTesting) return;
+  keysTesting = true;
+  const btn  = $("keysTest");
+  const deep = $("keysDeep").checked;
+  btn.disabled = true;
+  btn.textContent = "⏳ در حال آزمایش…";
+  $("keysSummary").innerHTML = `<span class="tag loading">هر سرویس یک درخواست واقعی می‌گیرد…</span>`;
+  try{
+    // Every probe is bounded at 8s server-side and they run concurrently, but
+    // the client default of 12s is still too tight for the slowest provider.
+    const d = await api("/api/admin/keys/test", { method:"POST", body:{ deep }, timeoutMs:45000 });
+    keyProbes = {};
+    (d.probes||[]).forEach(pr=>{ keyProbes[pr.id] = pr; });
+    const sm = d.summary || {};
+    $("keysSummary").innerHTML =
+      `<span class="pill ${Number(sm.failing)>0?"bad":"ok"}">${fmtNum(sm.ok)} سالم از ${fmtNum(sm.total)}</span>`+
+      (Number(sm.failing)>0?`<span class="pill bad">${fmtNum(sm.failing)} مشکل‌دار</span>`:"")+
+      (Number(sm.notConfigured)>0?`<span class="pill">${fmtNum(sm.notConfigured)} سرویس تنظیم‌نشده</span>`:"")+
+      (Number(sm.billed)>0?`<span class="pill">💳 ${fmtNum(sm.billed)} آزمایش هزینه‌دار</span>`:"")+
+      `<span class="pill">${esc(fmt(d.ranAt))}</span>`;
+    // Re-read the inventory so a key benched *by* this run shows its backoff.
+    invalidateTab("keys");
+    await loadKeys();
+    toast(Number(sm.failing)>0 ? "آزمایش تمام شد — "+sm.failing+" مشکل" : "همه سالم ✓",
+          Number(sm.failing)>0 ? "err" : "ok");
+  }catch(e){
+    // A failed *test run* is not a verdict about the keys, so no result is
+    // written: stale verdicts from a previous run would be worse than none.
+    $("keysSummary").innerHTML = `<span class="tag err">آزمایش اجرا نشد: ${esc(e.message||"خطا")}</span>`;
+    toast(e.message||"آزمایش اجرا نشد","err");
+  }finally{
+    keysTesting = false;
+    btn.disabled = false;
+    btn.textContent = "▶ آزمایش همه";
+  }
 }
 
 /* ── بیزینس / سیستم / تنظیمات ────────────────────────────────────────── */
@@ -2055,7 +2619,12 @@ async function loadSystem(){
     maintenance = !!d.maintenance;
     $("maintState").textContent = "حالت تعمیر: " + (maintenance?"روشن ⚠️":"خاموش ✅");
     const m = d.metrics||{}, l = d.locks||{};
+    const storage=d.storage||{}, providers=d.providers||{};
     list.innerHTML =
+      `<div class="item"><b>سلامت نوشتن D1</b><small>${storage.available?"آماده":"موقتاً متوقف"}${storage.retryAt?' · تلاش بعدی '+esc(fmt(storage.retryAt)):''}</small></div>`+
+      `<div class="item"><b>حفاظت سهمیه (این نمونه سرور)</b><small>${fmtNum(storage.rowsWritten)} ردیف نوشته‌شده · ${fmtNum(storage.rejected)} درخواست متوقف · ${fmtNum(storage.optionalSkipped)} عملیات اختیاری حذف‌شده</small></div>`+
+      `<div class="item"><b>ارائه‌دهنده مدل</b><small>${fmtNum(providers.available)} کلید در دسترس از ${fmtNum(providers.configured)}</small></div>`+
+      `<div class="item"><b>ذخیره‌سازی تشخیص</b><small>نتایج ابزارها و خطاها ذخیره می‌شوند؛ گفتگوی سادهٔ موفق نوشتن تشخیصی ندارد.</small></div>`+
       `<div class="item"><b>${esc(d.version)}</b><small>قفل AI: ${fmtNum(l.ai)} · قفل آپدیت: ${fmtNum(l.updates)}</small></div>`+
       `<div class="item"><b>خطاها</b><small>${fmtNum(m.errors)}</small></div>`+
       `<div class="item"><b>فراخوانی تلگرام</b><small>${fmtNum(m.tgCalls)}</small></div>`+
@@ -2160,7 +2729,7 @@ function bindStatic(){
 
   // دکمه‌های «بارگذاری» هر تب = تازه‌سازی اجباری همان بخش.
   $("groupsLoad").onclick = ()=>{ invalidateTab("groups"); loadGroups(); };
-  $("appsLoad").onclick   = ()=>{ invalidateTab("webapps"); loadWebApps(); };
+  $("appsLoad").onclick   = ()=>{ invalidateTab("deployments"); loadDeployments(); };
   $("mediaLoad").onclick  = ()=>{ invalidateTab("media"); loadMedia(); };
   $("mediaKind").onchange = ()=>{ invalidateTab("media"); loadMedia({ offset:0 }); };
   $("mediaPrev").onclick  = ()=> loadMedia({ offset: Math.max(0, media.offset - media.limit) });
@@ -2222,6 +2791,7 @@ function bindStatic(){
   $("logsLoad").onclick   = ()=>{ invalidateTab("logs"); loadLogs(); };
   $("logLevel").onchange  = ()=> loadLogs();
   $("keysLoad").onclick   = ()=>{ invalidateTab("keys"); loadKeys(); };
+  $("keysTest").onclick   = runKeyTests;
   $("systemLoad").onclick = ()=>{ invalidateTab("system"); loadSystem(); };
   $("cfgLoad").onclick    = ()=> loadConfig();
   $("businessToggle").onclick = toggleBusiness;
@@ -2254,7 +2824,7 @@ function bindStatic(){
   });
 }
 async function init(){
-  buildNav(); bindStatic(); updateBcCount();
+  buildNav(); bindStatic(); bindOperations(); updateBcCount();
   // The persona list is only needed when the admin opens the persona picker, so
   // routing no longer waits a whole round-trip for it before drawing anything.
   api("/api/admin/personas").then(p=>{ personaCache = p.personas||[]; }).catch(()=>{});
@@ -2269,6 +2839,8 @@ async function init(){
   const POLL_TABS = {
     overview: () => loadOverview({ quiet:true }),
     broadcast: () => loadBroadcast({ quiet:true }),
+    runs: () => !operationPages.runs.cursor && !document.querySelector('.ops-detail:not([hidden])') ? loadRuns({quiet:true}) : Promise.resolve(),
+    jobs: () => !operationPages.jobs.cursor && !$("jobList").querySelector("button:disabled") ? loadOperationsPage("jobs",{quiet:true}) : Promise.resolve(),
   };
   async function poll(){
     if(polling || document.hidden || authDead) return;

@@ -196,7 +196,7 @@ export function assertPublicHttpUrl(raw: string): URL {
   if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("unsupported external URL scheme");
   if (url.username || url.password) throw new Error("external URL credentials are not allowed");
 
-  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
   if (!host) throw new Error("external URL host missing");
 
   if (host === "localhost" || host === "localhost.localdomain"
@@ -217,6 +217,11 @@ export function assertPublicHttpUrl(raw: string): URL {
     const mapped = /(?:^|:)(?:ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(v6);
     if (mapped && numericHostIsPrivate(mapped[1])) {
       throw new Error("private external address blocked");
+    }
+    const mappedHex=/^::(?:ffff:)?([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i.exec(v6);
+    if(mappedHex){
+      const hi=parseInt(mappedHex[1],16),lo=parseInt(mappedHex[2],16);
+      if(numericHostIsPrivate(`${hi>>>8}.${hi&255}.${lo>>>8}.${lo&255}`))throw new Error("private external address blocked");
     }
     return url;
   }
@@ -1318,7 +1323,9 @@ const SCHEDULED_TASK_TAG = "scheduled-task";
 export function sanitizeScheduledIntent(raw: unknown, maxLen = 1500): string {
   return String(raw ?? "")
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, " ")
-    .replace(new RegExp(`</?\s*${SCHEDULED_TASK_TAG}[^>]*>`, "gi"), " ")
+    // `\\s` and not `\s`: this is a template literal, so a single backslash is
+    // eaten before the RegExp ever sees it and `</ scheduled-task>` slips through.
+    .replace(new RegExp(`</?\\s*${SCHEDULED_TASK_TAG}[^>]*>`, "gi"), " ")
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim()
@@ -1439,4 +1446,422 @@ export function planJobOutcome(input: JobOutcomeInput): JobOutcome {
   const next = nextRecurrence();
   if (next !== null) return { action: "reschedule", nextRunAt: next, reason: "recurring" };
   return { action: "delete", reason: "attempts-exhausted" };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MESSAGE IDENTITY & MEDIA DESCRIPTION
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * The shapes below are deliberately structural and all-optional: they describe
+ * only what these functions read, so index.ts's fuller `TgMessage` family is
+ * assignable to them without core.ts having to know about Telegram at all.
+ */
+export interface IdPhotoSize { file_id: string; file_unique_id?: string; width: number; height: number; file_size?: number }
+export interface IdFileLike {
+  file_id: string; file_unique_id?: string; file_name?: string; mime_type?: string; file_size?: number;
+  width?: number; height?: number; duration?: number;
+}
+export interface IdStickerLike extends IdFileLike {
+  emoji?: string; set_name?: string; is_animated?: boolean; is_video?: boolean;
+  type?: string; custom_emoji_id?: string;
+}
+export interface IdAudioLike extends IdFileLike { title?: string; performer?: string }
+export interface IdPollLike { id: string; question?: string; is_closed?: boolean }
+
+export interface IdMediaBearing {
+  photo?: IdPhotoSize[];
+  sticker?: IdStickerLike;
+  animation?: IdFileLike;
+  video?: IdFileLike;
+  video_note?: IdFileLike;
+  voice?: IdFileLike;
+  audio?: IdAudioLike;
+  document?: IdFileLike;
+  poll?: IdPollLike;
+}
+
+/** One reportable fact. `copy` marks values worth rendering as tap-to-copy. */
+export interface IdField { label: string; value: string; copy: boolean }
+
+export interface MediaIdReport {
+  /** Which media branch matched — stable, language-independent, test-friendly. */
+  kind: "sticker" | "animation" | "photo" | "video" | "video_note" | "voice" | "audio" | "document" | "poll";
+  icon: string;
+  /** Localized display name for `kind`. */
+  label: string;
+  fields: IdField[];
+}
+
+function idField(label: string, value: string | number | null | undefined, copy = true): IdField | null {
+  if (value === null || value === undefined) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  return { label, value: raw, copy };
+}
+
+function compactFields(fields: Array<IdField | null>): IdField[] {
+  return fields.filter((f): f is IdField => f !== null);
+}
+
+export function formatFileSize(bytes: number | undefined | null): string | null {
+  if (typeof bytes !== "number" || !Number.isFinite(bytes) || bytes < 0) return null;
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB", "TB"];
+  let value = bytes / 1024;
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) { value /= 1024; i++; }
+  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`;
+}
+
+/** `m:ss`, or `h:mm:ss` past an hour. */
+export function formatMediaDuration(seconds: number | undefined | null): string | null {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) return null;
+  const total = Math.round(seconds);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+/** "First Last (@handle)", degrading to `#id` when Telegram hid the rest. */
+export function describeUserLabel(
+  u: { id?: number; first_name?: string; last_name?: string; username?: string } | null | undefined,
+): string | null {
+  if (!u) return null;
+  const name = [u.first_name, u.last_name].filter(Boolean).join(" ").trim();
+  const handle = u.username ? `@${u.username}` : "";
+  const label = [name, handle].filter(Boolean).join(" ").trim();
+  if (label) return label;
+  return u.id !== undefined && u.id !== null ? `#${u.id}` : null;
+}
+
+/**
+ * File identifiers for whichever media a message carries, or null for a
+ * text-only message.
+ *
+ * `file_unique_id` is reported wherever Telegram supplies it because it is the
+ * stable identity: a `file_id` is scoped to one bot and may be re-issued, so
+ * anything comparing files across systems must compare unique ids.
+ *
+ * A real message carries exactly one media kind, so branch order is defensive
+ * rather than load-bearing: most specific first, `photo` last, so a malformed
+ * or hand-built payload degrades to the most informative branch instead of the
+ * least. Callers get `kind` back so they can assert which branch ran.
+ */
+export function describeMessageMedia(m: IdMediaBearing | null | undefined, isFa: boolean): MediaIdReport | null {
+  if (!m) return null;
+  const dims = (w?: number, h?: number) => (w && h ? `${w}×${h}` : null);
+  const L = {
+    unique: "file_unique_id",
+    size: isFa ? "حجم" : "Size",
+    dim: isFa ? "ابعاد" : "Dimensions",
+    dur: isFa ? "مدت" : "Duration",
+    mime: isFa ? "نوع فایل" : "MIME",
+    name: isFa ? "نام فایل" : "File name",
+  };
+
+  if (m.sticker) {
+    const s = m.sticker;
+    const flavour = s.is_video
+      ? (isFa ? "ویدیویی" : "video")
+      : s.is_animated ? (isFa ? "متحرک" : "animated") : (isFa ? "ثابت" : "static");
+    return {
+      kind: "sticker", icon: "🎭", label: isFa ? "استیکر" : "Sticker",
+      fields: compactFields([
+        idField("file_id", s.file_id),
+        idField(L.unique, s.file_unique_id),
+        idField(isFa ? "پک" : "Set", s.set_name),
+        idField(isFa ? "اموجی" : "Emoji", s.emoji, false),
+        idField(isFa ? "گونه" : "Kind", `${s.type ?? "regular"} · ${flavour}`, false),
+        idField("custom_emoji_id", s.custom_emoji_id),
+        idField(L.dim, dims(s.width, s.height), false),
+        idField(L.size, formatFileSize(s.file_size), false),
+      ]),
+    };
+  }
+
+  if (m.animation) {
+    const a = m.animation;
+    return {
+      kind: "animation", icon: "🎞️", label: isFa ? "گیف / انیمیشن" : "Animation (GIF)",
+      fields: compactFields([
+        idField("file_id", a.file_id),
+        idField(L.unique, a.file_unique_id),
+        idField(L.name, a.file_name, false),
+        idField(L.dim, dims(a.width, a.height), false),
+        idField(L.dur, formatMediaDuration(a.duration), false),
+        idField(L.mime, a.mime_type, false),
+        idField(L.size, formatFileSize(a.file_size), false),
+      ]),
+    };
+  }
+
+  if (m.video) {
+    const v = m.video;
+    return {
+      kind: "video", icon: "🎬", label: isFa ? "ویدیو" : "Video",
+      fields: compactFields([
+        idField("file_id", v.file_id),
+        idField(L.unique, v.file_unique_id),
+        idField(L.name, v.file_name, false),
+        idField(L.dim, dims(v.width, v.height), false),
+        idField(L.dur, formatMediaDuration(v.duration), false),
+        idField(L.mime, v.mime_type, false),
+        idField(L.size, formatFileSize(v.file_size), false),
+      ]),
+    };
+  }
+
+  if (m.video_note) {
+    const v = m.video_note;
+    return {
+      kind: "video_note", icon: "⭕", label: isFa ? "ویدیو‌پیام" : "Video note",
+      fields: compactFields([
+        idField("file_id", v.file_id),
+        idField(L.unique, v.file_unique_id),
+        idField(L.dur, formatMediaDuration(v.duration), false),
+        idField(L.size, formatFileSize(v.file_size), false),
+      ]),
+    };
+  }
+
+  if (m.voice) {
+    const v = m.voice;
+    return {
+      kind: "voice", icon: "🎤", label: isFa ? "ویس" : "Voice",
+      fields: compactFields([
+        idField("file_id", v.file_id),
+        idField(L.unique, v.file_unique_id),
+        idField(L.dur, formatMediaDuration(v.duration), false),
+        idField(L.mime, v.mime_type, false),
+        idField(L.size, formatFileSize(v.file_size), false),
+      ]),
+    };
+  }
+
+  if (m.audio) {
+    const a = m.audio;
+    return {
+      kind: "audio", icon: "🎵", label: isFa ? "فایل صوتی" : "Audio",
+      fields: compactFields([
+        idField("file_id", a.file_id),
+        idField(L.unique, a.file_unique_id),
+        idField(isFa ? "عنوان" : "Title", a.title, false),
+        idField(isFa ? "خواننده" : "Performer", a.performer, false),
+        idField(L.name, a.file_name, false),
+        idField(L.dur, formatMediaDuration(a.duration), false),
+        idField(L.mime, a.mime_type, false),
+        idField(L.size, formatFileSize(a.file_size), false),
+      ]),
+    };
+  }
+
+  if (m.document) {
+    const d = m.document;
+    return {
+      kind: "document", icon: "📎", label: isFa ? "فایل" : "Document",
+      fields: compactFields([
+        idField("file_id", d.file_id),
+        idField(L.unique, d.file_unique_id),
+        idField(L.name, d.file_name, false),
+        idField(L.mime, d.mime_type, false),
+        idField(L.size, formatFileSize(d.file_size), false),
+      ]),
+    };
+  }
+
+  if (m.photo?.length) {
+    // Telegram ships several rescaled copies of one photo, smallest first. Pick
+    // by area rather than by position: order is documented but not guaranteed,
+    // and reporting a 90×90 thumbnail's id instead of the full-size one would
+    // make the whole command useless for its main job.
+    const best = m.photo.reduce((a, b) => ((b.width * b.height) > (a.width * a.height) ? b : a));
+    return {
+      kind: "photo", icon: "🖼️", label: isFa ? "عکس" : "Photo",
+      fields: compactFields([
+        idField("file_id", best.file_id),
+        idField(L.unique, best.file_unique_id),
+        idField(L.dim, dims(best.width, best.height), false),
+        idField(L.size, formatFileSize(best.file_size), false),
+        idField(isFa ? "نسخه‌ها" : "Variants", `${m.photo.length}`, false),
+      ]),
+    };
+  }
+
+  if (m.poll) {
+    const p = m.poll;
+    return {
+      kind: "poll", icon: "📊", label: isFa ? "نظرسنجی" : "Poll",
+      fields: compactFields([
+        idField("poll_id", p.id),
+        idField(isFa ? "پرسش" : "Question", p.question?.slice(0, 80), false),
+        idField(isFa ? "وضعیت" : "State", p.is_closed ? (isFa ? "بسته" : "closed") : (isFa ? "باز" : "open"), false),
+      ]),
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Bot API 7.0 collapsed the four legacy `forward_*` fields into one tagged
+ * union, so this is the only forwarding information current updates carry.
+ * `hidden_user` deliberately exposes no id — Telegram withholds it, and
+ * inventing one would be exactly the kind of false claim this pass is removing.
+ */
+export function describeForwardOrigin(
+  origin:
+    | { type: "user"; sender_user?: { id?: number; first_name?: string; last_name?: string; username?: string } }
+    | { type: "hidden_user"; sender_user_name?: string }
+    | { type: "chat"; sender_chat?: { id?: number; title?: string; type?: string } }
+    | { type: "channel"; chat?: { id?: number; title?: string; username?: string }; message_id?: number }
+    | null
+    | undefined,
+  isFa: boolean,
+): IdField[] {
+  if (!origin) return [];
+  const from = isFa ? "فوروارد از" : "Forwarded from";
+  switch (origin.type) {
+    case "user":
+      return compactFields([
+        idField(from, describeUserLabel(origin.sender_user), false),
+        idField(isFa ? "شناسه فرستنده اصلی" : "Original sender ID", origin.sender_user?.id),
+      ]);
+    case "hidden_user":
+      return compactFields([
+        idField(from, origin.sender_user_name
+          ? `${origin.sender_user_name} ${isFa ? "(پنهان — بدون شناسه)" : "(hidden — no ID exposed)"}`
+          : (isFa ? "کاربر پنهان (بدون شناسه)" : "Hidden user (no ID exposed)"), false),
+      ]);
+    case "chat":
+      return compactFields([
+        idField(from, origin.sender_chat?.title ?? origin.sender_chat?.type, false),
+        idField(isFa ? "شناسه مبدأ" : "Origin chat ID", origin.sender_chat?.id),
+      ]);
+    case "channel":
+      return compactFields([
+        idField(from, origin.chat?.title ?? (origin.chat?.username ? `@${origin.chat.username}` : null), false),
+        idField(isFa ? "شناسه کانال" : "Channel ID", origin.chat?.id),
+        idField(isFa ? "شناسه پیام در کانال" : "Message ID in channel", origin.message_id),
+      ]);
+    default:
+      return [];
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SECRET REDACTION
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Renders a credential as an identifiable-but-unusable fragment.
+ *
+ * The point is that an operator looking at the panel can tell *which* of five
+ * similar-looking keys a row refers to without the panel becoming a place
+ * secrets can be read off a shared screen. Below ~10 characters a head+tail
+ * mask reveals most of the value, so short inputs show nothing at all rather
+ * than a token amount of obfuscation.
+ */
+export function maskSecret(secret: string): string {
+  if (secret.length <= 9) return "…";
+  return secret.slice(0, 5) + "…" + secret.slice(-4);
+}
+
+/**
+ * Strips credentials out of text that is about to be shown or logged.
+ *
+ * Several providers echo the rejected credential back inside their own error
+ * message — Google's 400 body, for one — so upstream error text cannot be
+ * surfaced verbatim. Redaction happens *before* truncation because the secret
+ * is usually near the front, where a `.slice(0, 160)` would preserve it.
+ *
+ * Values under 8 characters are ignored: they are not plausibly secrets, and
+ * replacing a short string would corrupt unrelated text.
+ */
+export function redactSecrets(text: string, ...secrets: (string | undefined)[]): string {
+  let out = text;
+  for (const secret of secrets) {
+    if (secret && secret.length >= 8) out = out.split(secret).join("[redacted]");
+  }
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SCHEDULER OBSERVABILITY — one pure summary for the admin dashboard
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** The columns the summary reads; a D1 row is structurally assignable. */
+export interface JobObservationRow {
+  kind?: string | null;
+  status?: string | null;
+  n?: number | null;
+  next_run_at?: number | null;
+  lease_until?: number | null;
+  runs?: number | null;
+  last_run_at?: number | null;
+  last_error?: string | null;
+}
+
+export interface JobOpsSummary {
+  total: number;
+  reminders: number;
+  agentTasks: number;
+  paused: number;
+  running: number;
+  /** Pending rows already past their fire time — the sweep is behind. */
+  overdue: number;
+  /** Rows whose claim expired: a worker died mid-run or a timeout left it. */
+  stuck: number;
+  /** Pending rows due within the next 60 minutes. */
+  dueNextHour: number;
+  /** Rows carrying a last error (they recovered or are retrying). */
+  failing: number;
+  runs: number;
+}
+
+/**
+ * Summarises the whole `scheduled_jobs` table from grouped counts.
+ *
+ * The dashboard used to have no scheduler visibility at all, so "my reminder
+ * never fired" could only be investigated by hand-written SQL. This is the
+ * pure half of the fix: it turns grouped rows into the six numbers that
+ * actually answer that question — how many are pending, how many are past due,
+ * how many are stuck mid-claim, and how many are failing.
+ *
+ * `stuck` is the one that cannot be derived from status alone: a `running` row
+ * whose lease has expired means an isolate died holding the claim, and it stays
+ * invisible without comparing `lease_until` to now.
+ */
+export function summarizeScheduledJobs(
+  rows: readonly JobObservationRow[],
+  now: number = Date.now(),
+  horizonMs = 60 * 60 * 1000,
+): JobOpsSummary {
+  const out: JobOpsSummary = {
+    total: 0, reminders: 0, agentTasks: 0, paused: 0, running: 0,
+    overdue: 0, stuck: 0, dueNextHour: 0, failing: 0, runs: 0,
+  };
+  for (const row of rows ?? []) {
+    const n = Math.max(0, Number(row.n ?? 0) || 0);
+    const status = String(row.status ?? "pending").toLowerCase();
+    out.total += n;
+    if (normalizeJobKind(row.kind) === "agent_task") out.agentTasks += n;
+    else out.reminders += n;
+    if (status === "paused") out.paused += n;
+    if (status === "running") out.running += n;
+    const nextRun = Number(row.next_run_at);
+    if (status === "pending" || status === "running") {
+      if (Number.isFinite(nextRun)) {
+        if (nextRun <= now) out.overdue += n;
+        else if (nextRun - now <= horizonMs) out.dueNextHour += n;
+      }
+    }
+    const lease = Number(row.lease_until);
+    if (status === "running" && Number.isFinite(lease) && lease <= now) out.stuck += n;
+    if (row.last_error) out.failing += n;
+    out.runs += Math.max(0, Number(row.runs ?? 0) || 0);
+  }
+  return out;
 }

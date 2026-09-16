@@ -307,20 +307,424 @@ export async function bulkCategory(
   return list.length;
 }
 
+/* ── emoji vocabulary ───────────────────────────────────────────────────── */
+
+/**
+ * Emoji -> mood, and the only such table in the codebase.
+ *
+ * index.ts used to carry its own 40-entry `EMOJI_TO_CATEGORY`, which was the
+ * sole route by which a user's sticker got learned. A sticker whose emoji was
+ * not one of those 40 — which is most of them — was silently dropped, so the
+ * library only ever grew in the handful of moods someone had thought to list.
+ * That is the "manual sticker management" the whole design is trying to avoid,
+ * so the table lives here next to the moods it maps to and is much wider.
+ */
+/*
+ * One emoji may appear in only ONE row. Entries are normalised with
+ * `baseEmoji` before indexing, so a ZWJ sequence collapses to its first code
+ * point — listing "❤️‍🩹" under thanks silently stole "❤️" from love, and
+ * "😮‍💨" under facepalm stole "😮" from wow. Both are gone; `stickerTableCollisions`
+ * exists so the next one fails a test instead of quietly mis-routing a mood.
+ */
+const EMOJI_CATEGORY_TABLE: Array<[StickerCategory, string]> = [
+  ["greeting",  "👋🙋🤝🫡🖖🤗😊🙂🌞☀️"],
+  ["farewell",  "🌙😴🥱💤🛌🫶🌃🌚"],
+  ["thanks",    "🙏🥺💐🌹🤲🫰"],
+  ["laugh",     "😂🤣😆😹😄😃😁😸🙃😝😜🤪💀"],
+  ["celebrate", "🎉🥳🎊🎈🍾🏆🥇🎂🎁✨🌟🎇🎆👏🙌🔥"],
+  ["love",      "❤️😍🥰💕😘💖💗💘💝💞💓♥️😻🫀🤍💜💙💚🧡"],
+  ["sad",       "😢😭💔😞😔☹️🙁😿😥😪🥀😓"],
+  ["facepalm",  "🤦🙄😑😒😤😖😣🫠🥴"],
+  ["agree",     "👍✅👌💯🆗☑️🤙✔️"],
+  ["no",        "👎❌🚫⛔🙅🤚✋🛑"],
+  ["wow",       "😮😱🤯😲😳🫢😯🤩‼️❗"],
+  ["thinking",  "🤔🧐🤨💭🫤😶❓❔"],
+];
+
+/**
+ * Strip the modifiers Telegram happily includes but that make an exact lookup
+ * fail: variation selectors, skin tones, and everything after a ZWJ. "🙋‍♀️"
+ * and "👍🏽" must both find their base emoji.
+ */
+function baseEmoji(raw: string): string {
+  if (!raw) return "";
+  const noZwj = raw.split("\u200D")[0];
+  return [...noZwj]
+    .filter(ch => {
+      const cp = ch.codePointAt(0) ?? 0;
+      if (cp === 0xFE0E || cp === 0xFE0F) return false;          // variation selectors
+      if (cp >= 0x1F3FB && cp <= 0x1F3FF) return false;          // skin tones
+      return true;
+    })
+    .join("");
+}
+
+const EMOJI_INDEX: Map<string, StickerCategory> = (() => {
+  const m = new Map<string, StickerCategory>();
+  for (const [cat, chars] of EMOJI_CATEGORY_TABLE) {
+    // Splitting by code point keeps multi-code-point emoji like ❤️ intact once
+    // normalised, and `set` only when absent so the first listed mood wins for
+    // emoji that legitimately belong to two (👋 is greeting before farewell).
+    for (const ch of splitEmoji(chars)) {
+      const b = baseEmoji(ch);
+      if (b && !m.has(b)) m.set(b, cat);
+    }
+  }
+  return m;
+})();
+
+/** Split a run of emoji into individual ones, keeping ZWJ sequences together. */
+function splitEmoji(run: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  for (const ch of run) {
+    const cp = ch.codePointAt(0) ?? 0;
+    const isModifier = cp === 0xFE0E || cp === 0xFE0F || cp === 0x200D || (cp >= 0x1F3FB && cp <= 0x1F3FF);
+    if (isModifier || (cur.endsWith("\u200D") && cur)) { cur += ch; continue; }
+    if (cur) out.push(cur);
+    cur = ch;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+/**
+ * Any emoji claimed by more than one mood, after normalisation. Must be empty:
+ * a collision means one of the two moods silently loses its emoji.
+ */
+export function stickerTableCollisions(): Array<{ emoji: string; moods: StickerCategory[] }> {
+  const claims = new Map<string, StickerCategory[]>();
+  for (const [cat, chars] of EMOJI_CATEGORY_TABLE) {
+    for (const ch of splitEmoji(chars)) {
+      const b = baseEmoji(ch);
+      if (!b) continue;
+      const list = claims.get(b) ?? [];
+      if (!list.includes(cat)) list.push(cat);
+      claims.set(b, list);
+    }
+  }
+  return [...claims.entries()]
+    .filter(([, moods]) => moods.length > 1)
+    .map(([emoji, moods]) => ({ emoji, moods }));
+}
+
+/** The mood an emoji belongs to, or null. Tolerant of skin tones and ZWJ. */
+export function categoryForEmoji(emoji: string): StickerCategory | null {
+  const b = baseEmoji((emoji ?? "").trim());
+  if (!b) return null;
+  return EMOJI_INDEX.get(b) ?? EMOJI_INDEX.get([...b][0] ?? "") ?? null;
+}
+
+/** Every emoji in a string, normalised — used to read the user's own register. */
+export function extractEmoji(text: string): string[] {
+  const matches = (text ?? "").match(/\p{Extended_Pictographic}(\uFE0F|\uFE0E)?(\u200D\p{Extended_Pictographic}(\uFE0F|\uFE0E)?)*/gu) ?? [];
+  return matches.map(baseEmoji).filter(Boolean);
+}
+
 /* ── selection ──────────────────────────────────────────────────────────── */
+
+/** What the moment looks like, for ranking candidates within a mood. */
+export interface StickerSignals {
+  /** Ids this chat has seen recently; hard-excluded while alternatives exist. */
+  recentIds?: readonly string[];
+  /** The user's message text, for tag/set-name matching. */
+  text?: string;
+  /** The mood being served, so an on-mood emoji can be preferred. */
+  category?: StickerCategory;
+}
+
+/**
+ * How well one entry fits this particular moment.
+ *
+ * Selection used to be a pure least-used rotation: within a mood bucket every
+ * sticker was interchangeable and the entry's own emoji, set and tags were
+ * never read at all. So "😂 that's hilarious" and "😹 lol" drew from the same
+ * bucket in the same fixed order regardless of what the user actually sent.
+ * Ranking is now semantic first and rotation second, which keeps the anti-
+ * repetition property (equal-scoring entries still rotate least-used-first)
+ * while letting an exact emoji match win when there is one.
+ */
+export function scoreSticker(item: StickerItem, signals: StickerSignals): number {
+  const text = (signals.text ?? "").toLowerCase();
+  const userEmoji = new Set(extractEmoji(signals.text ?? ""));
+  const own = baseEmoji(item.emoji ?? "");
+  let score = 0;
+
+  // The user literally sent this emoji: the strongest possible match.
+  if (own && userEmoji.has(own)) score += 4;
+  // Failing that, an entry whose own emoji agrees with the mood we are serving
+  // beats one that landed in the bucket for some other reason.
+  else if (own && signals.category && categoryForEmoji(own) === signals.category) score += 2;
+  // An entry with no emoji at all is not penalised, just not boosted — most of
+  // the pre-existing library is bare ids and must stay reachable.
+
+  if (text) {
+    const tags = item.tags ?? [];
+    let tagHits = 0;
+    for (const t of tags) {
+      const tag = t.trim().toLowerCase();
+      if (tag.length >= 3 && text.includes(tag)) tagHits++;
+    }
+    score += Math.min(tagHits, 2);
+    const set = (item.setName ?? "").toLowerCase();
+    if (set.length >= 4 && text.includes(set)) score += 1;
+  }
+  return score;
+}
 
 /**
  * Pick one entry, avoiding anything the chat has seen recently and anything
- * disabled. Least-used first so a freshly learned sticker actually gets used,
- * then oldest-lastUsed as the tiebreak — a rotation, not a dice roll.
+ * disabled. Highest semantic score first, then least-used so a freshly learned
+ * sticker still surfaces, then oldest-lastUsed — a ranked rotation, not a dice
+ * roll, and fully deterministic for a given library and moment.
+ *
+ * Back-compatible: passing an id array (or nothing) behaves exactly as before,
+ * because with no text and no category every candidate scores 0 and the order
+ * collapses to the original least-used-first rotation.
  */
-export function chooseSticker(list: StickerItem[], recentIds: readonly string[] = []): StickerItem | null {
+export function chooseSticker(
+  list: StickerItem[],
+  signalsOrRecent: StickerSignals | readonly string[] = [],
+): StickerItem | null {
+  const signals: StickerSignals = Array.isArray(signalsOrRecent)
+    ? { recentIds: signalsOrRecent }
+    : (signalsOrRecent as StickerSignals);
+
   const usable = list.filter(i => i.enabled !== false);
   if (!usable.length) return null;
-  const recent = new Set(recentIds);
+  const recent = new Set(signals.recentIds ?? []);
   const fresh = usable.filter(i => !recent.has(i.id));
   const pool = fresh.length ? fresh : usable;
-  return [...pool].sort((a, b) => (a.uses - b.uses) || (a.lastUsed - b.lastUsed) || (a.id < b.id ? -1 : 1))[0] ?? null;
+
+  const scored = pool.map(i => ({ i, s: scoreSticker(i, signals) }));
+  scored.sort((a, b) =>
+    (b.s - a.s) ||
+    (a.i.uses - b.i.uses) ||
+    (a.i.lastUsed - b.i.lastUsed) ||
+    (a.i.id < b.i.id ? -1 : 1));
+  return scored[0]?.i ?? null;
+}
+
+/**
+ * Fall back across the whole library when the requested mood's bucket is empty
+ * or entirely disabled.
+ *
+ * Previously an empty bucket meant `pickReactionMedia` returned null and the
+ * turn was simply lost — a library with 200 stickers could still fail to
+ * produce one because the model happened to name "facepalm". Neighbouring
+ * moods are tried in a fixed order of emotional adjacency before giving up.
+ */
+const MOOD_NEIGHBOURS: Record<StickerCategory, StickerCategory[]> = {
+  greeting:  ["love", "celebrate", "agree", "laugh"],
+  farewell:  ["love", "thanks", "greeting", "sad"],
+  thanks:    ["love", "agree", "celebrate", "greeting"],
+  laugh:     ["celebrate", "wow", "agree", "love"],
+  celebrate: ["laugh", "love", "wow", "agree"],
+  love:      ["thanks", "celebrate", "greeting", "laugh"],
+  sad:       ["love", "facepalm", "thinking", "farewell"],
+  facepalm:  ["thinking", "sad", "no", "laugh"],
+  agree:     ["thanks", "celebrate", "greeting", "laugh"],
+  no:        ["facepalm", "thinking", "sad", "agree"],
+  wow:       ["celebrate", "laugh", "thinking", "agree"],
+  thinking:  ["wow", "facepalm", "no", "agree"],
+};
+
+export function neighbouringMoods(category: StickerCategory): StickerCategory[] {
+  return MOOD_NEIGHBOURS[category] ?? [];
+}
+
+/* ── "send me a sticker" vs "send me a picture of a cat" ────────────────── */
+
+/**
+ * Which system should answer an explicit media request.
+ *
+ * The routing guide used to say that ANY explicit ask for a sticker — right
+ * down to "send me a sticker to test you" — was `search_images`. So Nova ran a
+ * Google image search for the word "sticker" while a perfectly good local
+ * sticker library sat unused, which is exactly the complaint that "sticker
+ * requests must be understood as sticker requests".
+ *
+ * The real discriminator is not whether the word "sticker" appears, it is
+ * whether the request names a SUBJECT:
+ *   "send me a sticker"              -> library  (no subject)
+ *   "یه استیکر خنده‌دار بفرست"          -> library  (a mood, not a subject)
+ *   "send me a sticker of a cat"     -> subject  (search can find a cat)
+ *   "استیکر گربه بفرست"                -> subject
+ */
+export type StickerAsk =
+  | { kind: "library"; category: StickerCategory | null }
+  | { kind: "subject"; subject: string }
+  | null;
+
+/** The ask itself: a media word next to a send-verb, in either language. */
+const ASK_RE = /(استیکر|گیف|اموجی متحرک|sticker|gif)/i;
+const SEND_VERB_RE = /(بفرست|بفرس|بده|بزن|میفرستی|می‌فرستی|میدی|ارسال کن|send|show|give|drop|post)/i;
+
+/**
+ * U+200C (ZWNJ) joins Persian compounds like "خنده‌دار". It is a format
+ * character, so `\p{L}` does not match it — treating it as punctuation split
+ * that word into "خنده دار" and broke every mood regex written with `‌?`.
+ * It counts as part of a word everywhere below.
+ */
+const WORDISH = "\\p{L}\\p{N}\\u200c";
+
+/**
+ * Words that are part of the asking, not part of what is being asked for.
+ * Without these, "send me a sticker to test you" looks like it names the
+ * subject "to test you" and gets routed to a web search.
+ *
+ * The lookarounds are load-bearing: unanchored, the one-letter entries matched
+ * *inside* words and "cat" came out as "c t", "dancing" as "d ncing".
+ */
+const ASK_FILLER_RE = new RegExp(
+  `(?<![${WORDISH}])(?:` + [
+    // the media words and the verbs themselves
+    "استیکر", "گیف", "اموجی متحرک", "sticker", "stickers", "gif", "gifs",
+    "بفرست", "بفرس", "بده", "بزن", "میفرستی", "می‌فرستی", "میدی", "ارسال", "کن",
+    "send", "show", "give", "drop", "post",
+    // determiners, politeness, pronouns, prepositions
+    "یه", "یک", "یدونه", "دونه", "برام", "برای", "من", "به", "لطفا", "لطفاً", "میشه", "می‌شه", "از",
+    "please", "pls", "plz", "me", "us", "a", "an", "one", "some", "the", "to", "for", "my", "of",
+    // purpose and vagueness — "to test you", "just any", "هر چی"
+    "تست", "ببینم", "بذار", "هر", "چی", "هرچی", "چیزی", "یچیزی",
+    "test", "testing", "just", "any", "random", "whatever", "something", "anything",
+    "you", "your", "let", "s", "see", "now", "quick", "quickly", "here", "there", "it", "that", "this",
+  ].join("|") + `)(?![${WORDISH}])`,
+  "giu",
+);
+
+/**
+ * Mood adjectives as they appear in a *request*. Deliberately separate from
+ * `MOMENTS`: those detect a mood Nova is reacting to ("خخخ" -> laugh), these
+ * read a mood the user is ordering ("send me a funny sticker" -> laugh).
+ * Folding one into the other would make every message containing "funny"
+ * register as a laughing moment.
+ */
+const ASK_MOOD: Array<[StickerCategory, RegExp]> = [
+  ["laugh",     /خنده‌?دار|بامزه|خنده|funny|funniest|lol|laughing|haha/i],
+  ["sad",       /غمگین|ناراحت|گریه|غم|sad|crying|depress/i],
+  ["love",      /عاشقانه|عشقی|قلب|love|romantic|heart/i],
+  ["celebrate", /تبریک|جشن|شاد|تولد|celebrat|party|congrat|happy/i],
+  ["thanks",    /تشکر|ممنون|مرسی|thank/i],
+  ["greeting",  /سلام|خوشامد|greeting|hello|hi/i],
+  ["farewell",  /خداحافظ|شب بخیر|bye|goodbye|good ?night/i],
+  // No "angry" mood exists; irritation lands on facepalm.
+  ["facepalm",  /کلافه|عصبانی|فیس‌?پالم|facepalm|annoyed|frustrat|angry|mad/i],
+  ["wow",       /شوکه|تعجب|wow|shocked|surprised|amazed/i],
+  ["thinking",  /فکر|متفکر|thinking|thoughtful|confused/i],
+  ["agree",     /موافق|تایید|agree|approv|yes/i],
+  ["no",        /مخالف|رد|disagree|no|nope/i],
+];
+
+function askMood(residue: string): StickerCategory | null {
+  for (const [cat, re] of ASK_MOOD) {
+    if (!isStickerCategory(cat)) continue;
+    if (re.test(residue)) return cat;
+  }
+  return null;
+}
+
+export function classifyStickerAsk(rawText: string): StickerAsk {
+  const text = (rawText ?? "").trim();
+  if (!text) return null;
+  if (!ASK_RE.test(text) || !SEND_VERB_RE.test(text)) return null;
+
+  // Whatever survives stripping the ask is the subject, if anything does.
+  const residue = text
+    .replace(ASK_FILLER_RE, " ")
+    .replace(/[^\p{L}\p{N}\s\u200c]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!residue) return { kind: "library", category: null };
+
+  // A mood word is not a subject — it tells the library WHICH sticker to pick.
+  const mood = askMood(residue) ?? detectStickerCategory(residue);
+  if (mood) return { kind: "library", category: mood };
+  if (residue.length >= 3) return { kind: "subject", subject: residue.slice(0, 80) };
+  return { kind: "library", category: null };
+}
+
+/* ── health & diagnostics ───────────────────────────────────────────────── */
+
+export interface StickerHealth {
+  /** 0-100. How well the library can actually serve the moods it claims to. */
+  score: number;
+  status: "healthy" | "degraded" | "empty";
+  /** Moods with no usable entry at all — these are the ones that fail live. */
+  emptyCategories: StickerCategory[];
+  /** Moods with fewer than 3 usable entries, so repetition is likely. */
+  thinCategories: StickerCategory[];
+  /** Same file id filed under more than one mood. */
+  duplicateIds: Array<{ id: string; categories: StickerCategory[] }>;
+  /** Entries carrying no emoji, so semantic selection cannot rank them. */
+  withoutEmoji: number;
+  /** Added over a week ago and still never used. */
+  staleUnused: number;
+  usableTotal: number;
+  issues: string[];
+}
+
+const THIN_CATEGORY_THRESHOLD = 3;
+
+/**
+ * What the admin panel should show instead of a manual mapping grid: whether
+ * the library can actually do its job, and precisely where it cannot.
+ */
+export function stickerHealth(all: StickerRecord[]): StickerHealth {
+  const usable = all.filter(s => s.enabledResolved);
+  const byCat = new Map<StickerCategory, StickerRecord[]>();
+  for (const c of STICKER_CATEGORIES) byCat.set(c, []);
+  for (const s of usable) byCat.get(s.category)?.push(s);
+
+  const emptyCategories = STICKER_CATEGORIES.filter(c => (byCat.get(c)?.length ?? 0) === 0);
+  const thinCategories = STICKER_CATEGORIES.filter(c => {
+    const n = byCat.get(c)?.length ?? 0;
+    return n > 0 && n < THIN_CATEGORY_THRESHOLD;
+  });
+
+  const idHomes = new Map<string, Set<StickerCategory>>();
+  for (const s of all) {
+    const set = idHomes.get(s.id) ?? new Set<StickerCategory>();
+    set.add(s.category);
+    idHomes.set(s.id, set);
+  }
+  const duplicateIds = [...idHomes.entries()]
+    .filter(([, cats]) => cats.size > 1)
+    .map(([id, cats]) => ({ id, categories: [...cats] }))
+    .slice(0, 20);
+
+  const withoutEmoji = usable.filter(s => !s.emoji).length;
+  const weekAgo = Date.now() - 7 * 86_400_000;
+  const staleUnused = usable.filter(s => s.uses === 0 && s.addedAt > 0 && s.addedAt < weekAgo).length;
+
+  // Coverage is what actually matters at send time, so it dominates the score.
+  const covered = STICKER_CATEGORIES.length - emptyCategories.length;
+  let score = Math.round((covered / STICKER_CATEGORIES.length) * 70);
+  score += Math.round(((STICKER_CATEGORIES.length - thinCategories.length) / STICKER_CATEGORIES.length) * 15);
+  if (usable.length) score += Math.round(((usable.length - withoutEmoji) / usable.length) * 15);
+  if (duplicateIds.length) score -= 5;
+  score = Math.max(0, Math.min(100, score));
+
+  const issues: string[] = [];
+  if (emptyCategories.length) {
+    issues.push(`${emptyCategories.length} mood(s) have no usable sticker and will fall back to a neighbouring mood: ${emptyCategories.join(", ")}`);
+  }
+  if (thinCategories.length) {
+    issues.push(`${thinCategories.length} mood(s) have fewer than ${THIN_CATEGORY_THRESHOLD} stickers, so repeats are likely: ${thinCategories.join(", ")}`);
+  }
+  if (withoutEmoji) issues.push(`${withoutEmoji} entries carry no emoji, so they cannot be ranked semantically.`);
+  if (staleUnused) issues.push(`${staleUnused} entries are over a week old and have never been used.`);
+  if (duplicateIds.length) issues.push(`${duplicateIds.length} file id(s) are filed under more than one mood.`);
+
+  return {
+    score,
+    status: usable.length === 0 ? "empty" : score >= 70 ? "healthy" : "degraded",
+    emptyCategories, thinCategories, duplicateIds,
+    withoutEmoji, staleUnused,
+    usableTotal: usable.length,
+    issues,
+  };
 }
 
 /* ── contextual judgement ───────────────────────────────────────────────── */

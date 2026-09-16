@@ -21,6 +21,8 @@
  * isolation, exactly like `core.ts`.
  */
 
+import { isNativeAppRequest } from "./application/protocol.ts";
+import { classifyBuildTarget } from "./artifact";
 /* ══════════════════════════════════════════════════════════════════════════
    PERSIAN WORD-BOUNDARY GUARDS
    ══════════════════════════════════════════════════════════════════════════ */
@@ -86,6 +88,7 @@ export type IntentCategory =
   | "research"
   // Tier 6 — other specialized tools
   | "game_create"
+  | "native_app"
   | "web_app"
   | "document_create"
   | "scheduling"
@@ -118,6 +121,7 @@ export const INTENT_TIER: Record<IntentCategory, number> = {
   research: 5,
 
   game_create: 6,
+  native_app: 6,
   web_app: 6,
   document_create: 6,
   scheduling: 6,
@@ -597,6 +601,14 @@ const SCHEDULING_RE = alt(
   "(?:هر\\s*(?:روز|هفته|ساعت|دقیقه)|every\\s*(?:day|week|hour|minute))\\s*.{0,40}(?:بگو|بفرست|یادم|remind|send)",
   "(?:فردا|امشب|بعدا|بعداً|later|tomorrow|tonight|in\\s*\\d+\\s*(?:min|hour))\\s*.{0,40}(?:یادم|بگو|بفرست|remind|tell|send)",
   "(?:ساعت|at)\\s*\\d{1,2}(?::\\d{2})?\\s*.{0,30}(?:یادم|بگو|بفرست|remind)",
+  // Managing an existing schedule. Without these, "pause my daily task" missed
+  // this branch entirely and lost the scheduling directive; worse, phrasing that
+  // DID match on the word "reminder" was then clamped to an allowlist that had
+  // no pause/resume tool in it at all.
+  "(?:pause|unpause|un-?pause|resume|suspend|re-?enable)\\s*.{0,30}(?:reminder|task|schedule|job|alarm)",
+  "(?:my|the)\\s*(?:reminder|task|schedule|job)s?\\s*.{0,20}(?:pause|resume|stop|list|show)",
+  "(?:متوقف|توقف|مکث|غیرفعال|از\\s*سر|ازسرگیری|ادامه\\s*بده|فعال\\s*کن)\\s*.{0,30}(?:یادآور|ریمایندر|کار|تسک|زمان‌بندی)",
+  "(?:یادآور|ریمایندر|کار|تسک|زمان‌بندی)(?:\\s*ها|های)?\\s*.{0,30}(?:متوقف|توقف|مکث|غیرفعال|ادامه|فعال|از\\s*سر|لیست|نشون)",
 );
 
 const VOICE_RE = alt(
@@ -726,15 +738,89 @@ const TOOL_POLICY: Record<IntentCategory, ToolPolicy> = {
   // routing no longer needs (or has) a per-depth category.
   research: { allow: ["search", "read_web_page", "get_current_time", "calculate"], force: true },
   game_create: { allow: ["create_game"], force: true },
+  native_app: { allow: ["create_application"], force: true },
   web_app: { allow: ["host_web_app", "create_code_file"] },
   document_create: { allow: ["create_pdf", "create_code_file"] },
-  scheduling: { allow: ["schedule_reminder", "list_reminders", "cancel_reminder", "get_current_time"] },
+  scheduling: { allow: ["schedule_reminder", "list_reminders", "cancel_reminder", "pause_reminder", "resume_reminder", "get_current_time"] },
   voice_request: { allow: ["voice_response"] },
   // Being called by name is not a request. No tool may fire on an activation.
   activation: { allow: [], force: false },
   general_knowledge: {},
   conversation: {},
 };
+
+/**
+ * Categories whose whitelist is a safety boundary rather than a routing hint.
+ *
+ * These stay clamped even for a multi-action request: "block him and then tell
+ * me the weather" must not hand a moderation turn the whole tool surface. Every
+ * other category is a *capability* decision, and a capability whitelist is
+ * exactly what breaks a legitimate multi-step request.
+ */
+const NON_WIDENABLE: ReadonlySet<IntentCategory> = new Set<IntentCategory>([
+  "system_command", "moderation", "group_management", "admin_action",
+  "user_management", "persona_info", "persona_switch", "name_switch", "native_app",
+]);
+
+/**
+ * Multi-action wording: the request contains more than one task.
+ *
+ * This is the signal the router was missing. A whitelist answers "which tool
+ * does this sentence want?", and that question has no single answer for
+ * "search for X **and then** make an image from it" or "set three reminders and
+ * list the rest". Clamping such a request to one category's tools made the
+ * second half of the request literally unreachable — the model was never shown
+ * the tool it needed — which is one of the two root causes behind the "needed
+ * more steps than allowed" failure.
+ *
+ * Deliberately conservative: a bare "and" inside one clause ("a dashboard and
+ * a chart") is a single build, so the pattern requires a sequencing word (then,
+ * after, afterwards, also) or an explicit multi-item marker (a counted plural,
+ * or a numbered/bulleted list with at least two items).
+ */
+const VERB_EN = String.raw`(?:create|make|build|generate|draw|design|produce|search|find|look\s+up|fetch|send|post|share|set|schedule|add|write|summarize|summarise|translate|fix|update|edit|delete|remove|list|show|get|calculate|convert|export|download|book|order|compare|check)`;
+const VERB_FA = `(?:بساز|بسازي|درست کن|بفرست|بفرس|بده|بزن|پیدا کن|جستجو کن|جست\u200cوجو کن|تنظیم کن|اضافه کن|بنویس|تولید کن|طراحی کن|کش|بکش|ترجمه کن|خلاصه کن|حذف کن|پاک کن|لیست کن|نشان بده|محاسبه کن|تبدیل کن|بررسی کن|وارد کن|ذخیره کن|ارسال کن)`;
+
+const MULTI_ACTION_RE = new RegExp(
+  [
+    // Explicit sequencing.
+    String.raw`\b(?:and\s+then|then|after\s+that|afterwards?|and\s+also|also\s+then|as\s+well\s+as|plus)\b`,
+    // A conjunction joining TWO DIFFERENT actions ("search X and create an
+    // image") is the canonical mixed workflow. A bare "and" is not enough —
+    // "a dashboard and a chart" is one build — so the second half must start
+    // with an action verb.
+    String.raw`\b(?:and|,|;)\s+(?:also\s+|then\s+)?${VERB_EN}\b`,
+    // Counted plurals: "three reminders", "2 images", "۵ یادآور".
+    String.raw`\b(?:two|three|four|five|six|seven|eight|nine|ten|\d{1,2})\s+\w+`,
+    String.raw`(?:دو|سه|چهار|پنج|شش|هفت|هشت|نه|ده|\d{1,2})\s*\S+`,
+    // Persian sequencing and "و + verb" conjunctions.
+    `(?:و\s*(?:بعد|سپس|همچنین)|بعد\s*از\s*(?:آن|اون)|سپس|و\s*در\s*ادامه|به\s*علاوه)`,
+    `(?:،|;|و)\s*(?:بعد\s*)?${VERB_FA}`,
+    // Arabic sequencing.
+    `(?:ثم|بعد\s*ذلك|و\s*أيضا)`,
+  ].join("|"),
+  "iu",
+);
+
+/**
+ * Numbered (1. / 1- / ۱) or bulleted list markers, which imply >1 task.
+ * Non-global on purpose: a shared `g` regex carries `lastIndex` between calls,
+ * so `test()` on one message could make the next message's count wrong.
+ */
+const LIST_ITEM_RE = /(?:^|\n)\s*(?:\d{1,2}\s*[.)-]|[-*•·]|[۱-۹]\s*[).-])\s+\S/;
+const LIST_ITEM_COUNT_RE = new RegExp(LIST_ITEM_RE.source, "gu");
+
+/**
+ * True when the request asks for more than one task.
+ *
+ * Pure and cheap; intended to be called on the already-sanitized request text.
+ */
+export function isMultiActionRequest(text: string): boolean {
+  const body = String(text ?? "").trim();
+  if (!body) return false;
+  if (LIST_ITEM_RE.test(body) && (body.match(LIST_ITEM_COUNT_RE)?.length ?? 0) >= 2) return true;
+  return MULTI_ACTION_RE.test(body);
+}
 
 /**
  * Resolves the effective tool policy for a decision.
@@ -745,14 +831,24 @@ const TOOL_POLICY: Record<IntentCategory, ToolPolicy> = {
  *
  * A *soft* decision never narrows the model down to a whitelist it did not ask
  * for: low confidence is precisely the case where options must stay open.
+ *
+ * `multiAction` drops the whitelist for a request that plainly contains several
+ * tasks, except in the categories above where the whitelist is a safety
+ * boundary. The deny list is kept either way, so a genuinely forbidden tool
+ * stays forbidden.
  */
-export function toolPolicyFor(decision: IntentDecision): ToolPolicy {
+export function toolPolicyFor(decision: IntentDecision, opts: { multiAction?: boolean } = {}): ToolPolicy {
   const base = TOOL_POLICY[decision.category] ?? {};
-  const allow = decision.allowedTools.length
-    ? decision.allowedTools
-    : (decision.deterministic ? base.allow : undefined);
+  const multi = Boolean(opts.multiAction) && !NON_WIDENABLE.has(decision.category);
+  const allow = multi
+    ? undefined
+    : decision.allowedTools.length
+      ? decision.allowedTools
+      : (decision.deterministic ? base.allow : undefined);
   const deny = decision.forbiddenTools.length ? decision.forbiddenTools : base.deny;
-  const force = decision.forceToolCall ?? (Boolean(base.force) && decision.deterministic);
+  const force = multi
+    ? false
+    : decision.forceToolCall ?? (Boolean(base.force) && decision.deterministic);
   return { allow, deny, force: Boolean(force) && Boolean(allow?.length) };
 }
 
@@ -1293,8 +1389,22 @@ export function classifyRequestIntent(ctx: IntentContext): IntentDecision {
   }
 
   /* ── TIER 6 · BUILDERS / SCHEDULING / VOICE ───────────────────────────── */
+  if (imperative && isNativeAppRequest(body)) {
+    return decide("native_app", "native_app", { confidence: 0.97, allowedTools: ["create_application"], forceToolCall: true,
+      directive: directive(["Use create_application for real native APK/AAB/EXE/desktop projects. Never substitute HTML or claim a queued build is already compiled. Preserve the user's idea and target. Use edit/build for the active native project."]), ...base });
+  }
 
-  if (imperative && GAME_RE.test(body)) {
+  // One goal-resolution for the whole build tier. GAME_RE is only a cheap
+  // *candidate* test: it proves the sentence mentions a game, not that the user
+  // wants one built. The artifact classifier reads the sentence's deliverable,
+  // so a game used as a THEME stands down ("به سبک بازی پک-من", "a website
+  // about a game", "calculator with a game theme") and the model keeps every
+  // build tool.
+  const buildGoal = imperative && (GAME_RE.test(body) || WEB_APP_RE.test(body))
+    ? classifyBuildTarget(body)
+    : null;
+
+  if (imperative && GAME_RE.test(body) && buildGoal?.target === "game") {
     return decide("game_create", "game_create", {
       confidence: 0.93,
       forceToolCall: true,
@@ -1307,7 +1417,9 @@ export function classifyRequestIntent(ctx: IntentContext): IntentDecision {
     });
   }
 
-  if (imperative && WEB_APP_RE.test(body)) {
+  // Deliberate fall-through when the game word named a theme: the app branch
+  // below decides instead of the game branch above.
+  if (imperative && WEB_APP_RE.test(body) && buildGoal?.target !== "game") {
     return decide("web_app", "web_app", {
       confidence: 0.9,
       allowedTools: ["host_web_app", "create_code_file"],
@@ -1330,9 +1442,11 @@ export function classifyRequestIntent(ctx: IntentContext): IntentDecision {
   if (SCHEDULING_RE.test(body)) {
     return decide("scheduling", "scheduling", {
       confidence: 0.9,
-      allowedTools: ["schedule_reminder", "list_reminders", "cancel_reminder", "get_current_time"],
+      allowedTools: ["schedule_reminder", "list_reminders", "cancel_reminder", "pause_reminder", "resume_reminder", "get_current_time"],
       directive: directive([
         "Intent: SCHEDULING. Use the reminder tools. Timing is accurate to about ±1 minute — never promise an exact second.",
+        "Several reminders in one request are ONE turn: emit one `schedule_reminder` call per reminder in the same response (they are independent), then confirm them together. Never create only the first reminder.",
+        "Stopping something is two different tools: pause_reminder is reversible, cancel_reminder is permanent. Prefer pausing when the wording is ambiguous.",
       ]),
       ...base,
     });

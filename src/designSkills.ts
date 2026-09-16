@@ -42,6 +42,69 @@ export function buildUniversalDesignSkills(
   ].join("\n");
 }
 
+/**
+ * Device-specific build brief, per surface.
+ *
+ * The dispatch path used to append ONE fixed device note to every request:
+ *
+ *   · "Fullscreen 16:9 canvas layout, keyboard WASD/Arrows controls + Spacebar +
+ *     Mouse aiming" for desktop,
+ *   · "MANDATORY ON-SCREEN TOUCH CONTROLS (Virtual Joystick / D-Pad on
+ *     bottom-left, Jump/Action buttons on bottom-right)" for mobile,
+ *   · the same joystick note for hybrid.
+ *
+ * Two defects came from that single string. It was injected into WEB APP
+ * requests too — which is why dashboards and calculators arrived with arcade
+ * canvas structure — and for games it hard-coded the joystick that made every
+ * generated game feel like the same mobile arcade, including the ones whose
+ * control model is tapping or swiping. A device note has to know which surface
+ * it is describing, and a game's control model is decided by its design intent,
+ * not by the device alone.
+ *
+ * `gameControl` is the intent's already-resolved control contract
+ * (`detectGameDesignIntent(concept).input`), passed in as plain strings so this
+ * module keeps no dependency on the design layer.
+ */
+export function buildDeviceBrief(
+  surface: DesignSurface,
+  device: "desktop" | "mobile" | "auto",
+  gameControl?: { desktop: string; touch: string; joystick: boolean; pad?: boolean; label?: string },
+): string {
+  if (surface === "webapp") {
+    const base = "This is a production web application, not a game: never add a virtual joystick, d-pad, HUD overlay, score/lives counter or a canvas playfield.";
+    if (device === "mobile") {
+      return `IMPORTANT DEVICE REQUIREMENT — mobile-first: single column, touch targets of at least 44px, the primary action within thumb reach, and no affordance that only works on hover. Pinch/zoom is not part of the design; content must fit the viewport. ${base}`;
+    }
+    if (device === "desktop") {
+      return `IMPORTANT DEVICE REQUIREMENT — desktop-first: use the available width with a multi-column or sidebar layout, cap the text measure (~65ch), provide hover/active states, and make every action reachable by keyboard with a visible focus ring. ${base}`;
+    }
+    return `IMPORTANT DEVICE REQUIREMENT — responsive across 320px to 1440px with real breakpoints (not just fluid width): the same layout must be usable with a finger and a mouse. ${base}`;
+  }
+
+  const control = gameControl;
+  if (!control) {
+    return "IMPORTANT DEVICE REQUIREMENT: choose the control scheme this game's genre actually uses (tapping, dragging, swiping, steering or keys) instead of defaulting to a virtual joystick, and state it on the menu screen.";
+  }
+  // Three distinct contracts, not two. Collapsing them into "uses a stick" vs
+  // "must not use a pad" told a platformer with typed controls that its d-pad
+  // was forbidden, and told a puzzle game that a pad was merely unlikely.
+  const noStick = control.joystick
+    ? "An analogue stick is correct here only because movement and aim are independent; it must not cover the action."
+    : control.pad
+      ? "Use a discrete directional pad or button cluster here — NOT an analogue stick, and never both."
+      : "Do NOT add any joystick, d-pad or movement pad: this game's control model has no directional movement, and a pad would cover the playfield.";
+  if (device === "mobile") {
+    return `IMPORTANT DEVICE REQUIREMENT — mobile target. Touch: ${control.touch} ${noStick}`;
+  }
+  if (device === "desktop") {
+    // MERGE FIX: `noStick` was computed above but never used on this branch, so
+    // a desktop puzzle/strategy game lost the control contract that keeps the
+    // model from bolting on a joystick or d-pad.
+    return `IMPORTANT DEVICE REQUIREMENT — desktop target. Keyboard/pointer: ${control.desktop} Touch controls must still exist for a touch-capable laptop or tablet, drawn only while touch is actually used. ${noStick}`;
+  }
+  return `IMPORTANT DEVICE REQUIREMENT — adaptive: keyboard/pointer (${control.desktop}) AND touch (${control.touch}) must both work, and the layout must expose only the control the current device can actually use. ${noStick}`;
+}
+
 function count(source: string, pattern: RegExp): number {
   return (source.match(pattern) ?? []).length;
 }

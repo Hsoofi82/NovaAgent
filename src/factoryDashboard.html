@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>Nova — Application Builds</title><script src="/tg-webapp.js"></script>
+<style>
+:root{font-family:system-ui,sans-serif;color-scheme:dark;background:#0b1120;color:#e8eef9}body{max-width:900px;margin:auto;padding:24px}*{box-sizing:border-box}h1{font-size:24px}h2{font-size:18px}.card{border:1px solid #32405a;background:#121d30;padding:20px;border-radius:14px;margin:18px 0}p,small{color:#b7c2d6;line-height:1.6}label{display:block;margin:12px 0 5px}input,textarea,select,button{font:inherit;min-height:44px;border:1px solid #4b5871;border-radius:8px;padding:10px;background:#142038;color:inherit}input,select,textarea{width:100%}textarea{min-height:120px}button{cursor:pointer}button:disabled,fieldset:disabled{opacity:.6;cursor:default}fieldset{border:0;padding:0;margin:0}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.build{border-top:1px solid #32405a;padding:16px 0}.status{font-weight:600}a{color:#8bdbfa;margin-inline-end:12px;overflow-wrap:anywhere}code{overflow-wrap:anywhere}#notice{white-space:pre-wrap}#notice:empty{display:none}:focus-visible{outline:2px solid #a39cfa;outline-offset:3px}
+</style></head><body>
+<header><h1>Application builds</h1><p>Android APK/AAB and Windows EXE bundles, using an optional external build worker.</p></header>
+<section class="card" aria-live="polite"><h2 id="availability">Checking availability…</h2><p id="availabilityText">No build is accepted until an external worker is connected.</p><button id="refresh" type="button">Refresh status</button></section>
+<p id="notice" class="card" role="status"></p>
+<section class="card"><h2>Project request</h2><form id="requestForm"><fieldset id="controls" disabled>
+<label for="project">Project</label><select id="project"><option value="">New application</option></select>
+<label for="title">Title</label><input id="title" maxlength="100">
+<label for="idea">Idea or change</label><textarea id="idea" maxlength="6000"></textarea>
+<label for="target">Output</label><select id="target"><option value="android-apk">Android APK</option><option value="android-aab">Android AAB — release signing required</option><option value="windows">Windows EXE bundle</option></select>
+<div class="actions"><button id="generate" type="submit">Generate / update</button><button id="build" type="button">Build selected project</button></div>
+</fieldset></form><p>When native builds are unavailable, you can still ask Nova for a web application. A web app is not an APK or EXE.</p></section>
+<section class="card"><h2>Recent builds</h2><div id="builds" aria-live="polite"><p>No builds loaded.</p></div></section>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id),tg=window.Telegram?.WebApp,auth=tg?.initData||'';
+tg?.ready();tg?.expand();
+const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let loading=false,submitting=false,timer,available=false,submission;
+function notice(text){$('notice').textContent=text;}
+async function api(path,body,key){
+  if(!auth)throw new Error('Open this panel from Nova inside Telegram.');
+  const response=await fetch(path,{method:body?'POST':'GET',headers:{'X-Telegram-Init-Data':auth,'Content-Type':'application/json',...(key?{'Idempotency-Key':key}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(12000)});
+  const data=await response.json();
+  if(!response.ok||!data.ok)throw new Error(typeof data.error==='string'&&!/^[A-Z_]+$/.test(data.error)?data.error:'The request could not be completed. Refresh the project status and try again.');
+  return data;
+}
+function availability(data){
+  available=data.available===true;$('controls').disabled=!available||submitting;
+  $('availability').textContent=available?'External build worker connected':'Native builds currently unavailable';
+  $('availabilityText').textContent=available?'Requests are queued for external compilation. Download links appear only after validation succeeds.':'No native build worker is connected. Nothing will be queued or compiled. The regular Nova web builder remains available.';
+  for(const option of $('target').options)option.disabled=!(data.targets||[]).includes(option.value);
+  if($('target').selectedOptions[0]?.disabled)$('target').value=(data.targets||[])[0]||'android-apk';
+}
+async function refresh(){
+  if(loading||document.hidden)return;loading=true;clearTimeout(timer);$('refresh').disabled=true;
+  try{
+    const status=await api('/api/apps/status');availability(status);
+    if(status.status!=='disabled'){
+      const [projects,builds]=await Promise.all([api('/api/apps/projects'),api('/api/apps/builds')]);
+      const selected=$('project').value;
+      $('project').innerHTML='<option value="">New application</option>'+(projects.projects||[]).map(p=>`<option value="${esc(p.id)}">${esc(p.title)}</option>`).join('');$('project').value=selected;
+      $('builds').innerHTML=(builds.builds||[]).map(b=>`<article class="build"><b>${esc(b.target)}</b> · <span class="status">${esc(b.status)}</span><p><code>${esc(b.projectId)}</code><br>${esc(new Date(b.createdAt).toLocaleString())}</p>${(b.artifacts||[]).map(a=>`<a href="${esc(a.url)}" rel="noreferrer" download>${esc(a.name)} (${esc(a.signing)})</a>`).join('')}${['queued','generating','building','repairing'].includes(b.status)?`<button type="button" data-cancel="${esc(b.buildId)}">Cancel</button>`:''}</article>`).join('')||'<p>No builds yet.</p>';
+    }else $('builds').innerHTML='<p>Native build service is not enabled. Existing data has not been deleted.</p>';
+  }catch(error){availability({available:false,targets:[]});notice(error.name==='TimeoutError'?'Status refresh timed out. Please try again.':error.message);}
+  finally{loading=false;$('refresh').disabled=false;if(!document.hidden)timer=setTimeout(refresh,available?20000:60000);}
+}
+async function submit(action){
+  if(!available||submitting)return;
+  const body={action,projectId:$('project').value||undefined,title:$('title').value,idea:$('idea').value,target:$('target').value};
+  if(action==='build'&&!body.projectId)return notice('Select a project first.');
+  if(action!=='build'&&body.idea.trim().length<8)return notice('Describe the application or change in a little more detail.');
+  const fingerprint=JSON.stringify(body);if(submission?.fingerprint!==fingerprint)submission={fingerprint,key:crypto.randomUUID()};
+  submitting=true;$('controls').disabled=true;
+  try{const result=await api('/api/apps/projects',body,submission.key);notice(`Build ${result.buildId}: ${result.status}. This is not a completed binary yet.`);await refresh();$('project').value=result.projectId;}
+  catch(error){notice(error.message);}finally{submitting=false;$('controls').disabled=!available;}
+}
+$('requestForm').onsubmit=event=>{event.preventDefault();submit($('project').value?'edit':'create');};
+$('build').onclick=()=>submit('build');$('refresh').onclick=refresh;
+$('builds').onclick=async event=>{const button=event.target.closest('[data-cancel]');if(!button)return;button.disabled=true;try{await api(`/api/apps/builds/${button.dataset.cancel}/cancel`,{});notice('Build cancelled.');await refresh();}catch(error){notice(error.message);button.disabled=false;}};
+document.addEventListener('visibilitychange',()=>{clearTimeout(timer);if(!document.hidden)refresh();});refresh();
+})();
+</script></body></html>

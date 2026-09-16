@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>داشبورد من — Nova</title>
+<script src="/tg-webapp.js"></script>
+<style>
+:root{
+  --bg:#080b12; --bg-1:#0e1219; --bg-2:#151a24; --bg-3:#1c2230;
+  --border:rgba(255,255,255,.07); --border-2:rgba(255,255,255,.13);
+  --text:#e9ecf5; --text-2:#b9bfd0; --text-3:#848b9e;
+  --accent:#7c6ff7; --accent-2:#3de8c8; --warn:#ffb454; --danger:#ff5f6d; --ok:#3de8c8;
+  --r:14px; --s1:8px; --s2:12px; --s3:16px; --s4:24px;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text); min-height:100vh;
+  font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,"Vazirmatn",Tahoma,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent-2)}
+button{font:inherit;color:inherit}
+.wrap{max-width:1080px;margin:0 auto;padding:var(--s3) var(--s3) 96px}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+header.top{
+  display:flex;align-items:center;gap:var(--s2);
+  padding:var(--s3);border:1px solid var(--border);border-radius:var(--r);
+  background:linear-gradient(180deg,var(--bg-1),var(--bg-2));margin-bottom:var(--s3);
+}
+.logo{
+  width:40px;height:40px;flex:0 0 auto;border-radius:12px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),#b86bff);font-weight:800;color:#fff;
+}
+.who{min-width:0;flex:1}
+.who b{display:block;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who span{color:var(--text-3);font-size:.8rem}
+.plan{
+  font-size:.75rem;padding:4px 10px;border-radius:999px;border:1px solid var(--border-2);
+  background:var(--bg-3);white-space:nowrap
+}
+.plan.pro{border-color:rgba(61,232,200,.4);color:var(--accent-2)}
+
+/* ── Tabs ───────────────────────────────────────────────────────────── */
+nav.tabs{
+  display:flex;gap:6px;overflow-x:auto;padding-bottom:var(--s2);margin-bottom:var(--s2);
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{
+  border:1px solid var(--border);background:var(--bg-1);border-radius:999px;
+  padding:9px 16px;cursor:pointer;white-space:nowrap;color:var(--text-2);
+  display:inline-flex;align-items:center;gap:7px;min-height:40px
+}
+nav.tabs button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+nav.tabs button:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+
+/* ── Cards ──────────────────────────────────────────────────────────── */
+.panel[hidden]{display:none}
+.grid{display:grid;gap:var(--s2);grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.card{
+  border:1px solid var(--border);border-radius:var(--r);background:var(--bg-1);
+  padding:var(--s3);margin-bottom:var(--s2)
+}
+.card h2{margin:0 0 2px;font-size:.98rem}
+.card p.sub{margin:0 0 var(--s2);color:var(--text-3);font-size:.82rem}
+.metric{display:flex;flex-direction:column;gap:2px}
+.metric b{font-size:1.5rem;font-variant-numeric:tabular-nums}
+.metric span{color:var(--text-3);font-size:.78rem}
+.row{display:flex;justify-content:space-between;align-items:center;gap:var(--s2);flex-wrap:wrap}
+.bar{height:6px;border-radius:999px;background:var(--bg-3);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+
+/* ── Items ──────────────────────────────────────────────────────────── */
+.item{border:1px solid var(--border);border-radius:var(--r);background:var(--bg-2);padding:var(--s3);margin-bottom:var(--s2)}
+.item-head{display:flex;justify-content:space-between;gap:var(--s2);align-items:flex-start;flex-wrap:wrap}
+.item h3{margin:0 0 4px;font-size:.95rem;word-break:break-word}
+.meta{color:var(--text-3);font-size:.8rem;display:grid;gap:2px}
+.meta code{direction:ltr;display:inline-block;background:var(--bg-3);padding:1px 6px;border-radius:6px;color:var(--text-2)}
+.pill{font-size:.72rem;padding:3px 9px;border-radius:999px;border:1px solid var(--border-2);white-space:nowrap}
+.pill.live{border-color:rgba(61,232,200,.45);color:var(--ok)}
+.pill.draft{border-color:rgba(124,111,247,.45);color:#b3aaff}
+.pill.expired{border-color:rgba(255,95,109,.45);color:var(--danger)}
+.pill.warn{border-color:rgba(255,180,84,.45);color:var(--warn)}
+.actions{display:flex;gap:var(--s1);flex-wrap:wrap;margin-top:var(--s2)}
+button.act{
+  border:1px solid var(--border-2);background:var(--bg-3);border-radius:10px;
+  padding:9px 14px;cursor:pointer;min-height:40px
+}
+button.act:hover{background:var(--bg-1)}
+button.act.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.act.danger{border-color:rgba(255,95,109,.4);color:var(--danger)}
+button.act[disabled]{opacity:.5;cursor:not-allowed}
+button.act:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+.empty{color:var(--text-3);text-align:center;padding:var(--s4);border:1px dashed var(--border-2);border-radius:var(--r)}
+.msg{padding:10px 14px;border-radius:10px;font-size:.85rem;margin-bottom:var(--s2)}
+.msg.err{background:rgba(255,95,109,.12);border:1px solid rgba(255,95,109,.35)}
+.msg.ok{background:rgba(61,232,200,.12);border:1px solid rgba(61,232,200,.3)}
+.skeleton{height:74px;border-radius:var(--r);background:linear-gradient(90deg,var(--bg-2),var(--bg-3),var(--bg-2));background-size:200% 100%;animation:sk 1.3s linear infinite}
+@keyframes sk{from{background-position:200% 0}to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.skeleton{animation:none}}
+@media (max-width:520px){
+  .wrap{padding:var(--s2) var(--s2) 88px}
+  .metric b{font-size:1.3rem}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo" aria-hidden="true">N</div>
+    <div class="who">
+      <b id="userName">…</b>
+      <span id="userSub">داشبورد من</span>
+    </div>
+    <span class="plan" id="planPill">…</span>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="بخش‌های داشبورد" id="tabs"></nav>
+  <div id="flash" aria-live="polite"></div>
+
+  <section class="panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
+    <div class="grid" id="overviewMetrics"></div>
+    <div class="card">
+      <h2>مصرف امروز</h2>
+      <p class="sub">سقف‌ها بر اساس پلن فعلی حساب می‌شوند.</p>
+      <div id="overviewUsage"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-hosted" role="tabpanel" aria-labelledby="tab-hosted" hidden>
+    <div class="card">
+      <h2>میزبانی موقت</h2>
+      <p class="sub">میزبانی روی سرور موقتی است. بعد از پایان زمان، لینک عمومی حذف می‌شود؛ سورس نزد شما می‌ماند.</p>
+      <div id="hostedList"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-reminders" role="tabpanel" aria-labelledby="tab-reminders" hidden>
+    <div class="card">
+      <h2>یادآورها و کارهای تکرارشونده</h2>
+      <p class="sub">می‌توانی هر مورد را موقتاً متوقف یا کامل لغو کنی.</p>
+      <div id="reminderList"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-files" role="tabpanel" aria-labelledby="tab-files" hidden>
+    <div class="card">
+      <h2>فایل‌های من</h2>
+      <p class="sub">تصاویر و فایل‌هایی که ساخته یا آپلود کرده‌ای.</p>
+      <div id="fileList"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-memory" role="tabpanel" aria-labelledby="tab-memory" hidden>
+    <div class="card">
+      <h2>حافظه و زمینه</h2>
+      <p class="sub">چه چیزی نوا دربارهٔ تو نگه داشته است — و کنترل پاک‌سازی آن.</p>
+      <div id="memoryBody"></div>
+      <div class="actions">
+        <button class="act danger" id="resetMemory">🧹 پاک کردن کامل حافظه</button>
+      </div>
+      <p class="sub" id="resetHint" style="margin-top:10px">پاک‌سازی، گفتگو، فایل‌های مرجع و پروفایل یادگیری‌شده را حذف می‌کند.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const TEXT = {
+    fa: {
+      title:"داشبورد من", sub:"مدیریت منابع خودت",
+      tabs:{overview:"نمای کلی",hosted:"میزبانی من",reminders:"یادآورها",files:"فایل‌ها",memory:"حافظه"},
+      live:"فعال", draft:"آمادهٔ اجرا", expired:"منقضی", soon:"نزدیک انقضا", gone:"حذف‌شده",
+      open:"باز کردن", deploy:"🚀 اجرا روی سرور", extend:"⏳ تمدید", del:"🗑 حذف",
+      created:"ایجاد", expires:"انقضا", remaining:"باقی‌مانده", views:"بازدید", size:"حجم",
+      remainingNone:"—", noHosted:"هنوز چیزی میزبانی نشده. از چت نوا یک وب‌اپ یا بازی بساز.",
+      noReminders:"یادآوری ثبت نشده.", noFiles:"فایلی نیست.",
+      pause:"⏸ توقف", resume:"▶️ ادامه", cancel:"✖️ لغو",
+      confirmDel:"میزبانی این پروژه حذف شود؟ لینک عمومی از کار می‌افتد.",
+      confirmReset:"همهٔ حافظهٔ نوا دربارهٔ تو پاک شود؟ این کار برگشت‌پذیر نیست.",
+      days:"روز", hours:"ساعت", minutes:"دقیقه",
+      extPlan:"تمدید فقط برای پلن Pro فعال است.",
+      extUsed:"سقف تمدیدها پر شده.",
+      deploying:"در حال اجرا روی سرور…", deleting:"در حال حذف…", extending:"در حال تمدید…",
+      loading:"در حال بارگذاری…", failed:"انجام نشد.",
+      extLeft:"تمدید باقی‌مانده",
+      turns:"نوبت گفتگو", facts:"واقعیت‌ها", prefs:"ترجیحات", topics:"موضوعات", projects:"پروژه‌ها",
+      persona:"شخصیت", callName:"نام صدا‌زدن", lang:"زبان"
+    },
+    en: {
+      title:"My dashboard", sub:"Manage your own resources",
+      tabs:{overview:"Overview",hosted:"My hosting",reminders:"Reminders",files:"Files",memory:"Memory"},
+      live:"Live", draft:"Ready to run", expired:"Expired", soon:"Expiring soon", gone:"Deleted",
+      open:"Open", deploy:"🚀 Run on Server", extend:"⏳ Extend", del:"🗑 Delete",
+      created:"Created", expires:"Expires", remaining:"Remaining", views:"views", size:"size",
+      remainingNone:"—", noHosted:"Nothing hosted yet. Build a web app or game with Nova first.",
+      noReminders:"No reminders yet.", noFiles:"No files.",
+      pause:"⏸ Pause", resume:"▶ Resume", cancel:"✖ Cancel",
+      confirmDel:"Delete this project's hosting? The public link stops working.",
+      confirmReset:"Erase everything Nova remembers about you? This cannot be undone.",
+      days:"d", hours:"h", minutes:"m",
+      extPlan:"Extension is a Pro feature.",
+      extUsed:"The extension limit is reached.",
+      deploying:"Deploying…", deleting:"Deleting…", extending:"Extending…",
+      loading:"Loading…", failed:"Failed.",
+      extLeft:"extensions left",
+      turns:"Conversation turns", facts:"Facts", prefs:"Preferences", topics:"Topics", projects:"Projects",
+      persona:"Persona", callName:"Call name", lang:"Language"
+    }
+  };
+  let LANG = "fa";
+  const T = k => TEXT[LANG][k];
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  /* ── Telegram bootstrap ───────────────────────────────────────────────
+     The bridge script is optional (a desktop browser can open /my), and
+     initData can lag the first paint, so it is polled like the Mini App
+     dashboard does instead of being read once. */
+  const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+  let initData = "";
+  function readInit(){ try { return (tg && tg.initData) || ""; } catch { return ""; } }
+
+  async function api(path, opts){
+    const res = await fetch("/api/webapp/" + path, {
+      ...(opts || {}),
+      headers: { "Content-Type":"application/json", "X-Telegram-Init-Data": initData, ...((opts && opts.headers) || {}) }
+    });
+    let body = null;
+    try { body = await res.json(); } catch { body = null; }
+    if (!res.ok || !body || body.ok === false) {
+      const err = new Error((body && (body.error || body.message)) || ("HTTP " + res.status));
+      err.status = res.status;
+      throw err;
+    }
+    return body;
+  }
+
+  function flash(text, kind){
+    const el = $("flash");
+    el.innerHTML = text ? '<div class="msg ' + (kind === "err" ? "err" : "ok") + '">' + esc(text) + "</div>" : "";
+    if (text) setTimeout(() => { el.innerHTML = ""; }, 4200);
+  }
+  function skeleton(n){ return Array.from({length:n}).map(() => '<div class="skeleton" style="margin-bottom:8px"></div>').join(""); }
+  function empty(msg){ return '<div class="empty">' + esc(msg) + "</div>"; }
+
+  function remainingText(ms){
+    if (!ms || ms <= 0) return T("remainingNone");
+    const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
+    if (LANG === "fa") return d > 0 ? d + " " + T("days") + " و " + h + " " + T("hours") : h > 0 ? h + " " + T("hours") + " و " + m + " " + T("minutes") : m + " " + T("minutes");
+    return d > 0 ? d + T("days") + " " + h + T("hours") : h > 0 ? h + T("hours") + " " + m + T("minutes") : m + T("minutes");
+  }
+  const when = ts => ts ? new Date(ts).toLocaleString(LANG === "fa" ? "fa-IR" : "en-US") : "—";
+  const kb = n => (Number(n) || 0) < 1024 ? (Number(n) || 0) + " B" : ((Number(n) || 0) / 1024).toFixed(1) + " KB";
+
+  /* ── Tabs ─────────────────────────────────────────────────────────────
+     Lazy: a section loads the first time it is opened and keeps a short TTL,
+     so switching back and forth costs no extra requests. */
+  const TABS = ["overview","hosted","reminders","files","memory"];
+  const loadedAt = {};
+  const TTL = 20000;
+  let active = "overview";
+
+  function buildTabs(){
+    $("tabs").innerHTML = TABS.map(id =>
+      '<button type="button" role="tab" id="tab-' + id + '" aria-controls="panel-' + id + '" aria-selected="' + (id === active) + '">' + esc(T("tabs")[id]) + "</button>"
+    ).join("");
+    $("tabs").addEventListener("click", e => {
+      const b = e.target.closest("button[role=tab]");
+      if (b) select(b.id.replace("tab-",""));
+    });
+  }
+  function select(id){
+    active = id;
+    TABS.forEach(t => {
+      const tab = $("tab-" + t), panel = $("panel-" + t);
+      if (!tab || !panel) return;
+      tab.setAttribute("aria-selected", String(t === id));
+      panel.hidden = t !== id;
+    });
+    load(id, false);
+  }
+  const LOADERS = { overview: loadOverview, hosted: loadHosted, reminders: loadReminders, files: loadFiles, memory: loadMemory };
+  async function load(id, force){
+    if (!force && loadedAt[id] && Date.now() - loadedAt[id] < TTL) return;
+    try { await LOADERS[id](); loadedAt[id] = Date.now(); }
+    catch (e) { console.warn(id, e); }
+  }
+
+  /* ── Sections ─────────────────────────────────────────────────────── */
+  async function loadOverview(){
+    const body = $("panel-overview");
+    if (!body.dataset.ready) body.dataset.ready = "1";
+    const d = await api("overview");
+    $("userName").textContent = d.user.name || "—";
+    $("userSub").textContent = T("sub");
+    $("planPill").textContent = d.user.plan === "pro" ? "PRO" : "FREE";
+    $("planPill").className = "plan" + (d.user.plan === "pro" ? " pro" : "");
+    $("overviewMetrics").innerHTML = [
+      '<div class="card metric"><span>' + esc(T("tabs").hosted) + '</span><b>' + d.hosting.live + "/" + d.hosting.total + '</b><span>' + d.hosting.ttlDays + " " + esc(T("days")) + "</span></div>",
+      '<div class="card metric"><span>' + esc(T("tabs").reminders) + '</span><b>' + d.counts.reminders + '</b><span>' + d.counts.recurring + " " + (LANG === "fa" ? "تکرارشونده" : "recurring") + "</span></div>",
+      '<div class="card metric"><span>' + esc(T("tabs").files) + '</span><b>' + d.counts.files + '</b><span>' + d.counts.artifacts + " " + (LANG === "fa" ? "مصنوع اخیر" : "recent artifacts") + "</span></div>"
+    ].join("");
+    const rows = [["message", LANG === "fa" ? "پیام" : "Messages"], ["image", LANG === "fa" ? "تصویر" : "Images"], ["voice", LANG === "fa" ? "ویس" : "Voices"]];
+    $("overviewUsage").innerHTML = rows.map(([k, label]) => {
+      const u = d.limits[k] || { used:0, cap:null };
+      const pct = u.cap ? Math.min(100, Math.round((u.used / u.cap) * 100)) : 0;
+      return '<div class="row" style="margin-bottom:10px"><div style="flex:1"><div class="row"><span>' + esc(label) + "</span><span>" + u.used + " / " + (u.cap == null ? "∞" : u.cap) + "</span></div>"
+        + '<div class="bar"><i style="width:' + pct + '%"></i></div></div></div>';
+    }).join("");
+    if (d.hosting.expiringSoon > 0) {
+      flash(LANG === "fa"
+        ? d.hosting.expiringSoon + " میزبانی نزدیک انقضا است — از بخش «میزبانی من» تمدید کن."
+        : d.hosting.expiringSoon + " deployment(s) expire soon — extend them in \"My hosting\".", "err");
+    }
+  }
+
+  async function loadHosted(){
+    const box = $("hostedList");
+    box.innerHTML = skeleton(2);
+    const d = await api("hosted");
+    if (!d.deployments.length) { box.innerHTML = empty(T("noHosted")); return; }
+    box.innerHTML = d.deployments.map(item => {
+      const badge = item.servable ? (item.expiringSoon ? '<span class="pill warn">' + esc(T("soon")) + "</span>" : '<span class="pill live">' + esc(T("live")) + "</span>")
+        : item.status === "draft" ? '<span class="pill draft">' + esc(T("draft")) + "</span>"
+        : '<span class="pill expired">' + esc(T("expired")) + "</span>";
+      const url = item.url ? '<a href="' + esc(item.url) + '" target="_blank" rel="noopener">' + esc(item.url) + "</a>" : "—";
+      return '<div class="item"><div class="item-head"><div style="min-width:0"><h3>' + esc(item.title) + "</h3>"
+        + '<div class="meta"><span><code>' + esc(item.kind) + "</code></span>"
+        + "<span>" + esc(T("created")) + ": " + esc(when(item.createdAt)) + "</span>"
+        + (item.expiresAt ? "<span>" + esc(T("expires")) + ": " + esc(when(item.expiresAt)) + "</span>" : "")
+        + (item.servable ? "<span>" + esc(T("remaining")) + ": " + esc(remainingText(item.remainingMs)) + "</span>" : "")
+        + "<span>" + esc(url) + "</span>"
+        + "<span>" + (item.views || 0) + " " + esc(T("views")) + " · " + esc(kb(item.sizeBytes)) + "</span></div></div>"
+        + "<div>" + badge + "</div></div>"
+        + '<div class="actions">'
+        + (item.servable ? '<a class="act" href="' + esc(item.url) + '" target="_blank" rel="noopener">' + esc(T("open")) + "</a>" : "")
+        + (!item.servable && item.status !== "expired" ? '<button class="act primary" data-act="activate" data-id="' + esc(item.id) + '">' + esc(T("deploy")) + "</button>" : "")
+        + (item.canExtend ? '<button class="act" data-act="extend" data-id="' + esc(item.id) + '">' + esc(T("extend")) + " (" + item.extensionsLeft + ")</button>" : "")
+        + '<button class="act danger" data-act="delete" data-id="' + esc(item.id) + '">' + esc(T("del")) + "</button>"
+        + "</div></div>";
+    }).join("");
+  }
+
+  async function loadReminders(){
+    const box = $("reminderList");
+    box.innerHTML = skeleton(2);
+    const d = await api("reminders");
+    if (!d.reminders.length) { box.innerHTML = empty(T("noReminders")); return; }
+    box.innerHTML = d.reminders.map(r => {
+      const badge = r.status === "paused" ? '<span class="pill warn">⏸</span>' : '<span class="pill live">' + esc(r.status) + "</span>";
+      return '<div class="item"><div class="item-head"><div style="min-width:0"><h3>' + esc(r.message) + "</h3>"
+        + '<div class="meta"><span>' + esc(when(r.dueAt)) + "</span>"
+        + (r.recurrence ? "<span>" + esc(r.recurrence) + "</span>" : "")
+        + "<span>" + (r.runs || 0) + " " + (LANG === "fa" ? "اجرا" : "runs") + "</span></div></div><div>" + badge + "</div></div>"
+        + '<div class="actions">'
+        + (r.status === "paused"
+          ? '<button class="act" data-act="resume" data-id="' + esc(r.id) + '">' + esc(T("resume")) + "</button>"
+          : '<button class="act" data-act="pause" data-id="' + esc(r.id) + '">' + esc(T("pause")) + "</button>")
+        + '<button class="act danger" data-act="cancel" data-id="' + esc(r.id) + '">' + esc(T("cancel")) + "</button>"
+        + "</div></div>";
+    }).join("");
+  }
+
+  async function loadFiles(){
+    const box = $("fileList");
+    box.innerHTML = skeleton(2);
+    const d = await api("assets");
+    const assets = d.assets || [];
+    if (!assets.length) { box.innerHTML = empty(T("noFiles")); return; }
+    box.innerHTML = assets.slice(0, 60).map(a => {
+      const url = a.url || a.hostedUrl || "";
+      const isImg = /image|png|jpe?g|webp|gif/i.test(a.kind + " " + (a.mime || ""));
+      return '<div class="item"><div class="item-head"><div style="min-width:0"><h3>' + esc(a.id || a.fileName || "file") + "</h3>"
+        + '<div class="meta"><span><code>' + esc(a.kind || "file") + "</code></span><span>" + esc(when(a.createdAt)) + "</span>"
+        + (url ? "<span>" + esc(kb(a.size)) + "</span>" : "") + "</div></div>"
+        + (isImg && url ? '<img src="' + esc(url) + '" alt="" loading="lazy" decoding="async" style="width:88px;height:88px;object-fit:cover;border-radius:10px;border:1px solid var(--border)">' : "")
+        + "</div>"
+        + (url ? '<div class="actions"><a class="act" href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(T("open")) + "</a>"
+          + '<button class="act danger" data-act="asset-delete" data-id="' + esc(a.id) + '">' + esc(T("del")) + "</button></div>" : "")
+        + "</div>";
+    }).join("");
+  }
+
+  async function loadMemory(){
+    const box = $("memoryBody");
+    box.innerHTML = skeleton(1);
+    const d = await api("memory");
+    const rows = [[T("turns"), d.turns], [T("facts"), d.facts], [T("prefs"), d.preferences], [T("topics"), d.topics], [T("projects"), d.projects]];
+    box.innerHTML = '<div class="grid">' + rows.map(([label, value]) =>
+      '<div class="metric"><span>' + esc(label) + "</span><b>" + (value || 0) + "</b></div>"
+    ).join("") + "</div>"
+      + '<div class="meta" style="margin-top:12px"><span>' + esc(T("persona")) + ": <code>" + esc(d.persona || "—") + "</code></span>"
+      + "<span>" + esc(T("callName")) + ": " + esc(d.callName || "—") + "</span>"
+      + "<span>" + esc(T("lang")) + ": " + esc(d.language || "—") + "</span></div>";
+  }
+
+  /* ── Actions ──────────────────────────────────────────────────────── */
+  document.addEventListener("click", async e => {
+    const b = e.target.closest("button[data-act]");
+    if (!b) return;
+    const act = b.dataset.act, id = b.dataset.id;
+    b.disabled = true;
+    try {
+      if (act === "activate") {
+        flash(T("deploying"));
+        const r = await api("hosted/" + encodeURIComponent(id) + "/activate", { method:"POST" });
+        flash(LANG === "fa" ? "میزبانی فعال شد: " + r.url : "Hosting is live: " + r.url);
+      } else if (act === "extend") {
+        flash(T("extending"));
+        const r = await api("hosted/" + encodeURIComponent(id) + "/extend", { method:"POST" }).catch(err => {
+          if (err.status === 409) throw new Error(T("extPlan"));
+          throw err;
+        });
+        flash(LANG === "fa" ? "تمدید شد — " + remainingText(r.remainingMs) + " باقی مانده" : "Extended — " + remainingText(r.remainingMs) + " left");
+      } else if (act === "delete") {
+        if (!confirm(T("confirmDel"))) { b.disabled = false; return; }
+        flash(T("deleting"));
+        await api("hosted/" + encodeURIComponent(id) + "/delete", { method:"POST" });
+        flash(LANG === "fa" ? "میزبانی حذف شد." : "Hosting deleted.");
+      } else if (act === "pause" || act === "resume" || act === "cancel") {
+        await api("reminders/" + encodeURIComponent(id) + "/" + act, { method:"POST" });
+        flash(LANG === "fa" ? "انجام شد." : "Done.");
+      } else if (act === "asset-delete") {
+        await fetch("/app/api/assets/" + encodeURIComponent(id), { method:"DELETE", headers: { "X-Telegram-Init-Data": initData } });
+        flash(LANG === "fa" ? "فایل حذف شد." : "File deleted.");
+      }
+    } catch (err) {
+      flash((err && err.message) || T("failed"), "err");
+    } finally {
+      b.disabled = false;
+      invalidate();
+    }
+  });
+
+  function invalidate(){ TABS.forEach(t => { delete loadedAt[t]; }); load(active, true); }
+
+  $("resetMemory").addEventListener("click", async () => {
+    if (!confirm(T("confirmReset"))) return;
+    $("resetMemory").disabled = true;
+    try {
+      await api("memory/reset", { method:"POST" });
+      flash(LANG === "fa" ? "حافظه پاک شد." : "Memory cleared.");
+      invalidate();
+    } catch (err) { flash((err && err.message) || T("failed"), "err"); }
+    finally { $("resetMemory").disabled = false; }
+  });
+
+  /* ── Boot ─────────────────────────────────────────────────────────── */
+  function applyLang(){
+    const tgLang = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.language_code) || navigator.language || "fa";
+    LANG = /^(fa|ar|he|ur)/i.test(String(tgLang)) ? "fa" : "en";
+    document.documentElement.lang = LANG;
+    document.documentElement.dir = LANG === "fa" ? "rtl" : "ltr";
+    document.title = T("title") + " — Nova";
+    $("userSub").textContent = T("sub");
+    buildTabs();
+    if (LANG === "en") { $("resetMemory").textContent = "🧹 Erase all memory"; }
+  }
+
+  async function boot(){
+    for (let attempt = 0; attempt < 14 && !initData; attempt++) {
+      initData = readInit();
+      if (!initData) await new Promise(r => setTimeout(r, 250));
+    }
+    if (tg) { try { tg.ready(); tg.expand && tg.expand(); } catch {} }
+    if (!initData) {
+      // No Telegram context: say so instead of showing an endless spinner. The
+      // server refuses every request anyway, so nothing is silently empty.
+      $("overviewMetrics").innerHTML = "";
+      $("overviewUsage").innerHTML = empty(LANG === "fa"
+        ? "این صفحه باید از داخل تلگرام باز شود (Mini App)."
+        : "Open this page from inside Telegram (Mini App).");
+      $("hostedList").innerHTML = "";
+      return;
+    }
+    try { await loadOverview(); } catch (e) { flash((e && e.message) || T("failed"), "err"); }
+  }
+
+  applyLang();
+  boot();
+})();
+</script>
+</body>
+</html>

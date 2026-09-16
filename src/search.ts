@@ -46,6 +46,7 @@ import {
   type ScoredSource,
   type WebSearchItem,
 } from "./webSearch";
+import { withinDeadline } from "./reliability";
 
 /* ══════════════════════════════════════════════════════════════════════════
    TYPES
@@ -73,6 +74,7 @@ export interface SearchLang {
 }
 
 export interface RetrievalOptions {
+  signal?: AbortSignal;
   /** Google-CSE style freshness window, e.g. "d7", "m1", "y1". */
   dateRestrict?: string;
   /** Preferred result language, e.g. "lang_fa". */
@@ -80,12 +82,13 @@ export interface RetrievalOptions {
 }
 
 export interface SearchDeps extends SearchLang {
+  signal?: AbortSignal;
   /** One provider query. Must resolve (empty array) rather than reject when possible. */
   search(query: string, num: number, opts?: RetrievalOptions): Promise<WebSearchItem[]>;
   /** Full-text read of one URL. Returns null on any failure. */
-  readPage(url: string, maxChars: number): Promise<string | null>;
+  readPage(url: string, maxChars: number, opts?: {signal?:AbortSignal}): Promise<string | null>;
   /** One model call. MUST NOT throw — return "" on failure. */
-  think(system: string, user: string, opts?: { timeoutMs?: number; maxTokens?: number }): Promise<string>;
+  think(system: string, user: string, opts?: { timeoutMs?: number; maxTokens?: number; signal?:AbortSignal }): Promise<string>;
   /** Cooperative cancellation, polled between stages. */
   isCancelled?: () => Promise<boolean>;
   /** UI progress label. Fire-and-forget. */
@@ -187,17 +190,17 @@ const LIMITS: Record<SearchEffort, EffortLimits> = {
   // A real question worth several angles and a cross-check.
   deep: {
     totalMs: 62_000, reserveMs: 18_000,
-    maxRequests: 10, maxModelCalls: 6, reserveModelCalls: 1, maxRounds: 2,
-    concurrency: 4, maxQueriesPerRound: 5, maxSources: 12,
-    maxReads: 4, readChars: 4_500, evidenceChars: 20_000, synthesisTokens: 2_400,
+    maxRequests: 6, maxModelCalls: 4, reserveModelCalls: 1, maxRounds: 2,
+    concurrency: 3, maxQueriesPerRound: 3, maxSources: 10,
+    maxReads: 2, readChars: 4_500, evidenceChars: 16_000, synthesisTokens: 2_400,
   },
   // Explicit exhaustive research. Wide parallel retrieval, gap-filling rounds,
   // an explicit verification pass, and a structured report.
   super: {
     totalMs: 108_000, reserveMs: 30_000,
-    maxRequests: 22, maxModelCalls: 11, reserveModelCalls: 2, maxRounds: 3,
-    concurrency: 5, maxQueriesPerRound: 7, maxSources: 22,
-    maxReads: 8, readChars: 5_500, evidenceChars: 36_000, synthesisTokens: 8_192,
+    maxRequests: 8, maxModelCalls: 5, reserveModelCalls: 1, maxRounds: 2,
+    concurrency: 3, maxQueriesPerRound: 4, maxSources: 14,
+    maxReads: 3, readChars: 5_500, evidenceChars: 26_000, synthesisTokens: 8_192,
   },
 };
 
@@ -277,12 +280,12 @@ class RunBudget {
 
   /** Timeout to hand a single retrieval step, so no step can overrun the deadline. */
   stepTimeout(preferredMs: number): number {
-    return Math.max(2_000, Math.min(preferredMs, this.workMsLeft));
+    return Math.max(1, Math.min(preferredMs, this.workMsLeft));
   }
 
   /** Timeout for the final synthesis call. */
   synthesisTimeout(preferredMs: number): number {
-    return Math.max(6_000, Math.min(preferredMs, this.msLeft));
+    return Math.max(1, Math.min(preferredMs, this.msLeft));
   }
 
   noteRequests(n: number): void { this.requests += n; }
@@ -312,7 +315,7 @@ async function thinkOrNull(
   opts?: { timeoutMs?: number; maxTokens?: number },
 ): Promise<string | null> {
   try {
-    return await deps.think(system, user, opts);
+    return await withinDeadline(signal=>deps.think(system,user,{...opts,signal}),opts?.timeoutMs??budget.stepTimeout(11000),deps.signal);
   } catch (e) {
     if (isCancellation(e)) throw e;
     budget.degrade("provider");
@@ -480,11 +483,11 @@ async function makePlan(
     : `The caller already forced effort="${hint}". Keep that value and plan queries appropriate to it.`;
   let raw: string;
   try {
-    raw = await deps.think(
+    raw = await withinDeadline(signal=>deps.think(
       PLANNER_SYSTEM,
       `Today is ${todayISO}. The user writes in ${LANG_NAME[deps.lang]}.\n${hintLine}\n\nUSER REQUEST:\n${request.slice(0, 2_000)}`,
-      { timeoutMs: hint === "fast" ? 8_000 : 11_000, maxTokens: 900 },
-    );
+      { timeoutMs: hint === "fast" ? 8_000 : 11_000, maxTokens: 900,signal },
+    ),hint==="fast"?8000:11000,deps.signal);
   } catch (e) {
     // The budget does not exist yet (its limits come from the plan), so the
     // planner owns its own failure: research the request as literally asked.
@@ -571,18 +574,20 @@ async function runQueries(
     const recency = query.recency ?? planRecency;
     const window = RECENCY_WINDOW[recency];
     try {
-      let items = await deps.search(query.q, perQuery, window ? { dateRestrict: window } : undefined);
+      if(!budget.canRetrieve(0))return [];
+      let items = await withinDeadline(signal=>deps.search(query.q,perQuery,{dateRestrict:window,signal}),budget.stepTimeout(9000),deps.signal);
       // Adaptive fallback: a tight freshness window sometimes starves a query.
       // Widen once rather than reporting nothing — still one extra request, and
       // only when the window was the plausible cause.
       if (items.length < 2 && window && budget.canRetrieve(1)) {
         budget.noteRequests(1);
-        const retry = await deps.search(query.q, perQuery);
+        const retry = await withinDeadline(signal=>deps.search(query.q,perQuery,{signal}),budget.stepTimeout(9000),deps.signal);
         if (retry.length > items.length) items = retry;
       }
       ran.push(query.q);
       return items;
-    } catch {
+    } catch (error) {
+      if(isCancellation(error))throw error;
       budget.degrade("provider");
       return [] as WebSearchItem[];
     }
@@ -678,9 +683,11 @@ async function readPages(
   const pages = await mapLimit(admitted, limits.concurrency, async (src) => {
     alreadyRead.add(src.link);
     try {
-      const text = await deps.readPage(src.link, limits.readChars);
+      if(!budget.canRead(0))return null;
+      const text = await withinDeadline(signal=>deps.readPage(src.link,limits.readChars,{signal}),budget.stepTimeout(8000),deps.signal);
       return text && text.trim().length > 200 ? { url: src.link, text: text.trim() } : null;
-    } catch {
+    } catch (error) {
+      if(isCancellation(error))throw error;
       return null;
     }
   });
@@ -938,7 +945,7 @@ function progressLabel(
  * else, including "the provider died" and "we ran out of time", comes back as a
  * finished answer plus a `degraded` reason.
  */
-export async function runSearch(
+async function runSearchInternal(
   request: string,
   hint: EffortHint,
   deps: SearchDeps,
@@ -948,7 +955,8 @@ export async function runSearch(
   const todayISO = new Date(startedAt).toISOString().slice(0, 10);
   const query = String(request ?? "").trim();
   const ensureLive = async () => {
-    if (deps.isCancelled && await deps.isCancelled()) throw new Error("CANCELLED_BY_USER");
+    if(deps.signal?.aborted)throw new Error("CANCELLED_BY_USER");
+    if (deps.isCancelled && await withinDeadline(()=>deps.isCancelled!(),1000).catch(()=>false)) throw new Error("CANCELLED_BY_USER");
   };
 
   await ensureLive();
@@ -1065,6 +1073,18 @@ export async function runSearch(
     query, plan, effort, budget, sources, ranQueries, rounds, verdict, answer,
     evidence.length, startedAt, clock, coverageComplete,
   );
+}
+
+export async function runSearch(request:string,hint:EffortHint,deps:SearchDeps):Promise<SearchOutcome>{
+  const controller=new AbortController();let polling=false,finished=false;
+  const stop=()=>controller.abort();
+  if(deps.signal?.aborted)stop();else deps.signal?.addEventListener("abort",stop,{once:true});
+  const timer=deps.isCancelled?setInterval(()=>{
+    if(polling||finished)return;polling=true;
+    void withinDeadline(()=>deps.isCancelled!(),1000).then(cancelled=>{if(cancelled)stop();},()=>{}).finally(()=>{polling=false;});
+  },1000):undefined;
+  try{return await runSearchInternal(request,hint,{...deps,signal:controller.signal,onProgress:label=>{if(!finished){try{void Promise.resolve(deps.onProgress?.(label)).catch(()=>{});}catch{}}}});}
+  finally{finished=true;if(timer!==undefined)clearInterval(timer);deps.signal?.removeEventListener("abort",stop);controller.abort();}
 }
 
 function finish(

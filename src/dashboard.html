@@ -2551,13 +2551,13 @@
                         '<a href="$1" target="_blank" rel="noopener">$1</a>').replace(/\n/g, "<br>"); s = s.replace(
                         /@@BLOCK(\d+)@@/g, (_, i) => blocks[+i]); return s; }
             async function api(path, opts) { const ctrl = new AbortController(); const timer = setTimeout(() => ctrl
-                    .abort(), 100000); try { const res = await fetch("/api/webapp/" + path, { ...opts,
+                    .abort(), path==="chat"?100000:path==="progress"?8000:12000); try { const res = await fetch("/api/webapp/" + path, { ...opts,
                         signal: ctrl.signal, headers: { "Content-Type": "application/json",
                             "X-Telegram-Init-Data": initData, ...(opts && opts.headers || {}) } });
-                    clearTimeout(timer); const status = res.status; let data; try { data = await res.json(); } catch (
-                        e) { data = { ok: false, error: "parse" }; } return { status, data }; } catch (e) {
-                    clearTimeout(timer); return { status: 0, data: { ok: false, error: e.name === "AbortError" ?
-                            "timeout" : "network" } }; } }
+                    const status = res.status; let data; try { data = await res.json(); } catch (
+                        e) { if(ctrl.signal.aborted)throw e;data = { ok: false, error: "parse" }; } return { status, data }; } catch (e) {
+                    return { status: 0, data: { ok: false, error: e.name === "AbortError" ?
+                            "timeout" : "network" } }; } finally { clearTimeout(timer); } }
 
             tg.ready();
             tg.expand();
@@ -3102,15 +3102,18 @@
                             const detailLabel = thinkingEl.querySelectorAll(".thinkLabel")[1];
                             if (detailLabel) detailLabel.textContent = data.phase;
                         }
-                    } finally { pollInFlight = false; }
+                    } catch { /* Progress polling must not produce an unhandled rejection. */ } finally { pollInFlight = false; }
                 }, 1500);
 
                 let status, data;
                 try {
                     ({ status, data } = await api("chat", { method: "POST", body: JSON.stringify(body) }));
+                } catch {
+                    status = 0; data = { ok:false, error:"network" };
                 } finally {
                     // api() خودش همه‌چیز را می‌گیرد، ولی توقفِ این تایمر نباید به آن وابسته باشد.
                     clearInterval(serverProgressTimer);
+                    hideThinking();setSending(false);
                 }
                 hideThinking();
                 setSending(false); 
