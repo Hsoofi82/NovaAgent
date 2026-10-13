@@ -14,12 +14,12 @@
     "cf-types": "wrangler types"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260918.1",
+    "@cloudflare/workers-types": "^5.20261010.1",
     "typescript": "^7.0.2",
-    "wrangler": "^4.135.0"
+    "wrangler": "^4.149.0"
   },
   "dependencies": {
-    "acorn": "^8.18.0",
+    "acorn": "^8.19.0",
     "bidi-js": "^1.1.0"
   }
 }
