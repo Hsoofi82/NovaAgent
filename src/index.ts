@@ -12,6 +12,7 @@ import { startRun, finishRun, operationsAPI, recordAdminAudit, cleanupOperations
 import { readJsonObject, RequestBodyError } from "./http";
 import { selectMemoryEntries, mergeMemoryEntries, hasDurableMemorySignal } from "./memory";
 import { governDatabase, storageGovernor, NoticeGate, friendlyFailure } from "./storageHealth";
+import { zhLocalizeParams } from "./zhUi";  // Nova 中文语言包（在 tg() 出口做词典翻译）
 import { inspectWebArtifact, repairArtifactPrompt } from "./artifactValidation";
 import { inspectJpeg } from "./documentImages";
 // ── MERGE: cognition layer from Nova B, on top of Nova A's platform layer ──
@@ -8708,6 +8709,9 @@ async function acquireTgSlot(): Promise<void> {
 }
 
 async function tg(method: string, params: Record<string, unknown>, options: { timeoutMs?: number; deadline?: number } = {}): Promise<unknown> {
+  // ── Nova 中文语言包 ── 所有出站消息的唯一出口，在这里把菜单/按钮文案换成中文。
+  // 未命中词条时原样返回，零开销。可通过 .dev.vars 的 NOVA_ZH_UI="0" 关闭。
+  params = zhLocalizeParams(params, (env_ref as unknown as Record<string, unknown> | null)?.NOVA_ZH_UI !== "0");
   const MAX_RETRIES = 2;
   const deadline=Math.min(options.deadline??Infinity,Date.now()+(options.timeoutMs??20_000));
   const chatId=Number(params.chat_id),sending=/^send/.test(method)&&Number.isSafeInteger(chatId)&&chatId!==0&&!params.business_connection_id;
