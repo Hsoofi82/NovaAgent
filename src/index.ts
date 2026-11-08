@@ -25451,7 +25451,7 @@ async function showHomePanel(
            `💡 <i>اختر أحد الخيارات أدناه:</i>`;
   } else {
     text = `╭━━━━━━━━━━━━━━━━━━━━━╮\n` +
-           `┃ 🌌 <b>SHAKI Command Center</b>\n` +
+           `┃ 🌌 <b>AI SHAKI · COMMAND CENTER</b>\n` +
            `┃ <i>Version ${BOT_VERSION} · AI Core</i>\n` +
            `╰━━━━━━━━━━━━━━━━━━━━━╯\n\n` +
            `👤 <b>User:</b> <code>${escapeHTML(user.first_name)}</code> (${tier})\n` +
