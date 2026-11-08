@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="color-scheme" content="dark light">
-<title>داشبورد من — Nova</title>
+<title>داشبورد من — SHAKI</title>
 <script src="/tg-webapp.js"></script>
 <style>
 :root{
@@ -159,7 +159,7 @@ button.act:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
   <section class="panel" id="panel-memory" role="tabpanel" aria-labelledby="tab-memory" hidden>
     <div class="card">
       <h2>حافظه و زمینه</h2>
-      <p class="sub">چه چیزی نوا دربارهٔ تو نگه داشته است — و کنترل پاک‌سازی آن.</p>
+      <p class="sub">چه چیزی شاکی دربارهٔ تو نگه داشته است — و کنترل پاک‌سازی آن.</p>
       <div id="memoryBody"></div>
       <div class="actions">
         <button class="act danger" id="resetMemory">🧹 پاک کردن کامل حافظه</button>
@@ -179,11 +179,11 @@ button.act:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
       live:"فعال", draft:"آمادهٔ اجرا", expired:"منقضی", soon:"نزدیک انقضا", gone:"حذف‌شده",
       open:"باز کردن", deploy:"🚀 اجرا روی سرور", extend:"⏳ تمدید", del:"🗑 حذف",
       created:"ایجاد", expires:"انقضا", remaining:"باقی‌مانده", views:"بازدید", size:"حجم",
-      remainingNone:"—", noHosted:"هنوز چیزی میزبانی نشده. از چت نوا یک وب‌اپ یا بازی بساز.",
+      remainingNone:"—", noHosted:"هنوز چیزی میزبانی نشده. از چت شاکی یک وب‌اپ یا بازی بساز.",
       noReminders:"یادآوری ثبت نشده.", noFiles:"فایلی نیست.",
       pause:"⏸ توقف", resume:"▶️ ادامه", cancel:"✖️ لغو",
       confirmDel:"میزبانی این پروژه حذف شود؟ لینک عمومی از کار می‌افتد.",
-      confirmReset:"همهٔ حافظهٔ نوا دربارهٔ تو پاک شود؟ این کار برگشت‌پذیر نیست.",
+      confirmReset:"همهٔ حافظهٔ شاکی دربارهٔ تو پاک شود؟ این کار برگشت‌پذیر نیست.",
       days:"روز", hours:"ساعت", minutes:"دقیقه",
       extPlan:"تمدید فقط برای پلن Pro فعال است.",
       extUsed:"سقف تمدیدها پر شده.",
@@ -199,11 +199,11 @@ button.act:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
       live:"Live", draft:"Ready to run", expired:"Expired", soon:"Expiring soon", gone:"Deleted",
       open:"Open", deploy:"🚀 Run on Server", extend:"⏳ Extend", del:"🗑 Delete",
       created:"Created", expires:"Expires", remaining:"Remaining", views:"views", size:"size",
-      remainingNone:"—", noHosted:"Nothing hosted yet. Build a web app or game with Nova first.",
+      remainingNone:"—", noHosted:"Nothing hosted yet. Build a web app or game with SHAKI first.",
       noReminders:"No reminders yet.", noFiles:"No files.",
       pause:"⏸ Pause", resume:"▶ Resume", cancel:"✖ Cancel",
       confirmDel:"Delete this project's hosting? The public link stops working.",
-      confirmReset:"Erase everything Nova remembers about you? This cannot be undone.",
+      confirmReset:"Erase everything SHAKI remembers about you? This cannot be undone.",
       days:"d", hours:"h", minutes:"m",
       extPlan:"Extension is a Pro feature.",
       extUsed:"The extension limit is reached.",
@@ -458,7 +458,7 @@ button.act:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
     LANG = /^(fa|ar|he|ur)/i.test(String(tgLang)) ? "fa" : "en";
     document.documentElement.lang = LANG;
     document.documentElement.dir = LANG === "fa" ? "rtl" : "ltr";
-    document.title = T("title") + " — Nova";
+    document.title = T("title") + " — SHAKI";
     $("userSub").textContent = T("sub");
     buildTabs();
     if (LANG === "en") { $("resetMemory").textContent = "🧹 Erase all memory"; }
