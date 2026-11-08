@@ -22526,6 +22526,18 @@ async function handleTextMessage(msg: TgMessage, env: Env): Promise<void> {
     ]);
     if (mc.blocked) { await sendMessage(chat.id, mc.message!, { reply_to_message_id: msg.message_id }); return; }
 
+    // معرفی یک‌باره در پی‌وی خود ربات؛ پس از آن گفتگو مستقیم ادامه پیدا می‌کند.
+    if (chat.type === "private") {
+      const introKey = `private_intro:${from.id}`;
+      const introduced = await env.SESSIONS.get(introKey, "text");
+      if (!introduced) {
+        await sendMessage(chat.id, "عمو شاکی آنلاین نیست، من AI SHAKI هستم، در خدمت شما 🤖", {
+          reply_to_message_id: msg.message_id
+        });
+        await env.SESSIONS.put(introKey, "1", { expirationTtl: 15552000 }).catch(() => {});
+      }
+    }
+
     // ── Group activation gate: disabled groups are completely silent. /start is the only exception.
     if (chat.type !== "private" && !await isGroupEnabled(chat.id, chat.type, env)) {
       const commandProbe = (text.trim().split(/\s+/)[0] ?? "").toLowerCase().split("@")[0];
