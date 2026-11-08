@@ -13087,8 +13087,8 @@ Core Behavioral Directives:
 
   const callNameLine = renamed
     ? (lang === "fa"
-        ? `اسم تو برای این کاربر «${activeName}» است — این اسمِ واقعیِ فعلی توست، نه یک لقب. با همین اسم خودت را معرفی کن و به اسم قبلی (شاکی) دیگر جواب نده.`
-        : `your name for this user is "${activeName}" — that is your actual current name, not a nickname. Introduce yourself with it and no longer answer to the old one ("SHAKI").`)
+        ? "اسم تو برای این کاربر «" + activeName + "» است — این اسمِ واقعیِ فعلی توست، نه یک لقب. با همین اسم خودت را معرفی کن و به اسم قبلی (شاکی) دیگر جواب نده."
+        : 'your name for this user is "' + activeName + '" — that is your actual current name, not a nickname. Introduce yourself with it and no longer answer to the old one ("SHAKI").')
     : (lang === "fa" ? "اگر این کاربر خواست اسمت را عوض کند (مثلاً «اسمت رو بذار سحر»)، سیستم خودش این کار را انجام می‌دهد و تو فقط تأیید کن." : "if this user asks to change your name, the system applies it deterministically — just acknowledge it.");
 
   const identityBlock = `
