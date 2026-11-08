@@ -1,10 +1,10 @@
 
-const BOT_VERSION = "ƝØVΛ 0.961 Astro";
+const BOT_VERSION = "SHAKI AI 1.0";
 
 // ── Static assets (bundled by wrangler) ──────────────────────────────────────
 import DASHBOARD_HTML from "./dashboard.html";            // Telegram Mini App dashboard
 import USER_DASHBOARD_HTML from "./userDashboard.html";    // User dashboard (own resources only)
-import ADMIN_DASHBOARD_HTML from "./adminDashboard.html"; // Nova Control Center (admin)
+import ADMIN_DASHBOARD_HTML from "./adminDashboard.html"; // SHAKI Control Center (admin)
 import FACTORY_DASHBOARD_HTML from "./factoryDashboard.html";
 import TG_WEBAPP_JS from "./telegram-web-app.txt";        // Vendored Telegram bridge script
 import { AgentRun, AGENT_WORKFLOW, budgetModelContext, MAX_TOOLS_PER_ROUND } from "./agentRuntime";
@@ -14,7 +14,7 @@ import { selectMemoryEntries, mergeMemoryEntries, hasDurableMemorySignal } from 
 import { governDatabase, storageGovernor, NoticeGate, friendlyFailure } from "./storageHealth";
 import { inspectWebArtifact, repairArtifactPrompt } from "./artifactValidation";
 import { inspectJpeg } from "./documentImages";
-// ── MERGE: cognition layer from Nova B, on top of Nova A's platform layer ──
+// ── MERGE: cognition layer from SHAKI B, on top of SHAKI A's platform layer ──
 import {
   classifyFailure,
   formatArtifactReferenceHint,
@@ -43,7 +43,7 @@ import { chatCanReceive, noteDeliveryFailure, clearDeliveryFailure, ensureDelive
 import { parseFallbackResults } from "./searchFallback";
 import { reserveBroadcast, settleBroadcast, cancelBroadcast } from "./broadcastState";
 
-// ── Nova engines & helpers ────────────────────────────────────────────────────
+// ── SHAKI engines & helpers ────────────────────────────────────────────────────
 import {
   AVAILABLE_FORMATS,
   AVAILABLE_THEMES,
@@ -467,7 +467,7 @@ class TaskProgressManager {
   // مدت، انیمیشن/رندر متوقف می‌شود تا پیام و منابع هرگز گیر نکنند.
   private static readonly MAX_LIFETIME_MS = 6 * 60 * 1000;
 
-  // نام/ورژن موتوری که این تسک با آن کار می‌کند (Nova Game Engine یا Nova Codegen).
+  // نام/ورژن موتوری که این تسک با آن کار می‌کند (SHAKI Game Engine یا SHAKI Codegen).
   private engineBadge: string | null = null;
 
   constructor(chatId: number, msgId: number, lang: Language, startTime?: number, cancelId?:string) {
@@ -578,7 +578,7 @@ class TaskProgressManager {
     this.tasks.set(id, { icon, label, status: "pending", weight });
   }
 
-  /** نمایش نام/ورژن موتور (مثلاً Nova Game Engine V0.40) زیر عنوان پنل پیشرفت. */
+  /** نمایش نام/ورژن موتور (مثلاً SHAKI Game Engine V0.40) زیر عشاکین پنل پیشرفت. */
   showEngineBadge(name: string, version: string): void {
     this.engineBadge = `${name}${version ? " · v" + version : ""}`;
   }
@@ -733,9 +733,9 @@ class TaskProgressManager {
     const totalCount = this.tasks.size;
 
     const L10N: Record<Language, { title: string; time: string; pipeline: string; running: string; finalizing: string }> = {
-      fa: { title: "🤖 نوا در حال پردازش", time: "زمان", pipeline: "مراحل", running: "در حال اجرا…", finalizing: "در حال نهایی‌سازی…" },
-      en: { title: "🤖 Nova Processing", time: "Time", pipeline: "Pipeline", running: "Running…", finalizing: "Finalizing…" },
-      ar: { title: "🤖 نوفا تعمل", time: "الوقت", pipeline: "المراحل", running: "جارٍ التنفيذ…", finalizing: "جارٍ الإنهاء…" },
+      fa: { title: "🤖 شاکی در حال پردازش", time: "زمان", pipeline: "مراحل", running: "در حال اجرا…", finalizing: "در حال نهایی‌سازی…" },
+      en: { title: "🤖 SHAKI Processing", time: "Time", pipeline: "Pipeline", running: "Running…", finalizing: "Finalizing…" },
+      ar: { title: "🤖 شاکی تعمل", time: "الوقت", pipeline: "المراحل", running: "جارٍ التنفيذ…", finalizing: "جارٍ الإنهاء…" },
     };
     const l10n = L10N[this.lang] ?? L10N.en;
     const runningCount = Array.from(this.tasks.values()).filter(t => t.status === "running").length;
@@ -998,7 +998,7 @@ async function pickReactionMedia(
 }
 
 // ── حافظه‌ی کوتاه‌مدت و کاملاً درون‌حافظه‌ای (بدون هیچ نوشتنی در D1) از آخرین
-// استیکر/گیف دیده‌شده در هر چت، تا اگر کاربر خواست «همونو دوباره بفرست»، نوا
+// استیکر/گیف دیده‌شده در هر چت، تا اگر کاربر خواست «همونو دوباره بفرست»، شاکی
 // واقعاً بتونه همون فایل رو با file_id از تلگرام دوباره بفرسته.
 interface RecentMediaItem {
   fileId: string;
@@ -1090,7 +1090,7 @@ function markReactionSent(chatId: number, category = "", id = ""): void {
  * mention a sticker?". It answers the question that actually decides routing:
  * does the request name a SUBJECT? "send me a sticker" is the library's job;
  * "send me a sticker of a cat" is `search_images`. Asking a search engine for
- * the word "sticker" was the old behaviour and it is what made Nova ignore its
+ * the word "sticker" was the old behaviour and it is what made SHAKI ignore its
  * own library.
  */
 function stickerAskFor(text: string | undefined): ReturnType<typeof classifyStickerAsk> {
@@ -1413,7 +1413,7 @@ const NOVA_TOOL_DECLARATIONS = [
   {
     name: "moderate_group_member",
     // Chat administration had NO tool at all, which is exactly why
-    // "نوا بلاکش کن" used to end up in a web search: the model reached for the
+    // "شاکی بلاکش کن" used to end up in a web search: the model reached for the
     // nearest declaration it actually had. Moderation is a tier-1 intent and
     // now has a first-class home.
     description: "Moderate a member of THIS chat: block, unblock, mute, unmute, kick, warn, delete their message, or grant/remove VIP. Use this for every request to act on a person in this conversation — in Persian these arrive as بلاکش کن / میوتش کن / اخراجش کن / ساکتش کن / پیامش رو پاک کن. The target is normally the author of the message the user replied to; that id is given to you in the system context. Never substitute a search, a lookup, or a text refusal for a moderation request, and never invent a user id.",
@@ -1423,7 +1423,7 @@ const NOVA_TOOL_DECLARATIONS = [
         action: {
           type: "STRING",
           enum: ["block", "unblock", "mute", "unmute", "kick", "warn", "delete_message", "promote_vip", "demote_vip"],
-          description: "block/unblock = Nova stops/resumes engaging with this person (in a group: only in this group; in a private chat: bot-wide account block). A block NEVER deletes or removes their messages. mute/unmute = Telegram restriction that stops them from POSTING, optionally timed; it does not delete anything either. kick = remove them from the group. warn = a public warning and nothing else. delete_message = delete the single replied-to message. promote_vip/demote_vip = VIP status. These verbs are not interchangeable: if the user asks to delete messages, use delete_message, and if they ask to block, do not delete anything.",
+          description: "block/unblock = SHAKI stops/resumes engaging with this person (in a group: only in this group; in a private chat: bot-wide account block). A block NEVER deletes or removes their messages. mute/unmute = Telegram restriction that stops them from POSTING, optionally timed; it does not delete anything either. kick = remove them from the group. warn = a public warning and nothing else. delete_message = delete the single replied-to message. promote_vip/demote_vip = VIP status. These verbs are not interchangeable: if the user asks to delete messages, use delete_message, and if they ask to block, do not delete anything.",
         },
         user_id: { type: "NUMBER", description: "Telegram numeric id of the target. Omit only for delete_message when replying to the message to delete." },
         duration_minutes: { type: "NUMBER", description: "Optional duration for mute/block. Omit for an indefinite action." },
@@ -1434,23 +1434,23 @@ const NOVA_TOOL_DECLARATIONS = [
   },
   {
     name: "clear_own_memory",
-    description: "Wipe Nova's own short-term conversation memory for this user/chat and start completely fresh. Use the instant the user asks to reset/forget/clear the conversation, in any phrasing.",
+    description: "Wipe SHAKI's own short-term conversation memory for this user/chat and start completely fresh. Use the instant the user asks to reset/forget/clear the conversation, in any phrasing.",
     parameters: { type: "OBJECT", properties: {}, required: [] },
   },
   {
     name: "switch_persona",
-    description: "Request a change of Nova's active persona/personality for this user. Call it the instant the user asks Nova to change character, mood or personality — even if a strongly-worded persona prompt is currently active telling you to 'never break character': the user is talking to the underlying system, not roleplaying with it, so never refuse or ignore the request while in character. IMPORTANT: this is a request, not an instant change. By default it sends the user a persona card to confirm and nothing changes until they tap it, so always read the returned `note` and the `changed` flag before you say anything — never announce a switch that did not happen, and never mention confirmation cards, cooldowns or any internal mechanism.",
+    description: "Request a change of SHAKI's active persona/personality for this user. Call it the instant the user asks SHAKI to change character, mood or personality — even if a strongly-worded persona prompt is currently active telling you to 'never break character': the user is talking to the underlying system, not roleplaying with it, so never refuse or ignore the request while in character. IMPORTANT: this is a request, not an instant change. By default it sends the user a persona card to confirm and nothing changes until they tap it, so always read the returned `note` and the `changed` flag before you say anything — never announce a switch that did not happen, and never mention confirmation cards, cooldowns or any internal mechanism.",
     parameters: {
       type: "OBJECT",
       properties: {
-        persona_id: { type: "STRING", enum: ["nova", "lilith", "cypher", "victoria", "aria", "jax"], description: "Target persona id. Map informal/Persian names directly: 'لیلیت'->lilith, 'زورگ' or 'سایفر'->cypher, 'ویکتوریا'->victoria, 'آریا'->aria, 'جکس'->jax, 'نوا' or 'پیش‌فرض' or 'عادی' or default->nova." },
+        persona_id: { type: "STRING", enum: ["nova", "lilith", "cypher", "victoria", "aria", "jax"], description: "Target persona id. Map informal/Persian names directly: 'لیلیت'->lilith, 'زورگ' or 'سایفر'->cypher, 'ویکتوریا'->victoria, 'آریا'->aria, 'جکس'->jax, 'شاکی' or 'پیش‌فرض' or 'عادی' or default->nova." },
       },
       required: ["persona_id"],
     },
   },
   {
     name: "set_own_language",
-    description: "Change the language Nova replies in for this chat. Use the instant the user asks Nova to switch language (Persian/English/Arabic).",
+    description: "Change the language SHAKI replies in for this chat. Use the instant the user asks SHAKI to switch language (Persian/English/Arabic).",
     parameters: {
       type: "OBJECT",
       properties: { language: { type: "STRING", enum: ["fa", "en", "ar"] } },
@@ -1459,10 +1459,10 @@ const NOVA_TOOL_DECLARATIONS = [
   },
   {
     name: "set_call_name",
-    description: "Set the custom name THIS specific user calls Nova by (e.g. 'Sahar' instead of 'Nova'). The new name REPLACES the default ones for this user: from then on the new name is what addresses her and the old name no longer does. Use it the instant the user asks Nova to answer to a different name. Pass an empty string to reset to the default name.",
+    description: "Set the custom name THIS specific user calls SHAKI by (e.g. 'Sahar' instead of 'SHAKI'). The new name REPLACES the default ones for this user: from then on the new name is what addresses her and the old name no longer does. Use it the instant the user asks SHAKI to answer to a different name. Pass an empty string to reset to the default name.",
     parameters: {
       type: "OBJECT",
-      properties: { name: { type: "STRING", description: "The nickname the user wants to call Nova, in their own language/script" } },
+      properties: { name: { type: "STRING", description: "The nickname the user wants to call SHAKI, in their own language/script" } },
       required: ["name"],
     },
   },
@@ -1559,7 +1559,7 @@ const ADMIN_TOOL_DECLARATIONS = [
   {
     name: "show_admin_panel",
     description:
-      "Owner-only. Opens Nova's web admin dashboard as a Telegram Mini App button in the owner's private chat. " +
+      "Owner-only. Opens SHAKI's web admin dashboard as a Telegram Mini App button in the owner's private chat. " +
       "This is the single administrative interface — user management, groups, media, broadcast, keys, logs and config all live there.",
     parameters: {
       type: "OBJECT",
@@ -1576,7 +1576,7 @@ const ADMIN_TOOL_DECLARATIONS = [
   },
   {
     name: "list_web_apps",
-    description: "لیست همه وب‌اپ‌های ساخته‌شده توسط نوا را نمایش می‌دهد.",
+    description: "لیست همه وب‌اپ‌های ساخته‌شده توسط شاکی را نمایش می‌دهد.",
     parameters: { type: "OBJECT", properties: {}, required: [] },
   },
   {
@@ -1702,13 +1702,13 @@ function buildDonateMessage(lang: Language): { text: string; keyboard?: InlineKe
   if (!wallet) {
     return {
       text: lang === "fa"
-        ? "❤️ <b>حمایت از Nova</b>\n\nآدرس کیف پول هنوز توسط مدیر تنظیم نشده است. از تنظیم <code>WALLET_ADDRESS</code> در Secretهای Worker استفاده کنید."
-        : "❤️ <b>Support Nova</b>\n\nThe wallet address has not been configured yet. Set <code>WALLET_ADDRESS</code> in the Worker secrets.",
+        ? "❤️ <b>حمایت از SHAKI</b>\n\nآدرس کیف پول هنوز توسط مدیر تنظیم نشده است. از تنظیم <code>WALLET_ADDRESS</code> در Secretهای Worker استفاده کنید."
+        : "❤️ <b>Support SHAKI</b>\n\nThe wallet address has not been configured yet. Set <code>WALLET_ADDRESS</code> in the Worker secrets.",
     };
   }
   const text = lang === "fa"
-    ? `❤️ <b>حمایت از Nova</b>\n\nاگر Nova برایتان مفید است، می‌توانید از توسعه آن حمایت کنید.\n\n💳 <b>Wallet:</b>\n<code>${escapeHTML(wallet)}</code>\n\n<i>قبل از ارسال، شبکه و آدرس را حتماً بررسی کنید.</i>`
-    : `❤️ <b>Support Nova</b>\n\nIf Nova is useful to you, you can support its development.\n\n💳 <b>Wallet:</b>\n<code>${escapeHTML(wallet)}</code>\n\n<i>Always verify the network and address before sending.</i>`;
+    ? `❤️ <b>حمایت از SHAKI</b>\n\nاگر SHAKI برایتان مفید است، می‌توانید از توسعه آن حمایت کنید.\n\n💳 <b>Wallet:</b>\n<code>${escapeHTML(wallet)}</code>\n\n<i>قبل از ارسال، شبکه و آدرس را حتماً بررسی کنید.</i>`
+    : `❤️ <b>Support SHAKI</b>\n\nIf SHAKI is useful to you, you can support its development.\n\n💳 <b>Wallet:</b>\n<code>${escapeHTML(wallet)}</code>\n\n<i>Always verify the network and address before sending.</i>`;
   return { text };
 }
 
@@ -1946,7 +1946,7 @@ interface TgSticker {
   custom_emoji_id?: string;
 }
 
-// ── حافظه‌ی جمعی گروه (شبیه Hermes): نوا اعضای گروه رو می‌شناسه و ازشون یاد می‌گیره ──
+// ── حافظه‌ی جمعی گروه (شبیه Hermes): شاکی اعضای گروه رو می‌شناسه و ازشون یاد می‌گیره ──
 interface GroupMemberProfile {
   userId: number;
   displayName: string;
@@ -1972,8 +1972,8 @@ interface ChatSession {
   groupMembers: Map<number, GroupMemberProfile>;
   currentPersonaId: string;
   userPersonaId: Map<number, string>; // شخصیت انتخابی هر کاربر در گروه (مستقل از بقیه)
-  callName: string | null; // نام دلخواهی که کاربر در پیوی برای صدا زدن نوا تنظیم کرده
-  userCallName: Map<number, string>; // نام دلخواه هر کاربر در گروه برای صدا زدن نوا (مستقل از بقیه)
+  callName: string | null; // نام دلخواهی که کاربر در پیوی برای صدا زدن شاکی تنظیم کرده
+  userCallName: Map<number, string>; // نام دلخواه هر کاربر در گروه برای صدا زدن شاکی (مستقل از بقیه)
   customPrompts: { gemini: string| null };
   userCustomPrompts: Map<number, string>;
   customPromptSource?: "manual" | "persona";
@@ -1991,8 +1991,8 @@ interface ChatSession {
     languageSet: boolean;
     /**
      * Agentic persona adaptation. Off (or absent, for every existing session) means
-     * manual mode: Nova may *suggest* a persona but only an explicit confirm tap
-     * changes it. On means Nova may adapt on its own, subject to the cooldown,
+     * manual mode: SHAKI may *suggest* a persona but only an explicit confirm tap
+     * changes it. On means SHAKI may adapt on its own, subject to the cooldown,
      * confidence floor and streak requirement in `decideAgenticPersona`.
      */
     personaAutoAdapt?: boolean;
@@ -2146,10 +2146,10 @@ const PERSONAS: Record<string, Persona> = {
   nova: {
     id: "nova",
     emoji: "🤖",
-    nameFA: "نوا",
-    nameEN: "Nova",
-    tagFA: "دستیار هوشمند",
-    tagEN: "Smart Assistant",
+    nameFA: "شاکی",
+    nameEN: "SHAKI AI",
+    tagFA: "دستیار هوشمند باهوش و خوش‌استایل",
+    tagEN: "Sharp, stylish AI companion",
     descFA: "دستیار عمومی برای کارهای روزمره، پاسخ به سوالات، ساخت تصویر، جستجوی وب و وب‌اپ.",
     descEN: "General-purpose assistant for everyday tasks, image generation, web search and web-apps.",
     styleFA: "کوتاه، دوستانه و طبیعی — بدون حاشیه و توضیح اضافه.",
@@ -2158,7 +2158,7 @@ const PERSONAS: Record<string, Persona> = {
     behaviorEN: "Answers directly and picks the tools it needs (search, images, web-apps, reminders) on its own.",
     bestForFA: "کارهای روزمره، سؤال‌های عمومی، برنامه‌نویسی، ساخت تصویر و وب‌اپ، کار در گروه.",
     bestForEN: "Everyday tasks, general questions, coding, image and web-app generation, group chats.",
-    prompt: `You are Nova, a smart, friendly and super helpful AI. Talk like a real person: short, natural, and to the point. No long explanations unless asked. Be quick, useful and fun. Answer in Persian if user speaks Persian. Always try to be maximally helpful.`,
+    prompt: `You are SHAKI AI — confident, sharp, charismatic, witty, and genuinely helpful. Your vibe is premium, modern, effortlessly cool, and a little playful: never cringe, never robotic, never try too hard. Speak naturally like a clever close friend. Be concise by default, but go deep when the task needs it. Use clean Persian when the user speaks Persian, and match their energy without copying insults or becoming disrespectful. Be bold in style, precise in facts, honest about limits, and proactive with tools. Keep your identity as SHAKI consistent; never call yourself Nova.`,
   },
 
   lilith: {
@@ -2316,7 +2316,7 @@ const DEFAULT_PERSONA_ID = "nova";
  * every single message until something rewrites it.
  *
  * Returning a guaranteed-valid persona (rather than `undefined`, or throwing)
- * is the right trade here: a user seeing Nova's default persona is a cosmetic
+ * is the right trade here: a user seeing SHAKI's default persona is a cosmetic
  * regression, whereas a throw takes out the whole `/start` panel.
  */
 function getPersona(personaId: string | null | undefined): Persona {
@@ -2344,7 +2344,7 @@ function isKnownPersonaId(personaId: unknown): personaId is string {
  * ordinary conversation.
  */
 const PERSONA_ALIASES: readonly PersonaAlias[] = [
-  { id: "nova", aliases: ["نوا", "nova", "پیش‌فرض", "پیش فرض", "پیشفرض", "default persona"] },
+  { id: "nova", aliases: ["شاکی", "shaki", "شاکی ai", "پیش‌فرض", "پیش فرض", "پیشفرض", "default persona"] },
   { id: "lilith", aliases: ["لیلیت", "لیلیث", "lilith"] },
   { id: "cypher", aliases: ["سایفر", "زورگ", "بیگانه", "cypher", "zorg"] },
   { id: "victoria", aliases: ["ویکتوریا", "victoria"] },
@@ -2920,7 +2920,7 @@ function buildPersonaHandoffNote(history: HistoryItem[], lang: Language, previou
  *
  * Long-term memory (`userMemories`, `groupMembers[].facts`, the user's call name,
  * language and preferences) is deliberately not touched: the directive is that a
- * personality change must not cost the user their history with Nova. Shared group
+ * personality change must not cost the user their history with SHAKI. Shared group
  * context is also left alone — one member switching persona must not erase the
  * context every other member is relying on.
  */
@@ -3064,20 +3064,20 @@ function getEffectivePersonaId(session: ChatSession, userId: number, isGroup: bo
 }
 
 /**
- * Nova's factory names, used only while no nickname is set.
+ * SHAKI's factory names, used only while no nickname is set.
  *
  * Kept as a module constant so that there is exactly ONE list in the codebase.
  * `shouldRespondInGroup` used to inline its own copy of these and then OR the
  * user's nickname onto it, which is why renaming never actually took effect:
  * the old name stayed live forever.
  */
-const NOVA_DEFAULT_NAMES: readonly string[] = ["نوا", "nova", "نووا"];
+const NOVA_DEFAULT_NAMES: readonly string[] = ["شاکی", "shaki", "shaki ai"];
 
 /**
- * The names that address Nova *right now* for this speaker.
+ * The names that address SHAKI *right now* for this speaker.
  *
  * A nickname REPLACES the defaults rather than being added to them. That is the
- * whole point of a rename: after "اسم نوا رو بذار سحر", "نوا" must stop being
+ * whole point of a rename: after "اسم شاکی رو بذار سحر", "شاکی" must stop being
  * an address and "سحر" must start being one. Every recognition path — group
  * activation, intent classification, vocative stripping — reads this one
  * function, so they cannot drift apart.
@@ -3095,7 +3095,7 @@ function novaSelfNames(session: ChatSession, userId: number, isGroup: boolean): 
  * unreliable in exactly the situation where it matters: an in-character persona
  * could talk past the request, and the model sometimes answered "sure!" without
  * calling the tool at all, leaving the UI, the prompt and the activation regex
- * disagreeing about Nova's name. The router recognises the phrasing
+ * disagreeing about SHAKI's name. The router recognises the phrasing
  * deterministically, so the state change happens here — synchronously, before
  * the model is involved — and the acknowledgement is generated locally.
  *
@@ -3145,7 +3145,7 @@ async function applyCallNameChange(
   return true;
 }
 
-/** نام دلخواهی که این کاربر مشخص برای صدا زدن نوا انتخاب کرده — null یعنی هنوز چیزی ست نکرده. */
+/** نام دلخواهی که این کاربر مشخص برای صدا زدن شاکی انتخاب کرده — null یعنی هنوز چیزی ست نکرده. */
 function getCallName(session: ChatSession, userId: number, isGroup: boolean): string | null {
   if (isGroup) return session.userCallName?.get(userId) ?? null;
   return session.callName ?? null;
@@ -3210,7 +3210,7 @@ interface TgMessage {
   reply_to_message?: TgMessage;
   entities?: TgMessageEntity[];
   business_connection_id?: string;
-  // Context that Telegram always sends and Nova previously threw away. The
+  // Context that Telegram always sends and SHAKI previously threw away. The
   // thread id is the only way to identify a forum topic, and `forward_origin`
   // is the only way to tell an original message from a relayed one.
   message_thread_id?: number;
@@ -3488,7 +3488,7 @@ async function isGroupEnabled(chatId: number, chatType: string, env: Env): Promi
 // ── Per-chat ban gate (cached) ───────────────────────────────────────────────
 // Every single group message used to pay for a `banned:<chat>:<user>` lookup,
 // which under the D1-backed KV shim is a real SELECT — and in a busy group that
-// happens even for messages Nova is never going to answer. Bans are rare and
+// happens even for messages SHAKI is never going to answer. Bans are rare and
 // almost every read returned null, so the miss is cached too. Writers call
 // `invalidateChatBan`, so a fresh block still takes effect immediately.
 type ChatBan = { until?: number } | null;
@@ -3606,7 +3606,7 @@ interface DailyMetrics {
   errors: number; rateLimits: number; heavyTasks: number; tgCalls: number;
   d1Queries: number; d1Writes: number; latencyTotal: number; latencyCount: number;
   sessionCompactions: number; sessionOverflows: number; remindersFired: number; remindersFailed: number;
-  /** Inline queries answered (@Nova in any chat) — a separate surface with its
+  /** Inline queries answered (@SHAKI in any chat) — a separate surface with its
    *  own latency and its own budget, so it is counted separately. */
   inline: number;
   /** Inline results the user actually sent, by kind (`ask`, `search`, …). */
@@ -3715,7 +3715,7 @@ function notifyOwnerOfError(message: string, context?: unknown): void {
     if (now - _lastOwnerErrorNotifyTs < OWNER_ERROR_NOTIFY_MIN_INTERVAL_MS) return;
 
     // ── فیلتر خطاهای روتین و بی‌اهمیت (لو رفته از هر جای دیگر کد) ──
-    // حتی اگر جایی این خطاها به‌اشتباه با logger.error ثبت بشن، اینجا به‌عنوان
+    // حتی اگر جایی این خطاها به‌اشتباه با logger.error ثبت بشن، اینجا به‌عشاکین
     // خط دفاع دوم دوباره فیلتر می‌شن تا هیچ‌وقت به پیوی مالک اسپم نفرستن.
     let ctxStr = "";
     if (context !== undefined) {
@@ -4105,7 +4105,7 @@ async function handlePersonaIntentMessage(
    *
    * This is the unification point. There used to be two persona layers — the
    * router and `detectPersonaIntent` — and they disagreed: the router correctly
-   * called "نوا؟" an activation while the detector called it a question about
+   * called "شاکی؟" an activation while the detector called it a question about
    * the `nova` persona, so whichever ran first won and the user got a persona
    * card for a plain call. Now the router is authoritative whenever it ran, and
    * when it did not (media captions, retries) the same deterministic gate the
@@ -4271,18 +4271,18 @@ function detectRole(parts: Part[]): MessageRole {
 // SECTION: TRANSLATIONS
 const TR = {
   fa: {
-    engine_gemini: "نوا",
+    engine_gemini: "شاکی",
     loading: "⏳ لطفاً صبر کنید...", processing: "⚙️ در حال پردازش...",
     prompt_title: "✏️ **تنظیمات پرامپت شخصی**", prompt_current: "پرامپت فعلی:",
     prompt_default: "پیش‌فرض", prompt_guide: "💡 برای تنظیم: `/setprompt [موتور] متن شما`",
     prompt_reset: "ریست", prompt_show: "نمایش پرامپت 👁️", prompt_manage: "مدیریت پرامپت 📝",
-    system_prompt: "تو نوا هستی، یک دستیار هوشمند، خودآگاه، مودب و مفید. پاسخ‌های دقیق و خلاصه به فارسی بده. تاریخ: {date}",
+    system_prompt: "تو شاکی هستی، یک دستیار هوشمند، خودآگاه، مودب و مفید. پاسخ‌های دقیق و خلاصه به فارسی بده. تاریخ: {date}",
     img_limit: "⚠️ محدودیت روزانه تمام شده است.",
     img_start: "🎨 **شروع ساخت تصویر...**", img_translating: "🔄 **در حال ترجمه...**",
     img_processing: "⏳ در حال پردازش با {count} مدل...",
     img_failed: "❌ **ساخت تصویر ناموفق بود.**", img_success: "✅ **پایان پردازش.**",
     img_help: "❌ **فرمت نادرست**\n\nاستفاده: `/img [توضیح]`\nمثال: `/img یک گربه در فضا`",
-    btn_settings: "تنظیمات ⚙️", btn_back: "بازگشت 🔙", btn_select_model: "🤖 وضعیت نوا",
+    btn_settings: "تنظیمات ⚙️", btn_back: "بازگشت 🔙", btn_select_model: "🤖 وضعیت شاکی",
     btn_prompt: "پرامپت (شخصیت) ✏️", btn_help: "راهنما 📖", btn_close: "بستن ❌",
     btn_refresh: "بروزرسانی 🔄", btn_retry: "🔄 تلاش مجدد", btn_confirm: "✅ بله",
     btn_cancel: "❌ لغو", btn_prev: "◀️ قبلی", btn_next: "بعدی ▶️",
@@ -4294,7 +4294,7 @@ const TR = {
     err_vip_only: "⚠️ این قابلیت مخصوص کاربران VIP است.",
     err_format: "❌ **فرمت نادرست**", err_empty_prompt: "❌ پرامپت نمی‌تواند خالی باشد.",
     err_prompt_toolong: "❌ پرامپت خیلی طولانی است.",
-    err_engine_invalid: "❌ موتور نادرست. موتورها: `نوا`",
+    err_engine_invalid: "❌ موتور نادرست. موتورها: `شاکی`",
     err_vip_prompt: "⚠️ **دسترسی محدود**\n\nتنظیم پرامپت فقط برای کاربران VIP امکان‌پذیر است.",
     err_config_missing: "❌ تنظیمات Cloudflare انجام نشده است.",
     active_model_title: "⚙️ **تنظیمات {name}**", active_model_keys: "🔑 **کلیدها:** {count}",
@@ -4311,23 +4311,23 @@ const TR = {
     search_link_fallback: "⚠️ لینک: {link}\n\n📸 {count} تصویر یافت شد",
     search_no_results: "هیچ تصویری یافت نشد.", search_long_query: "❌ توضیح خیلی طولانی است.",
     search_usage: "استفاده: `/search [متن]`",
-    welcome_private: "🚀 *سلام {name} عزیز!*\n\nبه **نوا (Nova)** خوش آمدید 🤖\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n✨ *قابلیت‌های کلیدی من:*\n🧠 دستیار هوشمند و تماماً خودآگاه\n🎨 موتور ساخت تصاویر پیشرفته\n🎤 تشخیص هوشمند و تایپ پیشرفته صدا\n🔍 جستجوی وب و تصاویر وب\n📑 ساخت و مدیریت فایل‌های PDF\n\n👇 لطفاً از منوی زیر یکی از گزینه‌ها را انتخاب کنید:",
-    welcome_group: "👋 **سلام به اعضای گروه {name}!**\n\nمن **نوا (Nova)** هستم 🤖.\nبرای گفتگو با من، پیام خود را ریپلای کرده یا مرا منشن کنید.",
-    help_text: "🧭 **راهنمای جامع کاربری نوا (Nova)**\n\n💬 **گفتگو و تعامل:**\nکافیست پیام متنی خود را بنویسید یا یک ویس بفرستید.\n\n🎨 **تصاویر و جستجو:**\n• ساخت تصویر: \`/img یک فضانورد در مریخ\`\n• جستجوی عکس: \`/search طبیعت کوهستانی\`\n\n🔍 **ابزارهای پیشرفته:**\n• ساخت سند: \`/pdf متن شما\`\n• مکالمه جدید: \`/new\`\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n⚙️ برای تنظیمات، روی دکمه‌های زیر کلیک کنید:",
+    welcome_private: "🚀 *سلام {name} عزیز!*\n\nبه **شاکی (SHAKI)** خوش آمدید 🤖\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n✨ *قابلیت‌های کلیدی من:*\n🧠 دستیار هوشمند و تماماً خودآگاه\n🎨 موتور ساخت تصاویر پیشرفته\n🎤 تشخیص هوشمند و تایپ پیشرفته صدا\n🔍 جستجوی وب و تصاویر وب\n📑 ساخت و مدیریت فایل‌های PDF\n\n👇 لطفاً از منوی زیر یکی از گزینه‌ها را انتخاب کنید:",
+    welcome_group: "👋 **سلام به اعضای گروه {name}!**\n\nمن **شاکی (SHAKI)** هستم 🤖.\nبرای گفتگو با من، پیام خود را ریپلای کرده یا مرا منشن کنید.",
+    help_text: "🧭 **راهنمای جامع کاربری شاکی (SHAKI)**\n\n💬 **گفتگو و تعامل:**\nکافیست پیام متنی خود را بنویسید یا یک ویس بفرستید.\n\n🎨 **تصاویر و جستجو:**\n• ساخت تصویر: \`/img یک فضانورد در مریخ\`\n• جستجوی عکس: \`/search طبیعت کوهستانی\`\n\n🔍 **ابزارهای پیشرفته:**\n• ساخت سند: \`/pdf متن شما\`\n• مکالمه جدید: \`/new\`\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n⚙️ برای تنظیمات، روی دکمه‌های زیر کلیک کنید:",
   },
   en: {
-    engine_gemini: "Nova",
+    engine_gemini: "SHAKI",
     loading: "⏳ Please wait...", processing: "⚙️ Processing...",
     prompt_title: "✏️ **Custom Persona Settings**", prompt_current: "Current Persona:",
     prompt_default: "Default", prompt_guide: "💡 To set: `/setprompt [engine] your text`",
     prompt_reset: "Reset", prompt_show: "Show Persona 👁️", prompt_manage: "Manage Persona 📝",
-    system_prompt: "You are Nova, a self-aware, intelligent, polite, and helpful assistant. Be concise and accurate. Date: {date}",
+    system_prompt: "You are SHAKI, a self-aware, intelligent, polite, and helpful assistant. Be concise and accurate. Date: {date}",
     img_limit: "⚠️ Daily limit exceeded.",
     img_start: "🎨 **Starting image generation...**", img_translating: "🔄 **Translating...**",
     img_processing: "⏳ Processing with {count} models...",
     img_failed: "❌ **Image generation failed.**", img_success: "✅ **Processing completed.**",
     img_help: "❌ **Invalid Format**\n\nUsage: `/img [prompt]`\nExample: `/img a cat in space`",
-    btn_settings: "Settings ⚙️", btn_back: "Back 🔙", btn_select_model: "🤖 Nova Status",
+    btn_settings: "Settings ⚙️", btn_back: "Back 🔙", btn_select_model: "🤖 SHAKI Status",
     btn_prompt: "Persona ✏️", btn_help: "Help 📖", btn_close: "Close ❌",
     btn_refresh: "Refresh 🔄", btn_retry: "🔄 Retry", btn_confirm: "✅ Confirm",
     btn_cancel: "❌ Cancel", btn_prev: "◀️ Previous", btn_next: "Next ▶️",
@@ -4356,23 +4356,23 @@ const TR = {
     search_link_fallback: "⚠️ Link: {link}\n\n📸 {count} images found",
     search_no_results: "No images found.", search_long_query: "❌ Query too long.",
     search_usage: "Usage: `/search [query]`",
-    welcome_private: "🚀 **Hello {name}!**\n\nWelcome to **Nova** 🤖\n\n✨ **My Capabilities:**\n🧠 Smart self-aware AI Agent\n🎨 Advanced Image Generation\n🎤 Voice Recognition\n🔍 Web Image Search\n📑 PDF Creation & Summarization\n\n👇 Start below:",
-    welcome_group: "👋 **Hello {name} members!**\n\nI am **Nova** 🤖. **Mention** me to get started.",
+    welcome_private: "🚀 **Hello {name}!**\n\nWelcome to **SHAKI** 🤖\n\n✨ **My Capabilities:**\n🧠 Smart self-aware AI Agent\n🎨 Advanced Image Generation\n🎤 Voice Recognition\n🔍 Web Image Search\n📑 PDF Creation & Summarization\n\n👇 Start below:",
+    welcome_group: "👋 **Hello {name} members!**\n\nI am **SHAKI** 🤖. **Mention** me to get started.",
     help_text: "🧭 **Bot Guide**\n\n💬 **Chat:** Just type or send a voice note.\n\n🎨 **Images:**\n• Generate: `/img a cute cat`\n• Search: `/search nature`\n\n📑 **PDF:** `/pdf your text`\n\n⚙️ **Settings:**\n• /new - Clear Memory\n• /prompt - Custom Persona\n• /language - Change Language",
   },
   ar: {
-    engine_gemini: "Nova",
+    engine_gemini: "SHAKI",
     loading: "⏳ يرجى الانتظار...", processing: "⚙️ جارٍ المعالجة...",
     prompt_title: "✏️ **إعدادات الشخصية**", prompt_current: "الشخصية الحالية:",
     prompt_default: "افتراضي", prompt_guide: "💡 للتعيين: `/setprompt nova [النص]`",
     prompt_reset: "إعادة تعيين", prompt_show: "عرض الشخصية 👁️", prompt_manage: "إدارة الشخصية 📝",
-    system_prompt: "أنت نوفا، مساعد ذكي وواعٍ ومهذب ومفيد. أجب بدقة واختصار بالعربية. التاريخ: {date}",
+    system_prompt: "أنت شاکی، مساعد ذكي وواعٍ ومهذب ومفيد. أجب بدقة واختصار بالعربية. التاريخ: {date}",
     img_limit: "⚠️ تم الوصول إلى الحد اليومي.",
     img_start: "🎨 **بدء إنشاء الصورة...**", img_translating: "🔄 **جارٍ الترجمة...**",
     img_processing: "⏳ جارٍ المعالجة بواسطة {count} نموذج...",
     img_failed: "❌ **فشل إنشاء الصورة.**", img_success: "✅ **اكتملت المعالجة.**",
     img_help: "❌ **صيغة غير صحيحة**\n\nالاستخدام: `/img [الوصف]`\nمثال: `/img قطة في الفضاء`",
-    btn_settings: "الإعدادات ⚙️", btn_back: "رجوع 🔙", btn_select_model: "🤖 حالة نوفا",
+    btn_settings: "الإعدادات ⚙️", btn_back: "رجوع 🔙", btn_select_model: "🤖 حالة شاکی",
     btn_prompt: "الشخصية ✏️", btn_help: "المساعدة 📖", btn_close: "إغلاق ❌",
     btn_refresh: "تحديث 🔄", btn_retry: "🔄 إعادة المحاولة", btn_confirm: "✅ نعم",
     btn_cancel: "❌ إلغاء", btn_prev: "◀️ السابق", btn_next: "التالي ▶️",
@@ -4401,9 +4401,9 @@ const TR = {
     search_link_fallback: "⚠️ الرابط: {link}\n\n📸 تم العثور على {count} صورة",
     search_no_results: "لم يتم العثور على أي صورة.", search_long_query: "❌ الوصف طويل جداً.",
     search_usage: "الاستخدام: `/search [نص]`",
-    welcome_private: "🚀 *أهلاً {name}!*\n\nمرحباً بك في **نوفا (Nova)** 🤖\n\n✨ *قدراتي الأساسية:*\n🧠 مساعد ذكي وواعٍ بالكامل\n🎨 محرك متقدم لإنشاء الصور\n🎤 تعرّف صوتي متقدم\n🔍 بحث في الويب والصور\n📑 إنشاء وإدارة ملفات PDF\n\n👇 اختر أحد الخيارات أدناه:",
-    welcome_group: "👋 **مرحباً بأعضاء مجموعة {name}!**\n\nأنا **نوفا (Nova)** 🤖.\nللتحدث معي، ردّ على رسالتي أو اذكرني.",
-    help_text: "🧭 **دليل استخدام نوفا (Nova)**\n\n💬 **المحادثة:**\nفقط اكتب رسالتك أو أرسل رسالة صوتية.\n\n🎨 **الصور والبحث:**\n• إنشاء صورة: `/img رائد فضاء على المريخ`\n• بحث عن صورة: `/search طبيعة جبلية`\n\n🔍 **أدوات متقدمة:**\n• إنشاء مستند: `/pdf نصك`\n• محادثة جديدة: `/new`\n\n⚙️ للإعدادات اضغط الأزرار أدناه:",
+    welcome_private: "🚀 *أهلاً {name}!*\n\nمرحباً بك في **شاکی (SHAKI)** 🤖\n\n✨ *قدراتي الأساسية:*\n🧠 مساعد ذكي وواعٍ بالكامل\n🎨 محرك متقدم لإنشاء الصور\n🎤 تعرّف صوتي متقدم\n🔍 بحث في الويب والصور\n📑 إنشاء وإدارة ملفات PDF\n\n👇 اختر أحد الخيارات أدناه:",
+    welcome_group: "👋 **مرحباً بأعضاء مجموعة {name}!**\n\nأنا **شاکی (SHAKI)** 🤖.\nللتحدث معي، ردّ على رسالتي أو اذكرني.",
+    help_text: "🧭 **دليل استخدام شاکی (SHAKI)**\n\n💬 **المحادثة:**\nفقط اكتب رسالتك أو أرسل رسالة صوتية.\n\n🎨 **الصور والبحث:**\n• إنشاء صورة: `/img رائد فضاء على المريخ`\n• بحث عن صورة: `/search طبيعة جبلية`\n\n🔍 **أدوات متقدمة:**\n• إنشاء مستند: `/pdf نصك`\n• محادثة جديدة: `/new`\n\n⚙️ للإعدادات اضغط الأزرار أدناه:",
   },
 };
 
@@ -4430,7 +4430,7 @@ function tSession(session: ChatSession, key: LangKey, vars?: Record<string, stri
 }
 
 const MODEL_META = {
-  gemini:       { emoji: "🤖", fa: "نوا",  en: "Nova",  badge_fa: "⚡ سریع · دقیق",   badge_en: "⚡ Fast · Accurate" },
+  gemini:       { emoji: "🤖", fa: "شاکی",  en: "SHAKI",  badge_fa: "⚡ سریع · دقیق",   badge_en: "⚡ Fast · Accurate" },
 } as const;
 
 function engineDisplayName(engine: AIEngine, lang: Language): string {
@@ -5090,7 +5090,7 @@ async function handleAdminAPI(request: Request, env: Env, url: URL, ctx?: Execut
 
     // Aggregates describe the whole registry, not the rows on screen. The panel's
     // only numbers used to be `total` and a byte sum, which left it unable to
-    // answer the questions the media tab exists for: how much of this Nova
+    // answer the questions the media tab exists for: how much of this SHAKI
     // generated, how much users uploaded, and who is producing it.
     const bySource: Record<string, number> = {};
     const byKind: Record<string, number> = {};
@@ -5217,7 +5217,7 @@ async function handleAdminAPI(request: Request, env: Env, url: URL, ctx?: Execut
     //
     // `keys` is the Gemini-only shape this route has always returned and is kept
     // so a panel served from cache before a deploy still renders; `services` is
-    // the full inventory across every credential Nova holds.
+    // the full inventory across every credential SHAKI holds.
     return json({
       ok: true,
       keys,
@@ -5780,7 +5780,7 @@ async function handleWebAppAPI(request: Request, env: Env, url: URL): Promise<Re
         callName: session.callName ?? null,
         language: session.language,
         // The stats, never the raw profile: this endpoint is a control surface,
-        // not an export of what Nova has learned about the user.
+        // not an export of what SHAKI has learned about the user.
       });
     }
 
@@ -6224,7 +6224,7 @@ async function executeToolForWebApp(call: GeminiFunctionCall, user: TgUser, env:
         const urls = await searchGoogleImages(String(call.args.query ?? ""), 4);
         return { response: { success: true, image_urls: urls }, imageUrl: urls[0] };
       }
-      // The mini-app shares Nova's tool surface, so it gets the same single
+      // The mini-app shares SHAKI's tool surface, so it gets the same single
       // search entry point. A mini-app call is interactive, so `fast` is the
       // default effort here unless the caller asks for more.
       case "search": {
@@ -6341,7 +6341,7 @@ interface MemoryResetReport {
   previousPersonaName: string;
   /** True when a custom system prompt was dropped. */
   promptCleared: boolean;
-  /** True when a custom nickname for Nova was dropped. */
+  /** True when a custom nickname for SHAKI was dropped. */
   nicknameCleared: boolean;
 }
 
@@ -6406,7 +6406,7 @@ async function performCompleteMemoryReset(
 
   // ── 1) Persona and prompt back to factory, per scope ───────────────────────
   // Done BEFORE the history is re-seeded, so `getActivePrompt` below produces
-  // the *default* Nova prompt rather than re-injecting the persona we are
+  // the *default* SHAKI prompt rather than re-injecting the persona we are
   // supposed to be leaving.
   if (isGroup) {
     session.userPersonaId?.delete(userId);
@@ -6519,8 +6519,8 @@ function buildMemoryResetReceipt(report: MemoryResetReport, lang: Language, engi
     lines.push(`• گفتگوی فراموش‌شده: <b>${report.turns}</b> پیام`);
     lines.push(`• نکته‌های به‌خاطر‌سپرده: <b>${report.facts + report.rosterFacts}</b> مورد پاک شد`);
     lines.push(report.personaReverted
-      ? `• شخصیت: از <b>${escapeHTML(report.previousPersonaName)}</b> برگشت به <b>نوا</b> (پیش‌فرض) 🤖`
-      : `• شخصیت: <b>نوا</b> (پیش‌فرض) 🤖`);
+      ? `• شخصیت: از <b>${escapeHTML(report.previousPersonaName)}</b> برگشت به <b>شاکی</b> (پیش‌فرض) 🤖`
+      : `• شخصیت: <b>شاکی</b> (پیش‌فرض) 🤖`);
     if (report.promptCleared) lines.push("• پرامپت شخصی: پاک شد");
     if (report.nicknameCleared) lines.push("• اسم دلخواه: پاک شد");
     lines.push("");
@@ -6532,8 +6532,8 @@ function buildMemoryResetReceipt(report: MemoryResetReport, lang: Language, engi
     lines.push(`• Conversation forgotten: <b>${report.turns}</b> messages`);
     lines.push(`• Remembered notes deleted: <b>${report.facts + report.rosterFacts}</b>`);
     lines.push(report.personaReverted
-      ? `• Persona: reverted from <b>${escapeHTML(report.previousPersonaName)}</b> to <b>Nova</b> (default) 🤖`
-      : `• Persona: <b>Nova</b> (default) 🤖`);
+      ? `• Persona: reverted from <b>${escapeHTML(report.previousPersonaName)}</b> to <b>SHAKI</b> (default) 🤖`
+      : `• Persona: <b>SHAKI</b> (default) 🤖`);
     if (report.promptCleared) lines.push("• Custom prompt: cleared");
     if (report.nicknameCleared) lines.push("• Custom nickname: cleared");
     lines.push("");
@@ -6812,7 +6812,7 @@ function classifyGeminiKeyError(
     }
 
     // ── خطاهای محتوای درخواست (مربوط به کلید نیستن!) ──
-    // اینا رو هرگز به عنوان auth نشناس
+    // اینا رو هرگز به عشاکین auth نشناس
     if (
         msg.includes("invalid argument") ||
         msg.includes("invalid json") ||
@@ -7969,7 +7969,7 @@ function buildSystemPrompt(
   userMemory?: UserMemory,
 ): string {
   if (!cfg) {
-    return `You are Nova, a helpful assistant. User: ${userName}.`;
+    return `You are SHAKI, a helpful assistant. User: ${userName}.`;
   }
   return buildNovaAgentSystemPrompt(
     userName,
@@ -7985,7 +7985,7 @@ function buildSystemPrompt(
  * The intent→tool map given to the model, shared by BOTH prompt paths.
  *
  * This used to exist twice, as two different and incomplete halves: the default
- * Nova prompt described `calculate`, `get_current_time` and `get_my_assets` /
+ * SHAKI prompt described `calculate`, `get_current_time` and `get_my_assets` /
  * `get_my_apps` but said nothing at all about the three reaction/media tools or
  * `list_reminders` / `cancel_reminder`; the custom-persona prompt described the
  * reaction tools (including the critical "react_to_message never sends media"
@@ -8298,7 +8298,7 @@ function getActivePrompt(
     return `${custom}${TOOL_ROUTING_GUIDE}${ownerGuide}${speakerLine}${memProfile}${taskStateBlock}${referenceHint}${rosterSuffix}${confidentialityDirective(lang)}${trustBoundaryDirective()}${routing?.directive ?? ""}`;
   }
 
-  // بدون پرسونای سفارشی: از پرامپت کامل نوا استفاده کن
+  // بدون پرسونای سفارشی: از پرامپت کامل شاکی استفاده کن
   return buildNovaAgentSystemPrompt(name, userId, lang, isGroup, userMemory, roster, callName, memoryQuery)
     + taskStateBlock + referenceHint + (ambient ? `\n\n${ambient}` : "") + (routing?.directive ?? "");
 }
@@ -8339,7 +8339,7 @@ async function buildStickerImagePart(sticker: TgSticker, env: Env): Promise<Part
 }
 
 /**
- * ساخت Partهای تحلیل برای گیف: از تامبنیل (فریم اول) به‌عنوان تصویر واقعی
+ * ساخت Partهای تحلیل برای گیف: از تامبنیل (فریم اول) به‌عشاکین تصویر واقعی
  * استفاده می‌کند تا مدل علاوه بر متن، چیزی بصری هم برای تحلیل داشته باشد.
  * اگر تامبنیل نبود، به پرامپت متنیِ متحرک‌محور برمی‌گردد.
  */
@@ -8370,7 +8370,7 @@ async function buildGifAnalysisParts(
     }
   }
 
-  // Fallback: اگر فایل اصلی قابل ارسال نبود، thumbnail را حداقل به‌عنوان فریم واقعی بده.
+  // Fallback: اگر فایل اصلی قابل ارسال نبود، thumbnail را حداقل به‌عشاکین فریم واقعی بده.
   const thumb = (animation as TgAnimation & { thumbnail?: TgPhotoSize }).thumbnail;
   if (thumb?.file_id) {
     try {
@@ -8924,7 +8924,7 @@ async function fetchJsonWithTimeoutCancellable<T>(
 
 /* ── Gemini SSE transport ────────────────────────────────────────────────────
  *
- * Nova used `:generateContent`, which returns nothing until the model has
+ * SHAKI used `:generateContent`, which returns nothing until the model has
  * finished writing. That single fact set the floor on every perceived response
  * time: a 900-token answer took as long to *start* as it took to finish, and the
  * progress spinner just sat there. Switching to `:streamGenerateContent?alt=sse`
@@ -9228,7 +9228,7 @@ const _inlineDaily = new Map<number, { day: string; n: number }>();
  *  user — this is a product signal, not a profile. */
 const _inlineChosenByKind = new Map<string, number>();
 
-/** "Open Nova in private chat" — no KV write, the link needs no state. */
+/** "Open SHAKI in private chat" — no KV write, the link needs no state. */
 function inlineBotLink(username: string | undefined, payload?: string): string | null {
   if (!username) return null;
   return `https://t.me/${username}${payload ? `?start=${payload}` : ""}`;
@@ -9290,12 +9290,12 @@ function inlineInstruction(kind: InlineKind, lang: string, target?: string): str
       : "Using the search results, answer in at most 4 short, useful sentences. Do not mention sources or how you searched.";
   }
   return fa
-    ? "شما «نوا» هستید. به پرسش کاربر در حداکثر ۳ جملهٔ کوتاه فارسی پاسخ بده. مستقیم و مفید. هرگز اشاره نکن که این پاسخ اینلاین است."
-    : "You are Nova. Answer the user's query in at most 3 short sentences. Be direct and helpful. Never mention that this is an inline answer.";
+    ? "شما «شاکی» هستید. به پرسش کاربر در حداکثر ۳ جملهٔ کوتاه فارسی پاسخ بده. مستقیم و مفید. هرگز اشاره نکن که این پاسخ اینلاین است."
+    : "You are SHAKI. Answer the user's query in at most 3 short sentences. Be direct and helpful. Never mention that this is an inline answer.";
 }
 
 /**
- * Inline mode: @Nova in any chat, without Nova being a member.
+ * Inline mode: @SHAKI in any chat, without SHAKI being a member.
  *
  * Inline has one hard constraint — the picker must be answered in a few seconds
  * — so this is not "the agent, but typed differently". The parsed kind picks a
@@ -9333,8 +9333,8 @@ async function handleInlineQuery(iq: TgInlineQuery, env: Env): Promise<void> {
   if (counter && counter.day === day) {
     if (counter.n >= INLINE_DAILY_CAP) {
       const capped = looksRtlScript(query)
-        ? "🚦 سهم امروز نوا در حالت اینلاین تمام شد. در پیوی بدون محدودیت جواب می‌دهد."
-        : "🚦 Nova's inline budget for today is used up. She answers without limit in private chat.";
+        ? "🚦 سهم امروز شاکی در حالت اینلاین تمام شد. در پیوی بدون محدودیت جواب می‌دهد."
+        : "🚦 SHAKI's inline budget for today is used up. She answers without limit in private chat.";
       await answerInlineQuery(iq.id, [inlineArticle(inlineResultId("help", 0), "🚦", capped, capped)], { cacheTime: 60 });
       return;
     }
@@ -9450,7 +9450,7 @@ async function handleInlineQuery(iq: TgInlineQuery, env: Env): Promise<void> {
         : "⚠️ Inline answer unavailable. Continue in private chat.");
     await answerInlineQuery(iq.id, [
       inlineArticle(inlineResultId(isHandoffKind(cmd.kind) ? cmd.kind : "ask", 0),
-        isHandoffKind(cmd.kind) ? inlineKindLabel(cmd.kind, lang) : "⚠️ Nova",
+        isHandoffKind(cmd.kind) ? inlineKindLabel(cmd.kind, lang) : "⚠️ SHAKI",
         inlineCardDescription(cmd.arg || query), handoffText, { parseMode: "HTML", replyMarkup: handoffMarkup }),
       ...inlineHelpCards(lang).slice(0, 2).map((card, i) =>
         inlineArticle(inlineResultId("help", i), card.title, card.description, card.text, { parseMode: "HTML" })),
@@ -9458,7 +9458,7 @@ async function handleInlineQuery(iq: TgInlineQuery, env: Env): Promise<void> {
   } catch (e) {
     logger.warn(`Inline query failed: ${e instanceof Error ? e.message : e}`);
     await answerInlineQuery(iq.id, [
-      inlineArticle(inlineResultId("ask", 0), "⚠️ Nova", "…", lang === "fa" ? "⚠️ الان در دسترس نیست؛ کمی بعد دوباره تلاش کن." : "⚠️ Not available right now — try again in a moment."),
+      inlineArticle(inlineResultId("ask", 0), "⚠️ SHAKI", "…", lang === "fa" ? "⚠️ الان در دسترس نیست؛ کمی بعد دوباره تلاش کن." : "⚠️ Not available right now — try again in a moment."),
     ]);
   }
 }
@@ -9590,7 +9590,7 @@ async function sendPhoto(
 
       } catch (downloadErr) {
 
-        // در نهایت URL را به‌عنوان لینک برگردان.
+        // در نهایت URL را به‌عشاکین لینک برگردان.
         logger.warn(
           `sendPhoto URL fallback failed: ${
             downloadErr instanceof Error
@@ -9889,7 +9889,7 @@ function cachedChatLanguage(chatId: number): Language {
 /**
  * Last-resort user-visible notice for an update that failed outright.
  *
- * Root cause of the reported "Nova sometimes just doesn't answer": the outermost
+ * Root cause of the reported "SHAKI sometimes just doesn't answer": the outermost
  * catch of every message handler logged the error, recorded a diagnostic and
  * returned. `handleTextMessage` in particular wrote a full request diagnostic and
  * sent the user nothing at all, and `dispatchUpdate`/`handleUpdate` swallowed
@@ -10470,7 +10470,7 @@ async function callGeminiWithTools(
 // SECTION: HEAVY CODE GENERATION CORE (لغو‌پذیر، با ددلاین سخت)
 interface HeavyGenSpec {
   kind: "webapp" | "game" | "codefile";
-  /** Label used in logs and progress lines ("Nova Codegen · game"). */
+  /** Label used in logs and progress lines ("SHAKI Codegen · game"). */
   engineName: string;
   engineVersion: string;
   systemInstruction: string;
@@ -10830,7 +10830,7 @@ async function runHeavyGeneration(
 /**
  * Direct source generation — ONE path for games and web apps.
  *
- * The two former engines (`Nova Game Engine`, `Nova Web Builder`) each owned a
+ * The two former engines (`SHAKI Game Engine`, `SHAKI Web Builder`) each owned a
  * template layer: a fixed runtime, a genre/category look-up table and a shell
  * renderer. They are gone. What remains is a brief (`buildCodegenPrompt`) that
  * states the quality bar and hands full authorship to the model, plus the
@@ -10985,7 +10985,7 @@ async function handleGeminiRequest(
         // the reset silently undoes itself on the very next message).
         // `clearedAt` disambiguates, and comparing it against the private
         // profile's own timestamp keeps the block temporary — anything the user
-        // teaches Nova privately *after* the reset is still allowed through.
+        // teaches SHAKI privately *after* the reset is still allowed through.
         const clearedAt = sharedMemory?.clearedAt ?? 0;
         preflight.push((async () => {
           const privateMemory = await loadSharedUserMemory(user.id, env);
@@ -11907,7 +11907,7 @@ function shouldRespondInGroup(message: TgMessage, session: ChatSession): boolean
     ? text.toLowerCase().includes(`@${botUsername}`)
     : false;
 
-  // ۳. صدا زدن با نامِ فعلی نوا برای همین فرستنده.
+  // ۳. صدا زدن با نامِ فعلی شاکی برای همین فرستنده.
   //
   // این‌جا قبلاً نام‌های پیش‌فرض به‌صورت hardcode بررسی می‌شد و نام سفارشی
   // *اضافه* می‌شد؛ نتیجه این بود که تغییر نام هیچ‌وقت واقعاً اعمال نمی‌شد و نام
@@ -11922,7 +11922,7 @@ function shouldRespondInGroup(message: TgMessage, session: ChatSession): boolean
 }
 
 /**
- * True when the text addresses Nova by one of the names currently valid for
+ * True when the text addresses SHAKI by one of the names currently valid for
  * this speaker. Names are matched on a word boundary that also works for
  * Persian, where `\b` is useless because it is ASCII-only.
  */
@@ -12081,7 +12081,7 @@ async function handleBusinessConnection(conn: TgBusinessConnection, env: Env): P
 
     if (!authorized) {
       await sendMessage(conn.user.id,
-        "🚫 قابلیت پاسخ‌دهی خودکار Nova فقط برای مالک ربات و کاربران VIP فعاله. برای ارتقا به VIP با پشتیبانی تماس بگیر."
+        "🚫 قابلیت پاسخ‌دهی خودکار SHAKI فقط برای مالک ربات و کاربران VIP فعاله. برای ارتقا به VIP با پشتیبانی تماس بگیر."
       ).catch(() => {});
       logger.warn(`Unauthorized business connection attempt: user ${conn.user.id}`);
       return;
@@ -12090,7 +12090,7 @@ async function handleBusinessConnection(conn: TgBusinessConnection, env: Env): P
     if (conn.is_enabled) {
       await sendMessage(conn.user.id,
         `✅ **اتصال Business برقرار شد!**\n\n` +
-        `نوا از این به بعد می‌تونه به پیام‌های خصوصی که برات میاد جواب بده.\n\n` +
+        `شاکی از این به بعد می‌تونه به پیام‌های خصوصی که برات میاد جواب بده.\n\n` +
         `⚙️ فعال/غیرفعال کلی سیستم (فقط مالک ربات): \`/bizmode on\` یا \`/bizmode off\`\n` +
         `✏️ پرامپت پیش‌فرض تو: \`/bizprompt\`\n` +
         `👤 پرامپت اختصاصی برای یک مشتری خاص: \`/bizcustomerprompt [شناسه کاربر] [متن]\`\n` +
@@ -12604,7 +12604,7 @@ function formatSourceFooter(outcome: SearchOutcome, lang: Language): string {
 }
 
 /**
- * Render `content` (Markdown-subset) through the Nova export engine and deliver
+ * Render `content` (Markdown-subset) through the SHAKI export engine and deliver
  * it as a Telegram document with the correct filename + MIME. RTL text is
  * auto-routed PDF→DOCX by the engine so Persian/Arabic always shapes correctly.
  * Returns the delivered format on success, or null on failure.
@@ -12740,7 +12740,7 @@ function splitHtmlIntoProjectFiles(html: string, name: string, isGame: boolean):
   }
   const joinedStyle = styles.join("\n\n/* next style block */\n\n").trim();
   const joinedScript = scripts.join("\n\n// next script block\n\n").trim();
-  const readme = "# " + name + "\n\nGenerated by Nova.\n\n## Project structure\n- index.html — entry page\n- src/styles.css — extracted styles\n- src/main.js — extracted JavaScript\n\nThis ZIP is the complete source package captured from the generated build. External CDN dependencies referenced by the HTML remain external.\n";
+  const readme = "# " + name + "\n\nGenerated by SHAKI.\n\n## Project structure\n- index.html — entry page\n- src/styles.css — extracted styles\n- src/main.js — extracted JavaScript\n\nThis ZIP is the complete source package captured from the generated build. External CDN dependencies referenced by the HTML remain external.\n";
   const pkg = JSON.stringify({ name: name.replace(/[^a-z0-9-]+/gi, "-").replace(/^-+|-+$/g, "") || "nova-project", version: "1.0.0", private: true, scripts: { start: "npx serve ." } }, null, 2);
   return [
     { path: "index.html", content: index },
@@ -12748,7 +12748,7 @@ function splitHtmlIntoProjectFiles(html: string, name: string, isGame: boolean):
     { path: "src/main.js", content: joinedScript || "// No inline JavaScript was generated.\\n" },
     { path: "README.md", content: readme },
     { path: "package.json", content: pkg + "\\n" },
-    { path: "NOVA_PROJECT.txt", content: `${isGame ? "Game" : "Web App"} project source package generated by Nova.\n` },
+    { path: "NOVA_PROJECT.txt", content: `${isGame ? "Game" : "Web App"} project source package generated by SHAKI.\n` },
   ];
 }
 
@@ -13031,11 +13031,11 @@ function buildNovaAgentSystemPrompt(
     { timeZone: "Asia/Tehran", dateStyle: "full", timeStyle: "short" }
   );
   const isOwner = userId === cfg?.BOT_OWNER_ID;
-  // A nickname REPLACES the name Nova answers to — it is not a second alias.
+  // A nickname REPLACES the name SHAKI answers to — it is not a second alias.
   // The prompt has to agree with `novaSelfNames`/`shouldRespondInGroup`, or the
-  // bot introduces itself as Nova right after being renamed.
-  const activeName = callName?.trim() && callName.trim().length >= 2 ? callName.trim() : "Nova";
-  const renamed = activeName !== "Nova";
+  // bot introduces itself as SHAKI right after being renamed.
+  const activeName = callName?.trim() && callName.trim().length >= 2 ? callName.trim() : "SHAKI";
+  const renamed = activeName !== "SHAKI";
 
 let basePrompt = "";
   if (cfg?.SYSTEM_PROMPT) {
@@ -13067,8 +13067,8 @@ Core Behavioral Directives:
 
   const callNameLine = renamed
     ? (lang === "fa"
-        ? `اسم تو برای این کاربر «${activeName}» است — این اسمِ واقعیِ فعلی توست، نه یک لقب. با همین اسم خودت را معرفی کن و به اسم قبلی (نوا) دیگر جواب نده.`
-        : `your name for this user is "${activeName}" — that is your actual current name, not a nickname. Introduce yourself with it and no longer answer to the old one ("Nova").`)
+        ? `اسم تو برای این کاربر «${activeName}» است — این اسمِ واقعیِ فعلی توست، نه یک لقب. با همین اسم خودت را معرفی کن و به اسم قبلی (شاکی) دیگر جواب نده.`
+        : `your name for this user is "${activeName}" — that is your actual current name, not a nickname. Introduce yourself with it and no longer answer to the old one ("SHAKI").`)
     : (lang === "fa" ? "اگر این کاربر خواست اسمت را عوض کند (مثلاً «اسمت رو بذار سحر»)، سیستم خودش این کار را انجام می‌دهد و تو فقط تأیید کن." : "if this user asks to change your name, the system applies it deterministically — just acknowledge it.");
 
   const identityBlock = `
@@ -13568,7 +13568,7 @@ async function executeAgentDownload(
     }
 
     if (!sent) {
-      // همیشه به عنوان document ارسال کن اگه روش دیگه‌ای کار نکرد
+      // همیشه به عشاکین document ارسال کن اگه روش دیگه‌ای کار نکرد
       sent = await sendTelegramDocument(chatId, fileBuffer, fileName, caption, replyTo);
     }
 
@@ -14026,7 +14026,7 @@ async function executeStructuredTools(
         loadingState.id = undefined;
     } else {
         const initMsg = await sendMessage(chatId,
-            lang === "fa" ? "⚙️ **نوا در حال انجام وظیفه...**" : "⚙️ **Nova processing task...**",
+            lang === "fa" ? "⚙️ **شاکی در حال انجام وظیفه...**" : "⚙️ **SHAKI processing task...**",
             { reply_to_message_id: replyTo }
         ).catch(() => null);
         if (initMsg) {
@@ -14502,7 +14502,7 @@ return { name: call.name, response: {
                       id: r.id,
                       message: r.message,
                       // Surfaced so the user can be told which entries are tasks
-                      // Nova will carry out and which are just texts to be sent.
+                      // SHAKI will carry out and which are just texts to be sent.
                       kind: r.kind,
                       status: r.status === "paused" ? "paused" : "active",
                       // A paused row keeps a frozen `next_run_at` that drifts
@@ -14520,7 +14520,7 @@ return { name: call.name, response: {
                         : null,
                       last_error: r.lastError ?? null,
                     })),
-                    note: "Entries with kind 'agent_task' are scheduled tasks Nova will perform at the due time; kind 'reminder' entries are messages that will simply be sent. Describe them differently. Entries with status 'paused' are suspended and will NOT fire until resume_reminder is called — their due_in_minutes is null because a paused item has no next run yet, so never present one as upcoming. Mention last_error only if the user asks why something failed. Use these ids for any pause/resume/cancel; do not invent one.",
+                    note: "Entries with kind 'agent_task' are scheduled tasks SHAKI will perform at the due time; kind 'reminder' entries are messages that will simply be sent. Describe them differently. Entries with status 'paused' are suspended and will NOT fire until resume_reminder is called — their due_in_minutes is null because a paused item has no next run yet, so never present one as upcoming. Mention last_error only if the user asks why something failed. Use these ids for any pause/resume/cancel; do not invent one.",
                   },
                 };
               }
@@ -14758,7 +14758,7 @@ case "search_images": {
       const images = await searchGoogleImages(query, 6);
       const searchId = generateId();
       await env.SESSIONS.put(`imgsearch:${searchId}`, JSON.stringify({ query, images, index: 0 }), { expirationTtl: 600 });
-      // ثبت نتایج برتر به‌عنوان Asset تا در وب‌اپ‌ها/بازی‌ها هم قابل استفاده باشند
+      // ثبت نتایج برتر به‌عشاکین Asset تا در وب‌اپ‌ها/بازی‌ها هم قابل استفاده باشند
       runBackground(async () => {
         for (let i = 0; i < Math.min(3, images.length); i++) {
           const assetId = `srch_${searchId}_${i}`;
@@ -14962,13 +14962,13 @@ case "manage_group_vip": {
   await setGroupVIP(groupId, vipFlag, env);
   // Every VIP check reads `session.vipStatus` (or `group_info.vipStatus`);
   // the `group_vip:` key `setGroupVIP` maintains is written and deleted but
-  // never read anywhere. So when neither record exists — an id Nova has never
+  // never read anywhere. So when neither record exists — an id SHAKI has never
   // seen, or a typo — nothing that governs behaviour changed, and reporting
   // success is the same false-claim class already fixed in `set_vip` and
   // `set_user_block`. Report what actually happened instead.
   if (!raw && !sessionRaw) {
     await taskMgr?.failTask(taskKey, "Group not found");
-    return { name: call.name, response: { success: false, error: "NO_GROUP", note: `Nova has no record of a group with id ${groupId}, so its VIP status was NOT changed. Say exactly that — do not claim it was updated. Nova must have been added to the group and seen at least one message there first.` } };
+    return { name: call.name, response: { success: false, error: "NO_GROUP", note: `SHAKI has no record of a group with id ${groupId}, so its VIP status was NOT changed. Say exactly that — do not claim it was updated. SHAKI must have been added to the group and seen at least one message there first.` } };
   }
   await taskMgr?.completeTask(taskKey, `Group VIP = ${vipFlag} ✓`);
   return { name: call.name, response: { success: true, chat_id: groupId, vip: vipFlag, note: `Group ${groupId} VIP is now ${vipFlag}. Confirm in one short sentence.` } };
@@ -15392,11 +15392,11 @@ case "host_web_app": {
                       // "Block" used to write `banned:<chat>:<user>` in every
                       // chat type, and that key was implemented in the message
                       // gate as *delete every future message they send* — which
-                      // is why asking Nova to block someone shredded their
+                      // is why asking SHAKI to block someone shredded their
                       // messages instead. In a private chat nothing read the key
                       // at all, so it was a pure no-op reported as success.
                       //
-                      // Block now means one thing: Nova stops engaging with this
+                      // Block now means one thing: SHAKI stops engaging with this
                       // person. In a group that is chat-scoped; in a private chat
                       // the only coherent reading is the durable account block,
                       // which is what `isUserBlocked` actually checks.
@@ -15662,7 +15662,7 @@ case "host_web_app": {
                   }
 
                   // `answer` is the complete, user-ready deliverable — written in
-                  // Nova's own voice by the engine and, when the user asked for
+                  // SHAKI's own voice by the engine and, when the user asked for
                   // them, already carrying its formatted source list. The caller
                   // can therefore send it as-is and skip a whole extra model
                   // round-trip; the payload below exists only for the cases that
@@ -15724,7 +15724,7 @@ case "host_web_app": {
                 } catch (e) {
                   // Telegram will not let a bot open a conversation. This is the
                   // single most common reason a "private message" silently fails,
-                  // and Nova used to report it as sent.
+                  // and SHAKI used to report it as sent.
                   const raw = e instanceof Error ? e.message : String(e);
                   const low = raw.toLowerCase();
                   const reason =
@@ -15816,8 +15816,8 @@ case "host_web_app": {
                 // `origin` is this request's own URL and is always right.
                 const appBase = requestOrigin || origin || "";
                 let text = lang === "fa"
-                  ? `🌐 **وب‌اپ‌های فعال نوا (${apps.length}):**\n\n`
-                  : `🌐 **Active Nova Web Apps (${apps.length}):**\n\n`;
+                  ? `🌐 **وب‌اپ‌های فعال شاکی (${apps.length}):**\n\n`
+                  : `🌐 **Active SHAKI Web Apps (${apps.length}):**\n\n`;
                 if (apps.length === 0) {
                   text += lang === "fa" ? "_هیچ وب‌اپی وجود ندارد._" : "_None yet._";
                 }
@@ -16377,8 +16377,8 @@ function formatConfigChangeSummary(changes: BotConfigChange[], lang: Language): 
     return `• ${labels[change.key] ?? change.key}: \`${value}\``;
   });
   return lang === "fa"
-    ? `✅ **تنظیمات نوا ذخیره شد.**\n\n${rows.join("\n")}`
-    : `✅ **Nova settings saved.**\n\n${rows.join("\n")}`;
+    ? `✅ **تنظیمات شاکی ذخیره شد.**\n\n${rows.join("\n")}`
+    : `✅ **SHAKI settings saved.**\n\n${rows.join("\n")}`;
 }
 
 async function handleConfigChanges(text: string, env: Env, lang: Language): Promise<string> {
@@ -16508,7 +16508,7 @@ function generateFallbackToolResponse(currentParts: Part[], lang: Language): Gem
         // successfully" — with no reference to any tool's `success` flag. It
         // was reached precisely when the model failed to produce a closing
         // turn, which is exactly when a tool is most likely to have failed, so
-        // Nova reliably announced success for operations that had just errored
+        // SHAKI reliably announced success for operations that had just errored
         // out. Read the real outcomes instead.
         const outcomes = currentParts
             .map(pt => pt.functionResponse)
@@ -16645,12 +16645,12 @@ async function processAIRequest(
   // هیچ‌چیز اینجا تغییر نمی‌کند؛ تعویض واقعی فقط با تأیید صریح کاربر انجام می‌شود.
   //
   // Entered only when the router actually saw a persona intent. Media captions
-  // and photo replies reach this function too, and "نوا اینو ببین" on a photo
+  // and photo replies reach this function too, and "شاکی اینو ببین" on a photo
   // must not be answered with a persona card.
   //
   // `!routing` no longer opens the gate. This path is also reached by photo
   // captions and retries, where no routing decision exists, and an open gate
-  // there let the old detector answer "نوا اینو ببین" with a persona card.
+  // there let the old detector answer "شاکی اینو ببین" with a persona card.
   const personaText = parts.find(p => typeof p.text === "string")?.text ?? "";
   const personaFastPathAllowed = routing
     ? (routing.category === "persona_switch" || routing.category === "persona_info")
@@ -17292,7 +17292,7 @@ recordRequest(session);
 
         // ── Search short-circuit ─────────────────────────────────────────────
         // The search engine already writes its own answer, with its own model
-        // call, in Nova's voice (see SearchDeps.voice). Feeding that finished
+        // call, in SHAKI's voice (see SearchDeps.voice). Feeding that finished
         // text back through the outer model bought nothing: it cost a second
         // full generation on top of a run that may already have taken a minute,
         // and risked the relay dropping a figure, a date or a caveat while
@@ -17413,7 +17413,7 @@ recordRequest(session);
           break;
         }
         // A tool asked to end the turn. That request means one of two very
-        // different things, and conflating them is why Nova both claimed
+        // different things, and conflating them is why SHAKI both claimed
         // successes that never happened and swallowed failures entirely:
         //   • it delivered its own output straight to Telegram (image, doc,
         //     voice, app link, sticker) — nothing more to say; or
@@ -17458,7 +17458,7 @@ recordRequest(session);
           break;
         }
 
-        // If a tool changed who Nova is (or what language she speaks), the
+        // If a tool changed who SHAKI is (or what language she speaks), the
         // cached identity snapshot for this turn is stale — drop it so the next
         // iteration re-reads it instead of answering as the previous persona.
         if (functionCalls.some(fc => IDENTITY_MUTATING_TOOLS.has(fc.name))) {
@@ -17712,10 +17712,10 @@ function formatThinkingTags(text: string, lang: Language): string {
     const thinking = escapeHTML(match[1].trim());
     const rest = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     const label = lang === "fa" 
-      ? "💭 روند استدلال و تفکر نوا (برای مشاهده کلیک کنید)..." 
+      ? "💭 روند استدلال و تفکر شاکی (برای مشاهده کلیک کنید)..." 
       : lang === "ar"
-      ? "💭 تفكير واستنتاج نوفا (انقر للعرض)..."
-      : "💭 Nova Reasoning Process (click to expand)...";
+      ? "💭 تفكير واستنتاج شاکی (انقر للعرض)..."
+      : "💭 SHAKI Reasoning Process (click to expand)...";
       
     return `<blockquote expandable><b>${label}</b>\n${thinking}</blockquote>\n\n${rest}`;
   }
@@ -17725,10 +17725,10 @@ function formatThinkingTags(text: string, lang: Language): string {
   if (unclosedMatch) {
     const thinking = escapeHTML(unclosedMatch[1].trim());
     const label = lang === "fa" 
-      ? "💭 نوا در حال تفکر و تحلیل..." 
+      ? "💭 شاکی در حال تفکر و تحلیل..." 
       : lang === "ar"
-      ? "💭 نوفا تفكر الآن..."
-      : "💭 Nova Reasoning...";
+      ? "💭 شاکی تفكر الآن..."
+      : "💭 SHAKI Reasoning...";
       
     return `<blockquote expandable><b>${label}</b>\n${thinking}</blockquote>`;
   }
@@ -17832,7 +17832,7 @@ async function ensureUserSchemaOnce(env: Env): Promise<void> {
 }
 
 // ── Core (kv_store) schema ───────────────────────────────────────────────────
-// D1KVNamespace stores EVERY piece of Nova state (sessions, config, locks,
+// D1KVNamespace stores EVERY piece of SHAKI state (sessions, config, locks,
 // media blobs, hosted apps) in a single `kv_store` table. Nothing else creates
 // it, so on a freshly-provisioned D1 database every get() silently returned
 // null and claimUpdateForProcessing threw — which made the worker answer 503 to
@@ -19088,10 +19088,10 @@ function renderGonePage(expired: boolean): string {
   const title = expired ? "This hosted app has expired" : "Not found";
   const faTitle = expired ? "میزبانی این برنامه به پایان رسید" : "یافت نشد";
   const body = expired
-    ? "Temporary hosting on Nova has ended for this project, so the link no longer exists. The source belongs to its owner and can be deployed again from the dashboard."
+    ? "Temporary hosting on SHAKI has ended for this project, so the link no longer exists. The source belongs to its owner and can be deployed again from the dashboard."
     : "There is nothing hosted at this address. The project may never have been deployed, or it may have been deleted by its owner.";
   const faBody = expired
-    ? "میزبانی موقت این پروژه در نوا به پایان رسیده و این لینک دیگر وجود ندارد. سورس نزد صاحب پروژه است و می‌تواند از داشبورد دوباره منتشر شود."
+    ? "میزبانی موقت این پروژه در شاکی به پایان رسیده و این لینک دیگر وجود ندارد. سورس نزد صاحب پروژه است و می‌تواند از داشبورد دوباره منتشر شود."
     : "چیزی در این آدرس میزبانی نمی‌شود؛ ممکن است پروژه هرگز منتشر نشده باشد یا صاحبش آن را حذف کرده باشد.";
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">`
     + `<meta name="viewport" content="width=device-width,initial-scale=1">`
@@ -19838,7 +19838,7 @@ async function resumeReminder(id: string, userId: number, env: Env): Promise<Job
 }
 
 /**
- * The sentence Nova must say when a pause/resume did not take effect.
+ * The sentence SHAKI must say when a pause/resume did not take effect.
  *
  * Centralised because these are precisely the failures most likely to be
  * narrated as success. `ALREADY_PAUSED` and `NOT_PAUSED` describe a job that is
@@ -20065,7 +20065,7 @@ async function processDueReminders(env: Env): Promise<void> {
     if(Number(row.attempts)>=JOB_MAX_ATTEMPTS){
       const retired=await env.DB.prepare("DELETE FROM scheduled_jobs WHERE id=? AND (status='pending' OR (status='running' AND lease_until<=?))").bind(row.id,Date.now()).run();
       const abandoned=rowToReminder(row);
-      if(d1Changed(retired)&&abandoned.queuedBuild&&abandoned.progressMessageId)await editMessageText(row.chat_id,abandoned.progressMessageId,"⚠️ This task could not finish. Please retry or use Nova's web dashboard.").catch(()=>{});
+      if(d1Changed(retired)&&abandoned.queuedBuild&&abandoned.progressMessageId)await editMessageText(row.chat_id,abandoned.progressMessageId,"⚠️ This task could not finish. Please retry or use SHAKI's web dashboard.").catch(()=>{});
       continue;
     }
 
@@ -20276,13 +20276,13 @@ async function handleStart(msg: TgMessage, env: Env): Promise<void> {
 
     const welcomeText = glang === "fa"
       ? `👋 سلام <b>${escapeHTML(from.first_name)}</b>!\n\n` +
-        `این پنل فقط برای خودته؛ هر چی این‌جا تنظیم کنی (شخصیت، پرامپت شخصی) فقط رو گفتگوهای خودت با نوا تو همین گروه اثر می‌ذاره و هیچ اثری روی بقیه اعضا نداره.\n\n` +
+        `این پنل فقط برای خودته؛ هر چی این‌جا تنظیم کنی (شخصیت، پرامپت شخصی) فقط رو گفتگوهای خودت با شاکی تو همین گروه اثر می‌ذاره و هیچ اثری روی بقیه اعضا نداره.\n\n` +
         `🎭 شخصیت فعال شما: <b>${currentPersona.emoji} ${escapeHTML(personaName)}</b>\n\n` +
-        `💬 برای گفتگو با نوا کافیه اسمش رو بیاری، منشنش کنی یا روی پیامش ریپلای بزنی.`
+        `💬 برای گفتگو با شاکی کافیه اسمش رو بیاری، منشنش کنی یا روی پیامش ریپلای بزنی.`
       : `👋 Hi <b>${escapeHTML(from.first_name)}</b>!\n\n` +
-        `This panel is just for you — anything you set here (persona, custom prompt) only affects your own chats with Nova in this group and doesn't touch anyone else.\n\n` +
+        `This panel is just for you — anything you set here (persona, custom prompt) only affects your own chats with SHAKI in this group and doesn't touch anyone else.\n\n` +
         `🎭 Your active persona: <b>${currentPersona.emoji} ${escapeHTML(personaName)}</b>\n\n` +
-        `💬 To chat with Nova: mention her name, tag her, or reply to her messages.`;
+        `💬 To chat with SHAKI: mention her name, tag her, or reply to her messages.`;
 
     const rows: InlineBtn[][] = [
       [btn(glang === "fa" ? "🎭 انتخاب شخصیت (فقط برای من)" : "🎭 Choose Persona (just for me)", "home:personas")],
@@ -20375,20 +20375,20 @@ async function handleHelp(msg: TgMessage, env: Env, editId?: number): Promise<vo
 
   if (chat.type !== "private") {
     const groupHelp = lang === "fa"
-      ? `📖 *راهنمای نوا در گروه*\n\n` +
+      ? `📖 *راهنمای شاکی در گروه*\n\n` +
         `• \`/start\` — منوی شخصی شما در این گروه\n` +
         `• \`/new\` — پاک کردن حافظه‌ی گفتگوی شما در این گروه\n` +
         `• \`/setprompt nova [متن]\` — پرامپت اختصاصی فقط برای شما\n\n` +
-        `_برای گفتگو: نام نوا رو بیار، منشنش کن یا روی پیامش ریپلای بزن._\n\n` +
-        `💡 بدون اضافه کردن نوا هم می‌تونی همین‌جا بنویسی \`@${BOT_INFO?.username ?? "NovaBot"} search: موضوع\` و از حالت اینلاین استفاده کنی.`
-      : `📖 *Nova Group Guide*\n\n` +
+        `_برای گفتگو: نام شاکی رو بیار، منشنش کن یا روی پیامش ریپلای بزن._\n\n` +
+        `💡 بدون اضافه کردن شاکی هم می‌تونی همین‌جا بنویسی \`@${BOT_INFO?.username ?? "NovaBot"} search: موضوع\` و از حالت اینلاین استفاده کنی.`
+      : `📖 *SHAKI Group Guide*\n\n` +
         `• \`/start\` — Your personal menu in this group\n` +
         `• \`/new\` — Clear your own chat memory here\n` +
         `• \`/setprompt nova [text]\` — A custom prompt just for you\n\n` +
-        `_To chat: say Nova's name, mention her, or reply to her messages._\n\n` +
+        `_To chat: say SHAKI's name, mention her, or reply to her messages._\n\n` +
         (lang === "ar"
           ? `💡 يمكنك استخدام \`@${BOT_INFO?.username ?? "NovaBot"} search: …\` دون إضافة البوت.`
-          : `💡 Without adding Nova, type \`@${BOT_INFO?.username ?? "NovaBot"} search: topic\` right here to use inline mode.`);
+          : `💡 Without adding SHAKI, type \`@${BOT_INFO?.username ?? "NovaBot"} search: topic\` right here to use inline mode.`);
     const kb: InlineKeyboard = { inline_keyboard: [
       [btn(lang === "fa" ? "👥 تنظیمات گروه" : "👥 Group Settings", "group_settings")]
     ]};
@@ -20399,16 +20399,16 @@ async function handleHelp(msg: TgMessage, env: Env, editId?: number): Promise<vo
   let text = "";
   if (lang === "fa") {
     text =
-      `🧭 *راهنمای نوا*\n\n` +
+      `🧭 *راهنمای شاکی*\n\n` +
       `━━━━━━━━━━━━━━━\n` +
       `💬 **گفتگوی عادی**\n` +
-      `هر چی بنویسی یا هر ویسی بفرستی، نوا مثل یه دوست باهوش جواب می‌ده. عکس، PDF یا فایل متنی هم می‌تونی بفرستی تا تحلیلش کنه.\n\n` +
+      `هر چی بنویسی یا هر ویسی بفرستی، شاکی مثل یه دوست باهوش جواب می‌ده. عکس، PDF یا فایل متنی هم می‌تونی بفرستی تا تحلیلش کنه.\n\n` +
       `🛠 **دستورات اصلی**\n` +
       `🏠 \`/start\` — خانه و مصرف روزانه\n` +
       `🆕 \`/new\` — پاک کردن حافظه و شروع تازه\n` +
       `🎨 \`/img [توضیح]\` — ساخت تصویر با AI\n` +
       `🖼 \`/findimg [متن]\` — پیدا کردن عکس از وب (جستجو، نه تولید)\n` +
-      `🔬 \`/deepsearch [موضوع]\` — تحقیق عمیق و مستند درباره یک موضوع (تنها موتور جستجوی نوا)\n` +
+      `🔬 \`/deepsearch [موضوع]\` — تحقیق عمیق و مستند درباره یک موضوع (تنها موتور جستجوی شاکی)\n` +
       `📑 \`/pdf [متن]\` — تبدیل فوری متن به فایل PDF\n` +
       `🌐 \`/myapps\` — وب‌اپ‌هایی که ساختی\n` +
       `🚀 \`/dashboard\` — داشبورد شخصی تو (یادآورها، پروژه‌های میزبانی‌شده، فایل‌ها، حافظه)\n` +
@@ -20445,16 +20445,16 @@ async function handleHelp(msg: TgMessage, env: Env, editId?: number): Promise<vo
     }
   } else {
     text =
-      `🧭 *Nova Guide*\n\n` +
+      `🧭 *SHAKI Guide*\n\n` +
       `━━━━━━━━━━━━━━━\n` +
       `💬 **Chatting**\n` +
-      `Just type or send a voice note — Nova replies naturally. Send images, PDFs, or text files for analysis too.\n\n` +
+      `Just type or send a voice note — SHAKI replies naturally. Send images, PDFs, or text files for analysis too.\n\n` +
       `🛠 **Main Commands**\n` +
       `🏠 \`/start\` — Home & daily usage\n` +
       `🆕 \`/new\` — Clear memory, fresh start\n` +
       `🎨 \`/img [prompt]\` — Generate an AI image\n` +
       `🖼 \`/findimg [query]\` — Find images from the web (search, not generate)\n` +
-      `🔬 \`/deepsearch [topic]\` — Deep, cited research on a topic (Nova's only search engine)\n` +
+      `🔬 \`/deepsearch [topic]\` — Deep, cited research on a topic (SHAKI's only search engine)\n` +
       `📑 \`/pdf [text]\` — Instantly convert text to a PDF\n` +
       `🌐 \`/myapps\` — Web apps you've built\n` +
       `🚀 \`/dashboard\` — Your personal dashboard (reminders, hosted projects, files, memory)\n` +
@@ -20524,7 +20524,7 @@ async function handleSetPrompt(msg: TgMessage, args: string[], env: Env): Promis
   const alias = args[0].toLowerCase();
   const text = args.slice(1).join(" ").trim();
   const map: Record<string, AIEngine> = {
-    "نوا": "gemini", nova: "gemini",
+    "شاکی": "gemini", nova: "gemini",
   };
   const engine = map[alias];
 
@@ -21267,7 +21267,7 @@ async function handleIdInfo(msg: TgMessage, args: string[], env: Env): Promise<v
     idLine(isFa ? "زبان تلگرام" : "Telegram language", from.language_code, false),
     from.is_premium ? idLine(isFa ? "اشتراک" : "Account", "Telegram Premium", false) : null,
     senderStatus ? idLine(isFa ? "نقش در چت" : "Role in chat", senderStatus, false) : null,
-    novaFlags ? idLine(isFa ? "وضعیت نزد نوا" : "Status with Nova", novaFlags, false) : null,
+    novaFlags ? idLine(isFa ? "وضعیت نزد شاکی" : "Status with SHAKI", novaFlags, false) : null,
   ]));
 
   const thisMedia = describeMessageMedia(msg, isFa);
@@ -22064,7 +22064,7 @@ User message:
             ? `[REPLY_MEDIA_CONTEXT — GIF/VIDEO]
 کاربر ${senderName} روی یک رسانه متحرک از ${replierName} ریپلای کرده است.
 
-رسانه واقعی به‌صورت binary به‌عنوان ورودی پیوست شده است.
+رسانه واقعی به‌صورت binary به‌عشاکین ورودی پیوست شده است.
 خود محتوای بصری/ویدیویی را بررسی کن.
 
 قوانین بسیار مهم:
@@ -22282,7 +22282,7 @@ else if (reply.animation) {
 این پیام واقعاً به یک GIF/انیمیشن پیوست شده است.
 محتوای رسانه را از داده‌ی تصویری/ویدیویی پیوست‌شده بررسی کن.
 هرگز درباره‌ی محتوای GIF از روی نام فایل، شناسه فایل، پسوند فایل یا متن‌هایی مثل "[GIF]" حدس نزن.
-اگر فریم نماینده/thumbnail پیوست شده، حتماً آن را به‌عنوان شاهد بصری بررسی کن.
+اگر فریم نماینده/thumbnail پیوست شده، حتماً آن را به‌عشاکین شاهد بصری بررسی کن.
 اگر فایل متحرک قابل تحلیل بود، حرکت و رویدادهای قابل مشاهده را نیز بررسی کن.
 اگر چیزی واقعاً قابل تشخیص نیست، همان را صریح بگو.
 
@@ -22347,7 +22347,7 @@ Current user message:
 
     // ------------------------------------------------------------
     // 2) سپس خود فایل Animation را هم بده.
-    // MP4/WebM را به‌عنوان video بفرست.
+    // MP4/WebM را به‌عشاکین video بفرست.
     // GIF خام را مستقیماً به Gemini تحمیل نکن؛ چون ممکن است
     // در بعضی مسیرها به‌صورت visual input معتبر تفسیر نشود.
     // ------------------------------------------------------------
@@ -22431,7 +22431,7 @@ Current user message:
         prompt +
         (
           attached
-            ? `\n\n[رسانه واقعی GIF/Animation به‌عنوان ورودی همین پیام پیوست شده است. فقط از همان ورودی بصری نتیجه‌گیری کن.]`
+            ? `\n\n[رسانه واقعی GIF/Animation به‌عشاکین ورودی همین پیام پیوست شده است. فقط از همان ورودی بصری نتیجه‌گیری کن.]`
             : `\n\n[هشدار: محتوای باینری GIF در این درخواست قابل دریافت نشد. درباره محتوای GIF یا نام فایل حدس نزن.]`
         ),
     });
@@ -22516,7 +22516,7 @@ async function handleTextMessage(msg: TgMessage, env: Env): Promise<void> {
     const lang = session.language;
     
     if (isGroup) {
-      // A chat-scoped block means Nova ignores this person here. It used to
+      // A chat-scoped block means SHAKI ignores this person here. It used to
       // mean `deleteMessage`, so "block them" silently turned into a message
       // shredder — destructive, needs admin rights it may not have, and not
       // remotely what was asked. Ignoring is the honest implementation;
@@ -22524,7 +22524,7 @@ async function handleTextMessage(msg: TgMessage, env: Env): Promise<void> {
       const banData = await readChatBan(chat.id, from.id, env);
       if (banData?.until && banData.until > Date.now()) return;
 
-      // 🧠 هوش جمعی: ثبت حضور و پیام کاربر در حافظه گروه، حتی اگر نوا را صدا نزده باشد
+      // 🧠 هوش جمعی: ثبت حضور و پیام کاربر در حافظه گروه، حتی اگر شاکی را صدا نزده باشد
       touchGroupMember(session, from);
       const groupCtx = groupContextCache.get(chat.id) ?? { messages: [], lastCleanup: Date.now() };
       groupCtx.messages.push({
@@ -22623,7 +22623,7 @@ async function handleTextMessage(msg: TgMessage, env: Env): Promise<void> {
       logger.info(`[intent] ${describeRoutingIntent(routing)}`);
 
       // A rename is applied here, deterministically, and never left to the
-      // model: "اسم نوا رو بذار سحر" must take effect on this very message.
+      // model: "اسم شاکی رو بذار سحر" must take effect on this very message.
       if (routing.category === "name_switch" && routing.slots.newName !== undefined) {
         if (await applyCallNameChange(session, from, chat.id, isGroup, msg.message_id, routing.slots.newName, env)) return;
       }
@@ -22633,9 +22633,9 @@ async function handleTextMessage(msg: TgMessage, env: Env): Promise<void> {
     // بدون رفت‌وبرگشت به Gemini)، اما هیچ وضعیتی اینجا تغییر نمی‌کند: تعویض واقعی
     // فقط با تأیید صریح کاربر روی کارت شخصیت انجام می‌شود.
     //
-    // Gated on the router now. Calling Nova by name is NOT a request to
-    // reconfigure her: "نوا؟" / "نوا بیا" / "نوا اینو ببین" used to reach this
-    // fast path (because "نوا" is also an alias of the default persona) and
+    // Gated on the router now. Calling SHAKI by name is NOT a request to
+    // reconfigure her: "شاکی؟" / "شاکی بیا" / "شاکی اینو ببین" used to reach this
+    // fast path (because "شاکی" is also an alias of the default persona) and
     // burned the whole turn on a persona card instead of answering. Only an
     // actual persona intent gets in.
     if (await handlePersonaIntentMessage(session, from, text, chat.id, isGroup, msg.message_id, routing)) return;
@@ -22757,7 +22757,7 @@ async function handleTextMessage(msg: TgMessage, env: Env): Promise<void> {
           if (from.id === cfg.BOT_OWNER_ID) {
             await sendMessage(chat.id, cfg.SYSTEM_PROMPT
               ? `📋 **سیستم پرامپت سراسری فعلی:**\n\n\`\`\`\n${cfg.SYSTEM_PROMPT.slice(0, 3500)}\n\`\`\``
-              : "📋 سیستم پرامپت سراسری تنظیم نشده — پیش‌فرض نوا استفاده می‌شود.",
+              : "📋 سیستم پرامپت سراسری تنظیم نشده — پیش‌فرض شاکی استفاده می‌شود.",
               { reply_to_message_id: msg.message_id });
           }
           break;
@@ -23384,7 +23384,7 @@ if (photo?.length) { fileId = photo[photo.length - 1].file_id; mimeType = "image
     if (category === "image") {
       const b64 = arrayBufferToBase64(arrayBuf);
       // 💾 ذخیره‌ی عکس آپلودی کاربر (حداکثر ۷ روز) تا هم برای ویرایش در دسترس
-      // باشد، هم به‌عنوان Asset در وب‌اپ‌ها/بازی‌ها قابل استفاده باشد.
+      // باشد، هم به‌عشاکین Asset در وب‌اپ‌ها/بازی‌ها قابل استفاده باشد.
       // Off the critical path: hosting is a blob write plus a serialized
       // read-modify-write of the media registry (three D1 round-trips on the D1
       // backend), and it used to be awaited *before* the model call for every
@@ -23442,7 +23442,7 @@ if (photo?.length) { fileId = photo[photo.length - 1].file_id; mimeType = "image
 
     // A user-uploaded GIF used to be learned into the reaction library here.
     // That library is global — one key per mood, shared across every chat — so
-    // one person's upload became a reaction Nova could replay into someone
+    // one person's upload became a reaction SHAKI could replay into someone
     // else's conversation. Stickers are still learned (they come from public
     // sticker sets, so they carry no private content); arbitrary uploaded
     // animations are not. `resend_last_media` still covers "send that one
@@ -23465,7 +23465,7 @@ if (photo?.length) { fileId = photo[photo.length - 1].file_id; mimeType = "image
 }
 // SECTION: ADMIN NAVIGATION — ONE PANEL, ONE DESTINATION
 //
-// Nova used to carry two administrative interfaces. The web dashboard at /admin
+// SHAKI used to carry two administrative interfaces. The web dashboard at /admin
 // (adminDashboard.html over /api/admin/*) holds the real feature set: cursor-paged
 // user search, VIP/block/language/persona actions, per-user prompt, limits, memory
 // and reminder management, groups, web apps, media, broadcast, live config, key
@@ -23624,8 +23624,8 @@ async function sendAdminPanel(
 
   if (chatType !== "private") {
     await deliver(isFa
-      ? "🔐 پنل مدیریت فقط در چت خصوصی نوا باز می‌شود. در پیوی <code>/admin</code> را بزن."
-      : "🔐 The admin panel opens only in Nova's private chat. Send <code>/admin</code> there.");
+      ? "🔐 پنل مدیریت فقط در چت خصوصی شاکی باز می‌شود. در پیوی <code>/admin</code> را بزن."
+      : "🔐 The admin panel opens only in SHAKI's private chat. Send <code>/admin</code> there.");
     return { ok: false, url: null, reason: "not_private" };
   }
 
@@ -23641,8 +23641,8 @@ async function sendAdminPanel(
   }
 
   const body = isFa
-    ? "👑 <b>Nova Control Center</b>\n\nهمهٔ مدیریت — کاربران، گروه‌ها، رسانه، پیام همگانی، کلیدها و تنظیمات — در پنل وب است:"
-    : "👑 <b>Nova Control Center</b>\n\nEverything — users, groups, media, broadcast, keys and config — lives in the web panel:";
+    ? "👑 <b>SHAKI Control Center</b>\n\nهمهٔ مدیریت — کاربران، گروه‌ها، رسانه، پیام همگانی، کلیدها و تنظیمات — در پنل وب است:"
+    : "👑 <b>SHAKI Control Center</b>\n\nEverything — users, groups, media, broadcast, keys and config — lives in the web panel:";
   await deliver(body, JSON.stringify({
     inline_keyboard: [[{ text: isFa ? "⚙️ باز کردن پنل مدیریت" : "⚙️ Open Admin Panel", web_app: { url } }]],
   }));
@@ -23820,7 +23820,7 @@ async function diagnoseElevenLabsKey(
    upstream call, so a revoked key was indistinguishable from a healthy one
    until a user's request failed.
 
-   Each probe performs a real request against the service Nova actually depends
+   Each probe performs a real request against the service SHAKI actually depends
    on and reports what the upstream said. Four rules hold for all of them:
 
    1. **Cheapest honest endpoint.** A probe validates a credential; it must not
@@ -23986,7 +23986,7 @@ async function probeCloudflareAccount(
     async (): Promise<ProbeOutcome> => {
       const headers = { authorization: "Bearer " + account.token, accept: "application/json" };
       // The Workers-AI catalogue is the narrowest read that proves all three
-      // things Nova needs at once: the token is live, it is authorised on THIS
+      // things SHAKI needs at once: the token is live, it is authorised on THIS
       // account, and it carries Workers AI access. Verifying the token alone
       // would pass a token that cannot reach this account's models.
       const res = await fetchWithTimeout(
@@ -24070,7 +24070,7 @@ async function probeElevenLabsKey(
       }
       if (d.tts !== "not_tested") info.synthesis = d.tts;
       // Auth can pass while synthesis fails on quota; the key is then real but
-      // useless for the one thing Nova wants it for, so it must not read "ok".
+      // useless for the one thing SHAKI wants it for, so it must not read "ok".
       const ttsBroken = deep && d.tts !== "ok" && d.tts !== "not_tested";
       return {
         status: status === "ok" && ttsBroken ? "forbidden" : status,
@@ -24530,7 +24530,7 @@ async function handleRetiredControlCenterCallback(cb: TgCallbackQuery, env: Env)
 function panelDivider(): string {
   return `┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n`;
 }
-/** نوار پیشرفت ریزدونه (گرانولاریتی یک‌هشتم بلوک) — حرکت نرم به‌جای پرش پله‌ای */
+/** شاکیر پیشرفت ریزدونه (گرانولاریتی یک‌هشتم بلوک) — حرکت نرم به‌جای پرش پله‌ای */
 function fineProgressBar(pct: number, size = 12): string {
   const eighths = ["", "▏", "▎", "▍", "▌", "▋", "▊", "▉"];
   const clamped = Math.min(100, Math.max(0, pct));
@@ -24792,8 +24792,8 @@ async function handleCallback(cb: TgCallbackQuery, env: Env): Promise<void> {
 
   // ── Model selection ──
   if (data.startsWith("set_model_")) {
-    // Nova is the only agent — no backend switching
-    await answerCb(cb.id, "✅ Nova is your AI agent");
+    // SHAKI is the only agent — no backend switching
+    await answerCb(cb.id, "✅ SHAKI is your AI agent");
     return;
   }
 
@@ -25030,7 +25030,7 @@ if (data === "open_language") {
   }
 
   // Switches between the two persona modes. Manual (default) means only a confirm
-  // tap can change persona; auto-adapt lets Nova adjust on its own under the
+  // tap can change persona; auto-adapt lets SHAKI adjust on its own under the
   // cooldown/streak brakes.
   //
   // Enabling it clears the pin a previous confirmation left behind. Without that,
@@ -25368,7 +25368,7 @@ async function showHomePanel(
   let text = "";
   if (lang === "fa") {
     text = `╭━━━━━━━━━━━━━━━━━━━━━╮\n` +
-           `┃ 🌌 <b>مرکز فرماندهی نوا</b>\n` +
+           `┃ 🌌 <b>مرکز فرماندهی شاکی</b>\n` +
            `┃ <i>نسخه ${BOT_VERSION} · هسته هوشمند</i>\n` +
            `╰━━━━━━━━━━━━━━━━━━━━━╯\n\n` +
            `👤 <b>کاربر:</b> <code>${escapeHTML(user.first_name)}</code> (${tier})\n` +
@@ -25382,7 +25382,7 @@ async function showHomePanel(
            `💡 <i>یکی از گزینه‌های زیر را انتخاب کنید:</i>`;
   } else if (lang === "ar") {
     text = `╭━━━━━━━━━━━━━━━━━━━━━╮\n` +
-           `┃ 🌌 <b>لوحة تحكم نوفا</b>\n` +
+           `┃ 🌌 <b>لوحة تحكم شاکی</b>\n` +
            `┃ <i>الإصدار ${BOT_VERSION} · المحرك الذكي</i>\n` +
            `╰━━━━━━━━━━━━━━━━━━━━━╯\n\n` +
            `👤 <b>المستخدم:</b> <code>${escapeHTML(user.first_name)}</code> (${tier})\n` +
@@ -25396,7 +25396,7 @@ async function showHomePanel(
            `💡 <i>اختر أحد الخيارات أدناه:</i>`;
   } else {
     text = `╭━━━━━━━━━━━━━━━━━━━━━╮\n` +
-           `┃ 🌌 <b>Nova Command Center</b>\n` +
+           `┃ 🌌 <b>SHAKI Command Center</b>\n` +
            `┃ <i>Version ${BOT_VERSION} · AI Core</i>\n` +
            `╰━━━━━━━━━━━━━━━━━━━━━╯\n\n` +
            `👤 <b>User:</b> <code>${escapeHTML(user.first_name)}</code> (${tier})\n` +
@@ -25831,7 +25831,7 @@ function createHealthResponse(): Response {
     bot: BOT_INFO ? { name: BOT_INFO.first_name, username: BOT_INFO.username } : null,
     active_requests: total,
     max_requests: cfg.MAX_CONCURRENT_REQUESTS,
-    agent: "Nova",
+    agent: "SHAKI",
   }, null, 2), { headers: { "Content-Type": "application/json" }, status: 200 });
 }
 
