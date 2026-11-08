@@ -37,7 +37,7 @@ fallthrough = true
 # (see ensureCoreSchema in src/index.ts), so no manual SQL step is required.
 [[d1_databases]]
 binding = "DB"
-database_name = "nova-db"
+database_name = "ai-shaki-db"
 database_id = "00000000-0000-0000-0000-000000000000"
 
 # ── R2 (optional, recommended) ────────────────────────────────────────────────
