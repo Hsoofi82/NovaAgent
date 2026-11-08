@@ -11994,6 +11994,15 @@ async function setBusinessModeEnabled(enabled: boolean, env: Env): Promise<void>
   bizModeCache = { value: enabled, ts: Date.now() };
 }
 
+// وضعیت حضور صاحب اکانت؛ فقط وقتی «آفلاین» است پاسخ خودکار Business مجاز است.
+async function getOwnerPresence(userId: number, env: Env): Promise<"online" | "offline"> {
+  const value = await env.SESSIONS.get(`owner_presence:${userId}`, "text");
+  return value === "online" ? "online" : "offline";
+}
+async function setOwnerPresence(userId: number, value: "online" | "offline", env: Env): Promise<void> {
+  await env.SESSIONS.put(`owner_presence:${userId}`, value);
+}
+
 async function isAuthorizedForBusiness(userId: number, env: Env): Promise<boolean> {
   if (userId === cfg.BOT_OWNER_ID) return true;
   try {
@@ -12149,6 +12158,8 @@ async function handleBusinessMessage(msg: TgMessage, env: Env): Promise<void> {
 
     if (!record.canReply) return;
     if (!(await isAuthorizedForBusiness(record.ownerId, env))) return;
+    // پاسخ خودکار فقط وقتی فعال است که صاحب اکانت خودش را آفلاین اعلام کرده باشد.
+    if (await getOwnerPresence(record.ownerId, env) === "online") return;
 
     const customerId = msg.chat.id;
     if (await isBusinessPaused(connId, customerId, env)) return;
@@ -12165,6 +12176,13 @@ async function handleBusinessMessage(msg: TgMessage, env: Env): Promise<void> {
       return;
     }
 
+    const introKey = `bizintro:${connId}:${customerId}`;
+    const hasIntroduced = await env.SESSIONS.get(introKey, "text");
+    if (!hasIntroduced) {
+      await sendBusinessMessage(connId, customerId, "عمو شاکی آنلاین نیست، من AI SHAKI هستم، در خدمت شما 🤖");
+      await env.SESSIONS.put(introKey, "1", { expirationTtl: 15552000 }).catch(() => {});
+    }
+
     const userText = (msg.text ?? msg.caption ?? "").trim();
     if (!userText || !cfg.GEMINI_KEYS.length) return;
 
@@ -12174,7 +12192,7 @@ async function handleBusinessMessage(msg: TgMessage, env: Env): Promise<void> {
 
     const customPrompt = record.customerPrompts[String(customerId)];
     const basePrompt = (customPrompt ?? record.defaultPrompt ?? "").trim() ||
-      `You are a polite, concise assistant replying on behalf of ${record.ownerName} to their private Telegram messages. Keep replies short, professional and helpful. Reply in the same language the customer used.`;
+      `You are AI SHAKI, the friendly AI assistant for ${record.ownerName}. On the first message to each customer, the system already introduces you in Persian as: "عمو شاکی آنلاین نیست، من AI SHAKI هستم، در خدمت شما". After that, continue the conversation naturally as AI SHAKI. Keep replies concise, useful and warm; reply in the customer's language.`;
 
     const identityGuard =
       `\n\n🔒 CRITICAL IDENTITY RULES (never break these):\n` +
@@ -22805,6 +22823,18 @@ async function handleTextMessage(msg: TgMessage, env: Env): Promise<void> {
           }
           break;
 
+        case "/shakionline":
+        case "/shakioffline": {
+          if (from.id !== cfg.BOT_OWNER_ID) break;
+          const presence = command === "/shakionline" ? "online" : "offline";
+          await setOwnerPresence(from.id, presence, env);
+          await sendMessage(chat.id, presence === "online"
+            ? "🟢 شاکی آنلاین است؛ پاسخ خودکار اکانت متوقف شد."
+            : "🌙 شاکی آفلاین است؛ AI SHAKI از این به بعد پیام‌های اکانت متصل را پاسخ می‌دهد.",
+            { reply_to_message_id: msg.message_id });
+          break;
+        }
+
         case "/bizprompt": {
           if (!(await isAuthorizedForBusiness(from.id, env))) {
             await sendMessage(chat.id, "🚫 این قابلیت فقط برای مالک ربات و کاربران VIP فعاله.", { reply_to_message_id: msg.message_id });
@@ -24568,6 +24598,17 @@ async function handleCallback(cb: TgCallbackQuery, env: Env): Promise<void> {
   // hanging; falling through would let a stray tap reach a real handler.
   if (data === "noop") { await answerCb(cb.id); return; }
 
+  // مالک از همین پنل وضعیت حضورش را مشخص می‌کند؛ وضعیت آنلاین، پاسخ خودکار اکانت را متوقف می‌کند.
+  if (data === "owner_presence_online" || data === "owner_presence_offline") {
+    if (from.id !== cfg.BOT_OWNER_ID) { await answerCb(cb.id, "⛔ فقط مالک", true); return; }
+    const presence = data.endsWith("_online") ? "online" : "offline";
+    await setOwnerPresence(from.id, presence, env);
+    await answerCb(cb.id, presence === "online"
+      ? "🟢 شاکی آنلاین است؛ پاسخ خودکار متوقف شد."
+      : "🌙 شاکی آفلاین است؛ AI SHAKI پاسخ می‌دهد.");
+    return;
+  }
+
   // Live broadcast controls (own namespace — see handleBroadcastControlCallback).
   if (data.startsWith("bcast:")) {
     await handleBroadcastControlCallback(cb, env);
@@ -24607,7 +24648,9 @@ async function handleCallback(cb: TgCallbackQuery, env: Env): Promise<void> {
     await answerCb(cb.id, successMsg.replace(/\*\*/g, ""), false);
 
     const welcomeKey: LangKey = isGroup ? "welcome_group" : "welcome_private";
-    const welcomeText = t(newLang, welcomeKey, { name: from.first_name });
+    const welcomeText = isGroup
+      ? t(newLang, welcomeKey, { name: from.first_name })
+      : "عمو شاکی آنلاین نیست، من AI SHAKI هستم، در خدمت شما 🤖";
     const kb: InlineKeyboard = isGroup
       ? { inline_keyboard: [[btn(t(newLang, "btn_settings"), "group_settings")]] }
       : { inline_keyboard: [[btn(t(newLang, "btn_select_model"), "model_settings")], [btn(t(newLang, "btn_help"), "open_help")], [userDashboardButton(newLang, true)]] };
@@ -24982,11 +25025,21 @@ if (data === "open_language") {
     return;
   }
 
-  // Tapping a persona (or the legacy `ℹ️` button on an older message) only opens
-  // its detail card — nothing is switched here. `persona_info_` is kept as an
-  // alias so inline keyboards already sitting in users' chat histories still work.
-  if (data.startsWith("persona_select_") || data.startsWith("persona_info_")) {
-    const personaId = data.replace(/^persona_(select|info)_/, "");
+  // انتخاب مستقیم شخصیت با یک لمس؛ دکمه‌های قدیمی info همچنان کارت جزئیات را باز می‌کنند.
+  if (data.startsWith("persona_select_")) {
+    const personaId = data.replace("persona_select_", "");
+    if (!PERSONAS[personaId]) { await answerCb(cb.id, "❌", true); return; }
+    const isGroup = chat.type !== "private";
+    const applied = await applyPersona(session, personaId, from, isGroup, env, { pin: true });
+    if (!applied) { await answerCb(cb.id, "⚠️ این شخصیت فعال نشد", true); return; }
+    await answerCb(cb.id, session.language === "fa" ? "✅ شخصیت انتخاب شد" : "✅ Persona selected");
+    await editMessageText(chat.id, message.message_id, buildPersonaText(session, from.id, isGroup), {
+      reply_markup: JSON.stringify(buildPersonaKeyboard(personaId, session.language, personaAutoAdaptEnabled(session)))
+    });
+    return;
+  }
+  if (data.startsWith("persona_info_")) {
+    const personaId = data.replace("persona_info_", "");
     if (!PERSONAS[personaId]) { await answerCb(cb.id, "❌", true); return; }
     await answerCb(cb.id);
     await showPersonaCard(chat.id, message.message_id, personaId, session, from.id, chat.type !== "private");
@@ -25370,7 +25423,7 @@ async function showHomePanel(
   let text = "";
   if (lang === "fa") {
     text = `╭━━━━━━━━━━━━━━━━━━━━━╮\n` +
-           `┃ 🌌 <b>مرکز فرماندهی شاکی</b>\n` +
+           `┃ 🌌 <b>AI SHAKI</b>\n` +
            `┃ <i>نسخه ${BOT_VERSION} · هسته هوشمند</i>\n` +
            `╰━━━━━━━━━━━━━━━━━━━━━╯\n\n` +
            `👤 <b>کاربر:</b> <code>${escapeHTML(user.first_name)}</code> (${tier})\n` +
@@ -25384,7 +25437,7 @@ async function showHomePanel(
            `💡 <i>یکی از گزینه‌های زیر را انتخاب کنید:</i>`;
   } else if (lang === "ar") {
     text = `╭━━━━━━━━━━━━━━━━━━━━━╮\n` +
-           `┃ 🌌 <b>لوحة تحكم شاکی</b>\n` +
+           `┃ 🌌 <b>AI SHAKI</b>\n` +
            `┃ <i>الإصدار ${BOT_VERSION} · المحرك الذكي</i>\n` +
            `╰━━━━━━━━━━━━━━━━━━━━━╯\n\n` +
            `👤 <b>المستخدم:</b> <code>${escapeHTML(user.first_name)}</code> (${tier})\n` +
@@ -25452,6 +25505,10 @@ function buildHomeKeyboard(session: ChatSession, userId: number): InlineKeyboard
   }
 
   if (isOwner) {
+    rows.push([
+      btn(isFa ? "🟢 شاکی آنلاینم" : "🟢 SHAKI online", "owner_presence_online"),
+      btn(isFa ? "🌙 شاکی آفلاینم" : "🌙 SHAKI offline", "owner_presence_offline"),
+    ]);
     rows.push([
       adminPanelButton(isFa ? "👑 پنل مدیریت ارشد" : isAr ? "👑 لوحة التحكم" : "👑 Admin Dashboard", session.type === "private"),
     ]);
