@@ -1,6 +1,6 @@
 <div align="center">
 
-# ƝØVΛ — Advanced AI Agent Platform for Telegram
+# SHAKI AI — Advanced AI Agent Platform for Telegram
 
 ### A powerful, self-hostable AI Agent platform built on Cloudflare Workers
 
@@ -380,7 +380,7 @@ Use Cloudflare Worker Secrets instead.
 
 ```bash
 # 1. Clone & install
-git clone https://github.com/YOUR_USERNAME/nova.git && cd nova && npm install
+git clone https://github.com/shaki00111/ai-shaki.git && cd ai-shaki && npm install
 
 # 2. Login to Cloudflare
 npx wrangler login
@@ -430,8 +430,8 @@ Optional:
 ## 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/nova.git
-cd nova
+git clone https://github.com/shaki00111/ai-shaki.git
+cd ai-shaki
 npm install
 ```
 
@@ -685,7 +685,7 @@ for the complete license text.
 
 # ™️ SHAKI Trademark
 
-The **SHAKI**, **ƝØVΛ**, **SHAKI Control Center**, **SHAKI Game Engine**, and related project names and logos are project trademarks and branding.
+The **SHAKI**, **SHAKI AI**, **SHAKI Control Center**, **SHAKI Game Engine**, and related project names and logos are project trademarks and branding.
 
 The AGPL license covers the source code unless otherwise stated.
 
@@ -808,7 +808,7 @@ Bot:
 
 <div align="center">
 
-### ƝØVΛ
+### SHAKI AI
 
 **Open Source AI Agent Platform for Telegram**
 
@@ -970,7 +970,7 @@ SHAKI شامل مکانیزم‌هایی مانند:
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/nova.git
-cd nova
+cd ai-shaki
 npm install
 npx wrangler login
 ```
@@ -997,7 +997,7 @@ SHAKI تحت مجوز:
 
 نام‌ و برنده:
 
-* ƝØVΛ
+* SHAKI AI
 و لوگوهای مرتبط، هویت برند پروژه هستند.
 
 AGPL به‌تنهایی به معنی واگذاری حقوق Trademark نیست.
@@ -1030,7 +1030,7 @@ Pull Request و Contribution استقبال می‌شود.
 
 <div align="center">
 
-# ƝØVΛ
+# SHAKI AI
 
 ### پلتفرم متن‌باز ایجنت هوش مصنوعی برای Telegram
 
