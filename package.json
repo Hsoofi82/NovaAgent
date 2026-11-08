@@ -1,5 +1,5 @@
 {
-  "name": "nova-merged",
+  "name": "shaki-ai",
   "version": "2.0.0",
   "description": "SHAKI AI Telegram Agent on Cloudflare Workers — a premium, tool-using assistant with memory, automation and creative engines.",
   "private": true,
