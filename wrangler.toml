@@ -1,4 +1,4 @@
-name = "nova"
+name = "ai-shaki"
 main = "src/index.ts"
 compatibility_date = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
@@ -37,8 +37,8 @@ fallthrough = true
 # (see ensureCoreSchema in src/index.ts), so no manual SQL step is required.
 [[d1_databases]]
 binding = "DB"
-database_name = "nova-db"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_name = "ai-shaki-db"
+database_id = "a289ea4c-452d-4799-b540-dce3435095ab"
 
 # ── R2 (optional, recommended) ────────────────────────────────────────────────
 # Media blobs (generated images, voice notes, uploads) default to the D1-backed

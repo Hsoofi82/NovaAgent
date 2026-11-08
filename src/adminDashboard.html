@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <meta name="robots" content="noindex,nofollow">
-<title>Nova — Admin Control Center</title>
+<title>SHAKI — Admin Control Center</title>
 <script src="/tg-webapp.js"></script>
 <style>
 /* ══════════════════════════════════════════════════════════════════════
-   NOVA CONTROL CENTER — DESIGN SYSTEM
+   SHAKI CONTROL CENTER — DESIGN SYSTEM
    All values come from tokens below. No ad-hoc colours/radii/spacing.
    RTL-first: every directional rule uses logical properties so the same
    stylesheet is correct in both dir=rtl and dir=ltr.
@@ -668,7 +668,7 @@ html[dir="rtl"] .dpanel-body{--exp-from:14px;--exp-origin:right}
     <div class="brand">
       <div class="logo" aria-hidden="true">N</div>
       <div>
-        <b>Nova Control Center</b>
+        <b>SHAKI Control Center</b>
         <span id="version">در حال اتصال…</span>
       </div>
     </div>
@@ -787,7 +787,7 @@ html[dir="rtl"] .dpanel-body{--exp-from:14px;--exp-origin:right}
         </div>
       </section>
       <section class="panel" id="panel-media" role="tabpanel" aria-labelledby="tab-media">
-        <div class="page-head"><h1>رسانه</h1><p>هر چیزی که Nova ساخته یا کاربران فرستاده‌اند — با منبع، سازنده و زمان واقعی</p></div>
+        <div class="page-head"><h1>رسانه</h1><p>هر چیزی که SHAKI ساخته یا کاربران فرستاده‌اند — با منبع، سازنده و زمان واقعی</p></div>
         <div class="card">
           <div class="toolbar">
             <label class="sr-only" for="mediaKind">نوع رسانه</label>
@@ -1373,8 +1373,8 @@ async function loadTab(tab, force){
 async function loadFactory(){
   return section($("factoryBuilds"),async()=>{
     const data=await api("/api/admin/factory/builds");
-    if(data.availability?.available===false&&!(data.builds||[]).length){$("factoryBuilds").innerHTML=emptyState('▧','ساخت بومی فعلاً در دسترس نیست','سرویس ساخت خارجی متصل نیست. نسخهٔ وب نوا همچنان قابل استفاده است؛ درخواست APK یا EXE به صف ارسال نمی‌شود.');return;}
-    $("factoryBuilds").innerHTML=(data.builds||[]).map(b=>`<div class="item"><div><b>${esc(b.target)}</b> <span class="tag">${esc(b.status)}</span><small class="mono">${esc(b.projectId)}</small><small>${esc(fmt(b.createdAt))} · ${fmtNum(b.repairs)} اصلاح</small>${(b.artifacts||[]).map(a=>`<a href="${esc(a.url)}" rel="noreferrer">${esc(a.name)} · ${esc(a.signing)}</a>`).join(" · ")}</div>${['queued','generating','building','repairing'].includes(b.status)?`<button class="sm danger" data-build-cancel="${esc(b.buildId)}">لغو</button>`:''}</div>`).join('')||emptyState('▧','ساختی ثبت نشده','کاربران می‌توانند از نوا اپلیکیشن APK یا دسکتاپ بخواهند.');
+    if(data.availability?.available===false&&!(data.builds||[]).length){$("factoryBuilds").innerHTML=emptyState('▧','ساخت بومی فعلاً در دسترس نیست','سرویس ساخت خارجی متصل نیست. نسخهٔ وب شاکی همچنان قابل استفاده است؛ درخواست APK یا EXE به صف ارسال نمی‌شود.');return;}
+    $("factoryBuilds").innerHTML=(data.builds||[]).map(b=>`<div class="item"><div><b>${esc(b.target)}</b> <span class="tag">${esc(b.status)}</span><small class="mono">${esc(b.projectId)}</small><small>${esc(fmt(b.createdAt))} · ${fmtNum(b.repairs)} اصلاح</small>${(b.artifacts||[]).map(a=>`<a href="${esc(a.url)}" rel="noreferrer">${esc(a.name)} · ${esc(a.signing)}</a>`).join(" · ")}</div>${['queued','generating','building','repairing'].includes(b.status)?`<button class="sm danger" data-build-cancel="${esc(b.buildId)}">لغو</button>`:''}</div>`).join('')||emptyState('▧','ساختی ثبت نشده','کاربران می‌توانند از شاکی اپلیکیشن APK یا دسکتاپ بخواهند.');
   },{rows:3});
 }
 const operationPages = Object.fromEntries(["runs","jobs","audit"].map(k=>[k,{cursor:"",next:null,back:[],controller:null,serial:0}]));
@@ -1428,7 +1428,7 @@ async function loadOperationsPage(kind,opts){
     }else if(kind==="jobs"){
       const counts=d.counts||[], count=status=>counts.filter(c=>c.status===status).reduce((n,c)=>n+Number(c.count),0);
       $("jobMetrics").innerHTML=metricsHtml([["در انتظار",fmtNum(count("pending"))],["در حال اجرا",fmtNum(count("running"))],["متوقف",fmtNum(count("paused"))],["عقب‌افتاده",fmtNum(counts.reduce((n,c)=>n+Number(c.overdue||0),0))]]);
-      el.innerHTML=(d.items||[]).map(j=>`<div class="item"><div><b>${j.kind==="agent_task"?"◈ کار عامل":"◷ یادآور"}</b> ${runBadge(j.status)}<small class="mono">${esc(j.id)} · ${esc(j.userId)}</small><p class="ops-message">${esc(j.message)}</p><small>${j.status==="paused"?"متوقف":esc(fmt(j.nextRunAt))} · ${esc(j.recurrence||"یک‌بار")} · ${fmtNum(j.runs)} اجرا</small>${j.lastError?`<small class="err">${esc(j.lastError)}</small>`:""}<div class="ops-toolbar"><button class="sm" data-job="${esc(j.id)}" data-action="${j.status==="paused"?"resume":"pause"}">${j.status==="paused"?"▶ ازسرگیری":"⏸ توقف"}</button><button class="sm danger" data-job="${esc(j.id)}" data-action="cancel">حذف از صف</button></div></div></div>`).join("")||emptyState("◷","صف خالی است","کارهای زمان‌بندی‌شده از طریق گفتگو با نوا ساخته می‌شوند.");
+      el.innerHTML=(d.items||[]).map(j=>`<div class="item"><div><b>${j.kind==="agent_task"?"◈ کار عامل":"◷ یادآور"}</b> ${runBadge(j.status)}<small class="mono">${esc(j.id)} · ${esc(j.userId)}</small><p class="ops-message">${esc(j.message)}</p><small>${j.status==="paused"?"متوقف":esc(fmt(j.nextRunAt))} · ${esc(j.recurrence||"یک‌بار")} · ${fmtNum(j.runs)} اجرا</small>${j.lastError?`<small class="err">${esc(j.lastError)}</small>`:""}<div class="ops-toolbar"><button class="sm" data-job="${esc(j.id)}" data-action="${j.status==="paused"?"resume":"pause"}">${j.status==="paused"?"▶ ازسرگیری":"⏸ توقف"}</button><button class="sm danger" data-job="${esc(j.id)}" data-action="cancel">حذف از صف</button></div></div></div>`).join("")||emptyState("◷","صف خالی است","کارهای زمان‌بندی‌شده از طریق گفتگو با شاکی ساخته می‌شوند.");
     }else{
       el.innerHTML=(d.items||[]).map(a=>`<div class="item"><div><b class="mono">${esc(a.action)}</b><small>مدیر ${esc(a.actor_id)} · ${esc(fmt(a.ts))}</small></div><span class="tag ${Number(a.status_code)<400?"ok":"err"}">${esc(a.status_code)}</span></div>`).join("")||emptyState("≡","هنوز عملیاتی ثبت نشده","عملیات بعدی پنل در این بخش ثبت می‌شود.");
     }
@@ -1513,7 +1513,7 @@ async function loadOverview(opts){
       ["خطاها", fmtNum(r.errors)], ["میانگین پاسخ", fmtNum(r.avgLatencyMs)+"ms"], ["قفل AI", fmtNum(r.activeAiLocks)],
     ];
     $("metrics").innerHTML = cards.map(c=>`<div class="metric"><span>${esc(c[0])}</span><b>${c[1]}</b></div>`).join("");
-    $("version").textContent = (d.version||"Nova") + " · Admin";
+    $("version").textContent = (d.version||"SHAKI AI") + " · Admin";
     $("overviewLive").innerHTML =
       `<div class="item"><b>دامنه آمار</b><small>این نمونه سرور؛ آمار پایدار در «اجرای عامل»</small></div>`+
       `<div class="item"><b>Telegram API</b><small>${fmtNum(r.telegramCalls)} فراخوانی</small></div>`+
@@ -2066,7 +2066,7 @@ const media = { offset:0, limit:24, total:0, hasMore:false, kind:"media", seq:0 
    how a file came to exist, so it is the one the card leads with — the tab used
    to print the raw enum (or nothing) and leave the operator guessing. */
 const MEDIA_SOURCE_TEXT = {
-  ai:       { icon:"✨", label:"تولید Nova" },
+  ai:       { icon:"✨", label:"تولید SHAKI" },
   edit:     { icon:"🎨", label:"ویرایش روی تصویر کاربر" },
   upload:   { icon:"📤", label:"آپلود در تلگرام" },
   mini_app: { icon:"📱", label:"آپلود از مینی‌اپ" },
@@ -2214,7 +2214,7 @@ async function loadMedia(opts){
 }
 
 /* ── کتابخانه‌ی استیکر ─────────────────────────────────────────────────
-   نوا استیکرهایی که کاربران می‌فرستند را خودش یاد می‌گیرد، ولی تا امروز هیچ راهی
+   شاکی استیکرهایی که کاربران می‌فرستند را خودش یاد می‌گیرد، ولی تا امروز هیچ راهی
    برای دیدن، دسته‌بندی، غیرفعال کردن یا حذفشان نبود. این تب همان سطحِ مدیریت است. */
 const stickers = { offset:0, limit:48, total:0, hasMore:false, seq:0, cats:[], stats:null, health:null, collisions:[], filled:false };
 
@@ -2354,7 +2354,7 @@ async function loadStickers(opts){
       '<span class="pill">سقف هر دسته: '+fmtNum(d.perCategoryMax||60)+'</span>';
     grid.innerHTML = items.length
       ? items.map(stkCard).join("")
-      : emptyState("🎭","استیکری نیست","نوا با دیدن استیکرهای کاربران کتابخانه را می‌سازد؛ یا پایین‌تر یک پک را وارد کن.");
+      : emptyState("🎭","استیکری نیست","شاکی با دیدن استیکرهای کاربران کتابخانه را می‌سازد؛ یا پایین‌تر یک پک را وارد کن.");
     const pager = $("stkPager");
     const show = stickers.offset>0 || stickers.hasMore;
     pager.hidden = !show;
