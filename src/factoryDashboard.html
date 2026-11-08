@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
-<title>Nova — Application Builds</title><script src="/tg-webapp.js"></script>
+<title>SHAKI — Application Builds</title><script src="/tg-webapp.js"></script>
 <style>
 :root{font-family:system-ui,sans-serif;color-scheme:dark;background:#0b1120;color:#e8eef9}body{max-width:900px;margin:auto;padding:24px}*{box-sizing:border-box}h1{font-size:24px}h2{font-size:18px}.card{border:1px solid #32405a;background:#121d30;padding:20px;border-radius:14px;margin:18px 0}p,small{color:#b7c2d6;line-height:1.6}label{display:block;margin:12px 0 5px}input,textarea,select,button{font:inherit;min-height:44px;border:1px solid #4b5871;border-radius:8px;padding:10px;background:#142038;color:inherit}input,select,textarea{width:100%}textarea{min-height:120px}button{cursor:pointer}button:disabled,fieldset:disabled{opacity:.6;cursor:default}fieldset{border:0;padding:0;margin:0}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.build{border-top:1px solid #32405a;padding:16px 0}.status{font-weight:600}a{color:#8bdbfa;margin-inline-end:12px;overflow-wrap:anywhere}code{overflow-wrap:anywhere}#notice{white-space:pre-wrap}#notice:empty{display:none}:focus-visible{outline:2px solid #a39cfa;outline-offset:3px}
 </style></head><body>
@@ -13,7 +13,7 @@
 <label for="idea">Idea or change</label><textarea id="idea" maxlength="6000"></textarea>
 <label for="target">Output</label><select id="target"><option value="android-apk">Android APK</option><option value="android-aab">Android AAB — release signing required</option><option value="windows">Windows EXE bundle</option></select>
 <div class="actions"><button id="generate" type="submit">Generate / update</button><button id="build" type="button">Build selected project</button></div>
-</fieldset></form><p>When native builds are unavailable, you can still ask Nova for a web application. A web app is not an APK or EXE.</p></section>
+</fieldset></form><p>When native builds are unavailable, you can still ask SHAKI for a web application. A web app is not an APK or EXE.</p></section>
 <section class="card"><h2>Recent builds</h2><div id="builds" aria-live="polite"><p>No builds loaded.</p></div></section>
 <script>
 (()=>{'use strict';
@@ -23,7 +23,7 @@ const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;
 let loading=false,submitting=false,timer,available=false,submission;
 function notice(text){$('notice').textContent=text;}
 async function api(path,body,key){
-  if(!auth)throw new Error('Open this panel from Nova inside Telegram.');
+  if(!auth)throw new Error('Open this panel from SHAKI inside Telegram.');
   const response=await fetch(path,{method:body?'POST':'GET',headers:{'X-Telegram-Init-Data':auth,'Content-Type':'application/json',...(key?{'Idempotency-Key':key}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(12000)});
   const data=await response.json();
   if(!response.ok||!data.ok)throw new Error(typeof data.error==='string'&&!/^[A-Z_]+$/.test(data.error)?data.error:'The request could not be completed. Refresh the project status and try again.');
@@ -32,7 +32,7 @@ async function api(path,body,key){
 function availability(data){
   available=data.available===true;$('controls').disabled=!available||submitting;
   $('availability').textContent=available?'External build worker connected':'Native builds currently unavailable';
-  $('availabilityText').textContent=available?'Requests are queued for external compilation. Download links appear only after validation succeeds.':'No native build worker is connected. Nothing will be queued or compiled. The regular Nova web builder remains available.';
+  $('availabilityText').textContent=available?'Requests are queued for external compilation. Download links appear only after validation succeeds.':'No native build worker is connected. Nothing will be queued or compiled. The regular SHAKI web builder remains available.';
   for(const option of $('target').options)option.disabled=!(data.targets||[]).includes(option.value);
   if($('target').selectedOptions[0]?.disabled)$('target').value=(data.targets||[])[0]||'android-apk';
 }
