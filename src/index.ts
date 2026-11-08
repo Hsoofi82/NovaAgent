@@ -12180,7 +12180,7 @@ async function handleBusinessMessage(msg: TgMessage, env: Env): Promise<void> {
     const hasIntroduced = await env.SESSIONS.get(introKey, "text");
     if (!hasIntroduced) {
       await sendBusinessMessage(connId, customerId, "عمو شاکی آنلاین نیست، من AI SHAKI هستم، در خدمت شما 🤖");
-      await env.SESSIONS.put(introKey, "1", { expirationTtl: 15552000 }).catch(() => {});
+      await env.SESSIONS.put(introKey, "1").catch(() => {});
     }
 
     const userText = (msg.text ?? msg.caption ?? "").trim();
@@ -22534,7 +22534,7 @@ async function handleTextMessage(msg: TgMessage, env: Env): Promise<void> {
         await sendMessage(chat.id, "عمو شاکی آنلاین نیست، من AI SHAKI هستم، در خدمت شما 🤖", {
           reply_to_message_id: msg.message_id
         });
-        await env.SESSIONS.put(introKey, "1", { expirationTtl: 15552000 }).catch(() => {});
+        await env.SESSIONS.put(introKey, "1").catch(() => {});
       }
     }
 
