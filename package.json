@@ -1,7 +1,7 @@
 {
   "name": "nova-merged",
   "version": "2.0.0",
-  "description": "Nova AI Telegram Bot on Cloudflare Workers — merged build: Nova Astro (platform/security) + Nova Deeper (cognition/engines)",
+  "description": "SHAKI AI Telegram Agent on Cloudflare Workers — a premium, tool-using assistant with memory, automation and creative engines.",
   "private": true,
   "type": "module",
   "scripts": {
