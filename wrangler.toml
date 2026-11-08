@@ -38,7 +38,7 @@ fallthrough = true
 [[d1_databases]]
 binding = "DB"
 database_name = "ai-shaki-db"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "a289ea4c-452d-4799-b540-dce3435095ab"
 
 # ── R2 (optional, recommended) ────────────────────────────────────────────────
 # Media blobs (generated images, voice notes, uploads) default to the D1-backed
