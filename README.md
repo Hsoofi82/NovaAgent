@@ -1,6 +1,6 @@
 <div align="center">
 
-# ƝØVΛ — Advanced AI Agent Platform for Telegram
+# SHAKI AI — Advanced AI Agent Platform for Telegram
 
 ### A powerful, self-hostable AI Agent platform built on Cloudflare Workers
 
@@ -29,23 +29,23 @@
 
 # 🇬🇧 English
 
-## 🌟 What is Nova?
+## 🌟 What is SHAKI AI?
 
-**Nova is not just a chatbot.**
+**SHAKI is not just a chatbot.**
 
-Nova is a self-hostable **AI Agent Platform for Telegram**, designed to combine conversational AI, persistent memory, tool execution, media generation, web applications and automation into a single Cloudflare Workers application.
+SHAKI is a self-hostable **AI Agent Platform for Telegram**, designed to combine conversational AI, persistent memory, tool execution, media generation, web applications and automation into a single Cloudflare Workers application.
 
-Nova uses **Google Gemini** as its primary reasoning and function-calling engine, **Cloudflare AI / Flux** for image generation, **Cloudflare D1** for persistent data and Telegram as its primary user interface.
+SHAKI uses **Google Gemini** as its primary reasoning and function-calling engine, **Cloudflare AI / Flux** for image generation, **Cloudflare D1** for persistent data and Telegram as its primary user interface.
 
 The architecture is designed around a **single intelligent agent capable of selecting and chaining tools** to complete multi-step tasks.
 
 ### Example
 
-A user can ask Nova:
+A user can ask SHAKI:
 
 > Search for the latest information about X, analyze the results, create a website using the data, host it publicly, and send me the link.
 
-Instead of treating every feature as an isolated command, Nova can orchestrate the required tools as a workflow.
+Instead of treating every feature as an isolated command, SHAKI can orchestrate the required tools as a workflow.
 
 ---
 
@@ -83,7 +83,7 @@ Instead of treating every feature as an isolated command, Nova can orchestrate t
 
 ## 🎨 Media Engine
 
-Nova includes a media layer capable of handling:
+SHAKI includes a media layer capable of handling:
 
 * AI image generation
 * Image editing
@@ -100,9 +100,9 @@ Nova includes a media layer capable of handling:
 
 ## 🎮 Built-in Game Engine
 
-Nova contains its own experimental HTML5 game generation layer.
+SHAKI contains its own experimental HTML5 game generation layer.
 
-### Nova Game Engine
+### SHAKI Game Engine
 
 Features include:
 
@@ -115,13 +115,13 @@ Features include:
 * Game loops
 * Browser-compatible execution
 
-AI-generated games can be packaged as single-file HTML applications and hosted through Nova.
+AI-generated games can be packaged as single-file HTML applications and hosted through SHAKI.
 
 ---
 
 ## 🌐 Web App Builder
 
-Nova can generate and host lightweight web applications and games.
+SHAKI can generate and host lightweight web applications and games.
 
 Generated applications can include:
 
@@ -133,13 +133,13 @@ Generated applications can include:
 * Public URLs
 * Telegram Mini App compatibility
 
-This allows Nova to act as both an AI assistant and a lightweight application-generation platform.
+This allows SHAKI to act as both an AI assistant and a lightweight application-generation platform.
 
 ---
 
 ## 🧠 Memory System
 
-Nova supports multiple levels of memory.
+SHAKI supports multiple levels of memory.
 
 ### Short-Term Memory
 
@@ -159,13 +159,13 @@ Persistent information such as:
 
 ### Group Awareness
 
-In groups, Nova can maintain contextual information about participants and use that information when generating responses.
+In groups, SHAKI can maintain contextual information about participants and use that information when generating responses.
 
 ---
 
 ## 👥 Telegram Groups
 
-Nova can operate inside Telegram groups while maintaining:
+SHAKI can operate inside Telegram groups while maintaining:
 
 * Per-group settings
 * Group activation state
@@ -180,7 +180,7 @@ New groups can remain dormant until explicitly activated.
 
 ## 🏢 Telegram Business Automation
 
-Nova can integrate with Telegram Business connections for automated private-message replies.
+SHAKI can integrate with Telegram Business connections for automated private-message replies.
 
 Features include:
 
@@ -196,7 +196,7 @@ Features include:
 
 ## 📱 Telegram Mini App
 
-Nova includes a Telegram Mini App dashboard.
+SHAKI includes a Telegram Mini App dashboard.
 
 ### Dashboard capabilities
 
@@ -216,7 +216,7 @@ Web App endpoints validate Telegram `initData` before allowing authenticated ope
 
 ---
 
-## 👑 Nova Control Center
+## 👑 SHAKI Control Center
 
 Administrators can access a dedicated control panel.
 
@@ -250,7 +250,7 @@ Administrators can access a dedicated control panel.
 
 ### Administration
 
-Nova also supports natural-language configuration for selected settings.
+SHAKI also supports natural-language configuration for selected settings.
 
 ---
 
@@ -276,7 +276,7 @@ Nova also supports natural-language configuration for selected settings.
               ┌───────────────────┼────────────────────┐
               │                   │                    │
               ▼                   ▼                    ▼
-        Cloudflare AI       Google Search          Nova Tools
+        Cloudflare AI       Google Search          SHAKI Tools
         Flux / Images       Web / Images       PDF / Web / TTS
               │                   │                    │
               └───────────────────┼────────────────────┘
@@ -302,15 +302,15 @@ Nova also supports natural-language configuration for selected settings.
 | Search           | Google Custom Search API |
 | Frontend         | Vanilla JavaScript + CSS |
 | Telegram UI      | Telegram Mini App        |
-| PDF              | Nova Office Engine       |
-| Game Engine      | Nova Game Engine         |
-| Web Builder      | Nova Web Builder         |
+| PDF              | SHAKI Office Engine       |
+| Game Engine      | SHAKI Game Engine         |
+| Web Builder      | SHAKI Web Builder         |
 
 ---
 
 # ⚡ Performance & Reliability
 
-Nova is designed specifically for serverless environments and Cloudflare free-tier constraints.
+SHAKI is designed specifically for serverless environments and Cloudflare free-tier constraints.
 
 ### Concurrency Protection
 
@@ -340,7 +340,7 @@ Critical operations are intentionally kept inside the request lifecycle rather t
 
 # 🔐 Security
 
-Nova contains several security mechanisms:
+SHAKI contains several security mechanisms:
 
 * Telegram webhook secret validation
 * Telegram Mini App `initData` validation
@@ -380,7 +380,7 @@ Use Cloudflare Worker Secrets instead.
 
 ```bash
 # 1. Clone & install
-git clone https://github.com/YOUR_USERNAME/nova.git && cd nova && npm install
+git clone https://github.com/shaki00111/ai-shaki.git && cd ai-shaki && npm install
 
 # 2. Login to Cloudflare
 npx wrangler login
@@ -430,8 +430,8 @@ Optional:
 ## 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/nova.git
-cd nova
+git clone https://github.com/shaki00111/ai-shaki.git
+cd ai-shaki
 npm install
 ```
 
@@ -517,7 +517,7 @@ CREATE TABLE IF NOT EXISTS kv_store (
 );
 ```
 
-Use the migration system shipped with the project for additional Nova tables.
+Use the migration system shipped with the project for additional SHAKI tables.
 
 ---
 
@@ -563,7 +563,7 @@ npm run tail
 
 | Command      | Purpose                  |
 | ------------ | ------------------------ |
-| `/start`     | Start Nova               |
+| `/start`     | Start SHAKI               |
 | `/new`       | Start a new conversation |
 | `/img`       | Generate an image        |
 | `/search`    | Search images            |
@@ -638,7 +638,7 @@ nova/
 
 # 🤝 Contributing
 
-Nova is open source and contributions are welcome.
+SHAKI is open source and contributions are welcome.
 
 Before opening a Pull Request:
 
@@ -665,7 +665,7 @@ GitHub supports private vulnerability reporting for public repositories, allowin
 
 # 📜 License
 
-Nova is licensed under:
+SHAKI is licensed under:
 
 **GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later).**
 
@@ -683,13 +683,13 @@ for the complete license text.
 
 ---
 
-# ™️ Nova Trademark
+# ™️ SHAKI Trademark
 
-The **Nova**, **ƝØVΛ**, **Nova Control Center**, **Nova Game Engine**, and related project names and logos are project trademarks and branding.
+The **SHAKI**, **SHAKI AI**, **SHAKI Control Center**, **SHAKI Game Engine**, and related project names and logos are project trademarks and branding.
 
 The AGPL license covers the source code unless otherwise stated.
 
-The license does **not** automatically grant permission to use Nova branding in a way that suggests official endorsement, ownership or affiliation.
+The license does **not** automatically grant permission to use SHAKI branding in a way that suggests official endorsement, ownership or affiliation.
 
 Forks are welcome, but derivative distributions should clearly identify themselves as independent projects.
 
@@ -697,7 +697,7 @@ Forks are welcome, but derivative distributions should clearly identify themselv
 
 # ⚠️ Third-Party Services
 
-Nova integrates with third-party services, which may have their own:
+SHAKI integrates with third-party services, which may have their own:
 
 * Terms of Service
 * API limits
@@ -715,13 +715,13 @@ These include, depending on the deployment:
 * Cloudflare AI
 * Flux models
 
-Using Nova does not grant rights to bypass or violate those services' policies.
+Using SHAKI does not grant rights to bypass or violate those services' policies.
 
 ---
 
 # ⚠️ Disclaimer
 
-Nova is provided **"AS IS"**, without warranties of any kind, to the maximum extent permitted by applicable law.
+SHAKI is provided **"AS IS"**, without warranties of any kind, to the maximum extent permitted by applicable law.
 
 The maintainers are not responsible for:
 
@@ -743,9 +743,9 @@ Operators are responsible for securing their own deployments and credentials.
 
 # ❤️ Donate / حمایت مالی
 
-اگر از Nova لذت می‌برید و می‌خواهید از توسعه‌ی آن حمایت کنید:
+اگر از SHAKI لذت می‌برید و می‌خواهید از توسعه‌ی آن حمایت کنید:
 
-If you enjoy Nova and want to support its development:
+If you enjoy SHAKI and want to support its development:
 
 | Network | Address |
 |---------|---------|
@@ -808,7 +808,7 @@ Bot:
 
 <div align="center">
 
-### ƝØVΛ
+### SHAKI AI
 
 **Open Source AI Agent Platform for Telegram**
 
@@ -822,15 +822,15 @@ Made with 🖤 by Hsoofi82
 
 # 🇮🇷 فارسی
 
-## Nova چیست؟
+## SHAKI چیست؟
 
-**Nova فقط یک چت‌بات نیست.**
+**SHAKI فقط یک چت‌بات نیست.**
 
-Nova یک **پلتفرم متن‌باز ایجنت هوش مصنوعی برای Telegram** است که روی Cloudflare Workers اجرا می‌شود و قابلیت‌های مختلفی مانند حافظه، Function Calling، جستجوی وب، تولید تصویر، ساخت وب‌اپلیکیشن، ساخت بازی، تولید PDF، تولید صدا و Telegram Mini App را در یک سیستم واحد ترکیب می‌کند.
+SHAKI یک **پلتفرم متن‌باز ایجنت هوش مصنوعی برای Telegram** است که روی Cloudflare Workers اجرا می‌شود و قابلیت‌های مختلفی مانند حافظه، Function Calling، جستجوی وب، تولید تصویر، ساخت وب‌اپلیکیشن، ساخت بازی، تولید PDF، تولید صدا و Telegram Mini App را در یک سیستم واحد ترکیب می‌کند.
 
-هسته هوش مصنوعی Nova بر پایه Google Gemini طراحی شده و برای تولید تصویر از Cloudflare AI / Flux استفاده می‌کند.
+هسته هوش مصنوعی SHAKI بر پایه Google Gemini طراحی شده و برای تولید تصویر از Cloudflare AI / Flux استفاده می‌کند.
 
-هدف اصلی پروژه این است که Nova بتواند به‌جای اجرای دستورات ساده، **ابزارهای مختلف را به‌صورت چندمرحله‌ای انتخاب و ترکیب کند** تا یک مسئله کامل را حل کند.
+هدف اصلی پروژه این است که SHAKI بتواند به‌جای اجرای دستورات ساده، **ابزارهای مختلف را به‌صورت چندمرحله‌ای انتخاب و ترکیب کند** تا یک مسئله کامل را حل کند.
 
 ---
 
@@ -865,9 +865,9 @@ Nova یک **پلتفرم متن‌باز ایجنت هوش مصنوعی برای
 
 ---
 
-## 🎮 موتور بازی Nova
+## 🎮 موتور بازی SHAKI
 
-Nova دارای یک Game Engine آزمایشی داخلی برای تولید بازی‌های HTML5 است.
+SHAKI دارای یک Game Engine آزمایشی داخلی برای تولید بازی‌های HTML5 است.
 
 قابلیت‌ها:
 
@@ -884,7 +884,7 @@ Nova دارای یک Game Engine آزمایشی داخلی برای تولید �
 
 ## 🌐 Web Builder
 
-Nova می‌تواند Web App و بازی‌های HTML5 را تولید کرده و به‌صورت عمومی میزبانی کند.
+SHAKI می‌تواند Web App و بازی‌های HTML5 را تولید کرده و به‌صورت عمومی میزبانی کند.
 
 امکانات:
 
@@ -900,7 +900,7 @@ Nova می‌تواند Web App و بازی‌های HTML5 را تولید کرد
 
 ## 🧠 سیستم حافظه
 
-Nova از حافظه کوتاه‌مدت و بلندمدت استفاده می‌کند.
+SHAKI از حافظه کوتاه‌مدت و بلندمدت استفاده می‌کند.
 
 اطلاعات قابل نگهداری شامل مواردی مانند:
 
@@ -916,7 +916,7 @@ Nova از حافظه کوتاه‌مدت و بلندمدت استفاده می�
 
 ## 📱 Telegram Mini App
 
-Nova یک داشبورد کامل Telegram Mini App دارد:
+SHAKI یک داشبورد کامل Telegram Mini App دارد:
 
 * چند مکالمه
 * Theme
@@ -930,9 +930,9 @@ Nova یک داشبورد کامل Telegram Mini App دارد:
 
 ---
 
-## 👑 Nova Control Center
+## 👑 SHAKI Control Center
 
-پنل مدیریتی Nova برای کنترل موارد زیر استفاده می‌شود:
+پنل مدیریتی SHAKI برای کنترل موارد زیر استفاده می‌شود:
 
 * کاربران
 * گروه‌ها
@@ -949,7 +949,7 @@ Nova یک داشبورد کامل Telegram Mini App دارد:
 
 ## 🔐 امنیت
 
-Nova شامل مکانیزم‌هایی مانند:
+SHAKI شامل مکانیزم‌هایی مانند:
 
 * Webhook Secret
 * Telegram `initData` validation
@@ -970,7 +970,7 @@ Nova شامل مکانیزم‌هایی مانند:
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/nova.git
-cd nova
+cd ai-shaki
 npm install
 npx wrangler login
 ```
@@ -981,7 +981,7 @@ npx wrangler login
 
 ## 📜 مجوز
 
-Nova تحت مجوز:
+SHAKI تحت مجوز:
 
 **GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)**
 
@@ -993,11 +993,11 @@ Nova تحت مجوز:
 
 ---
 
-## ™️ برند Nova
+## ™️ برند SHAKI
 
 نام‌ و برنده:
 
-* ƝØVΛ
+* SHAKI AI
 و لوگوهای مرتبط، هویت برند پروژه هستند.
 
 AGPL به‌تنهایی به معنی واگذاری حقوق Trademark نیست.
@@ -1030,7 +1030,7 @@ Pull Request و Contribution استقبال می‌شود.
 
 <div align="center">
 
-# ƝØVΛ
+# SHAKI AI
 
 ### پلتفرم متن‌باز ایجنت هوش مصنوعی برای Telegram
 
